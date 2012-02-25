@@ -1,0 +1,22 @@
+{
+    "name": "it",
+    "description": "A testing framework for node",
+    "version": "0.0.1",
+    "keywords" : ["testing", "test", "async", "funciton testing", "bdd", "unit", "unit testing"],
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:doug-martin/it.git"
+    },
+    "dependencies" : {
+        "comb" : ">=0.0.9"
+    },
+    "homepage": "http://doug-martin.github.com/it",
+    "author": "Doug Martin (http://blog.dougamartin.com)",
+    "main": "index.js",
+    "directories": {
+        "lib": "lib"
+    },
+    "engines": {
+        "node": ">= 0.6.1"
+    }
+}

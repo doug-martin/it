@@ -1,0 +1,67 @@
+//#!/usr/bin/env node
+
+"use strict";
+var fs = require("fs"),
+    path = require("path"),
+    exec = require("child_process").exec,
+    sys = require("sys"),
+    comb = require("comb"),
+    string = comb.string,
+    it = require("../index");
+var program = require('commander');
+
+program
+    .version('0.0.1')
+    .option('-d, --directory <path>', 'Directory of tests')
+    .option('-r, --reporter [string]', 'reporter')
+    .option('--reporters', 'display available reporters')
+    .on("reporters", function () {
+        console.log(["", "Reporters:", "\tspec", "\tdotmatrix", ""].join("\n"));
+        process.exit();
+    })
+    .parse(process.argv);
+
+var prog = program.args.shift() || null;
+var directory = program.directory || process.cwd() + "/test";
+
+if (program.reporter) {
+    it.reporter = program.reporter;
+}
+
+
+var runTests = function (files) {
+    files.forEach(function (f) {
+        f && require(f);
+    });
+    return it.run();
+};
+
+var startTests = function () {
+    var ret = new comb.Promise();
+    if (prog) {
+        runTests([path.resolve(prog)]);
+    } else {
+        exec("find \"" + directory + "\" -name *.test.js", function (err, stdout) {
+            if (err) ret.errback(err);
+            var files = stdout.split("\n").map(function (f) {
+                return path.resolve(f);
+            });
+            if (files.length) {
+                runTests(files).then(comb.hitch(ret, "callback"), comb.hitch(ret, "errback"));
+            } else {
+                ret.callback();
+            }
+        });
+    }
+    return ret;
+};
+
+startTests().addErrback(function (error) {
+    console.log(error);
+});
+
+
+
+
+
+
