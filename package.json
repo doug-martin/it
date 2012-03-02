@@ -8,7 +8,8 @@
         "url": "git@github.com:doug-martin/it.git"
     },
     "dependencies" : {
-        "comb" : ">=0.0.9"
+        "comb" : ">=0.1.0",
+        "commander" : ">=0.5.1"
     },
     "homepage": "http://doug-martin.github.com/it",
     "author": "Doug Martin (http://blog.dougamartin.com)",
