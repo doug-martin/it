@@ -10,6 +10,10 @@ It is a BDD testing framework for node.js. The premise behind it is to be as lig
 
     npm install it
 
+To use the it executable
+
+    npm install -g it
+
 ##Usage
 
 It contains the following functions to write and run tests.
@@ -23,7 +27,7 @@ It contains the following functions to write and run tests.
 
 ###Synchronous tests
 
-Writing synchronous tests in **It** is extrememly simple. So lets start off with an example.
+Writing synchronous tests in **It** is extremely simple. So lets start off with an example.
 
 Lets assume we have a Person Object
 
@@ -186,7 +190,7 @@ Options
   
   * -d, --directory : The root directory of your tests
   * -r, --reporter : The reporter to use when running the tests
-  * --reporters : Display a list of reporters that are avaiable
+  * --reporters : Display a list of reporters that are available
   * -h, --help : Displays help.
 
 To run an entire suite
@@ -226,11 +230,10 @@ it.describe("A Person", function(it){
 ###Reporters
 
 **It** currently has two reporters built in 
-
   * spec
   * dotmatrix
  
-For the obove tests the output for spec should look as follows
+For the above tests the output for spec should look as follows
 
 ```
 Person
@@ -272,7 +275,7 @@ The following methods are added to assert for convenience
   * isString - assert that a value is a String
   * isUndefined - assert that a value is undefined
   * isUndefinedOrNull - assert that a value is undefined or null
-  * isPromiseLike - assert that a value is Promise like (contains the funtions "then")
+  * isPromiseLike - assert that a value is Promise like (contains the funtions "then", "addErrback", and "addCallback")
   * isFunction - assert that a value is a function
   * isNull - assert that a value is null
   * isNotNull - assert that a value is not null
