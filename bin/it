@@ -1,6 +1,5 @@
-//#!/usr/bin/env node
+#!/usr/bin/env node
 
-"use strict";
 var fs = require("fs"),
     path = require("path"),
     exec = require("child_process").exec,
@@ -39,6 +38,7 @@ var runTests = function (files) {
 var startTests = function () {
     var ret = new comb.Promise();
     if (prog) {
+        console.log(prog);
         runTests([path.resolve(prog)]);
     } else {
         exec("find \"" + directory + "\" -name *.test.js", function (err, stdout) {
