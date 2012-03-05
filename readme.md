@@ -226,6 +226,7 @@ it.describe("A Person", function(it){
 ###Reporters
 
 **It** currently has two reporters built in 
+
   * spec
   * dotmatrix
  
