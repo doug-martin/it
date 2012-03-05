@@ -27,7 +27,6 @@ it.describe("Person", function (it) {
     });
 
 
-    //Call with next
     it.describe("#getOlder", function (it) {
 
         it.should("accept positive numbers", function () {

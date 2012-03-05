@@ -53,5 +53,31 @@ it.describe("Person", function (it) {
         });
     });
 
+    it.describe("#getOlder nested", function (it) {
+        //Call with next
+        it.describe("with positive numbers", function (it) {
+            it.should("work", function (next) {
+                var person = new Person("bob", 1);
+                person.getOlder(2, function (err, person) {
+                    assert.equal(person.age, 3);
+                    next();
+                });
+            });
+        });
+
+        //return promise
+        it.describe("with negative numbers", function (it) {
+            it.should("not work", function (next) {
+                var ret = new comb.Promise();
+                var person = new Person("bob", 1);
+                person.getOlder(-2, function (err, person) {
+                    assert.equal(person.age, 1);
+                    ret.callback();
+                });
+                return ret;
+            });
+        });
+    });
+
     it.run();
 });
