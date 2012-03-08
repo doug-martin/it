@@ -44,7 +44,9 @@ var startTests = function () {
         exec("find \"" + directory + "\" -name *.test.js", function (err, stdout) {
             if (err) ret.errback(err);
             var files = stdout.split("\n").map(function (f) {
-                return path.resolve(f);
+                if (f !== '') {
+                    return path.resolve(f);
+                }
             });
             if (files.length) {
                 runTests(files).then(comb.hitch(ret, "callback"), comb.hitch(ret, "errback"));
