@@ -44,14 +44,17 @@ var printFileSource = function (file) {
 }
 
 var reportCoverageTable = function (cov) {
+    cov.files.sort(function(a, b){
+        return b.coverage - a.coverage;
+    });
+    // Source
+    cov.files.forEach(printFileSource);
     // Stats
     var print = sys.error;
     print(COVERAGE_HEADER);
     print(TABLE_SEP(PRINT_FORMAT('Filename', 'Coverage', 'LOC', 'SLOC', 'Missed')));
     cov.files.forEach(printFile);
     print(TABLE_SEP(PRINT_FORMAT("Total", "" + cov.coverage, "" + cov.LOC, "" + cov.SLOC, "" + cov.totalMisses)));
-    // Source
-    cov.files.forEach(printFileSource);
 }
 
 var coverage = function (data, val) {
