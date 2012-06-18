@@ -62,6 +62,9 @@ it.describe("Person", function (it) {
 
     });
 
+    it.describe('describe without any functionality');
+    it.should('allow pending tests');
+
     it.run();
 });
 
