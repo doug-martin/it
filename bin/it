@@ -44,7 +44,7 @@ var printFileSource = function (file) {
 }
 
 var reportCoverageTable = function (cov) {
-    cov.files.sort(function(a, b){
+    cov.files.sort(function (a, b) {
         return b.coverage - a.coverage;
     });
     // Source
@@ -154,9 +154,14 @@ process.emit = function (event) {
         orig.apply(this, arguments);
     }
 };
-startTests().addErrback(function (error) {
-    console.log(error);
-});
+startTests().then(
+    function () {
+        process.exit();
+    },
+    function (error) {
+        console.log(error);
+    }
+);
 
 
 
