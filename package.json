@@ -16,7 +16,7 @@
     "url": "git@github.com:doug-martin/it.git"
   },
   "dependencies": {
-    "comb": ">=0.1.1",
+    "comb": ">=0.1.2",
     "commander": ">=0.5.1"
   },
   "homepage": "http://github.com/doug-martin/it",
@@ -33,17 +33,5 @@
   },
   "engines": {
     "node": ">= 0.6.1"
-  },
-  "_npmUser": {
-    "name": "damartin",
-    "email": "doug.martin@pollenware.com"
-  },
-  "_id": "it@0.0.2",
-  "devDependencies": {},
-  "optionalDependencies": {},
-  "_engineSupported": true,
-  "_npmVersion": "1.1.21",
-  "_nodeVersion": "v0.6.17",
-  "_defaultsLoaded": true,
-  "_from": "it"
+  }
 }
