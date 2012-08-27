@@ -580,12 +580,12 @@ it.describe("it", function (it) {
                         str.push([k, {status:sum.status}]);
                     }
                 });
-            })(str, summary);
+            })(str, summary.it);
             assert.deepEqual(str, expected);
-            assert.isNumber(summary.duration);
+            assert.isNumber(summary.it.duration);
 
 
         })
     });
 
-});
+}).as(module);

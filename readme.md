@@ -190,6 +190,7 @@ Options
   
   * -d, --directory : The root directory of your tests
   * -r, --reporter : The reporter to use when running the tests
+  * --cov-html : create coverage output in html, if an output path is included then the file will be written to that file otherwise it will defalt to `./coverage.html`
   * --reporters : Display a list of reporters that are available
   * -h, --help : Displays help.
 
@@ -224,6 +225,9 @@ it.describe("A Person", function(it){
 });
 
 ```
+
+###Code Coverage
+If you use [node-jscoverage](https://github.com/visionmedia/node-jscoverage) to generate coverage then by default `it` will output a coverage report. You may also output coverage to an `HTML` file by passing in the `--cov-html` flag to the executable. For example out put see [patio test coverate](http://pollenware.github.com/patio/coverage.html).
 
 
 
