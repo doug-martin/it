@@ -227,7 +227,7 @@ it.describe("A Person", function(it){
 ```
 
 ###Code Coverage
-If you use [node-jscoverage](https://github.com/visionmedia/node-jscoverage) to generate coverage then by default `it` will output a coverage report. You may also output coverage to an `HTML` file by passing in the `--cov-html` flag to the executable. For example out put see [patio test coverate](http://pollenware.github.com/patio/coverage.html).
+If you use [node-jscoverage](https://github.com/visionmedia/node-jscoverage) to generate coverage then by default `it` will output a coverage report. You may also output coverage to an `HTML` file by passing in the `--cov-html` flag to the executable. For example out put see [patio test coverage](http://pollenware.github.com/patio/coverage.html).
 
 
 
