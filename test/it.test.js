@@ -1,6 +1,6 @@
 var it = require("../index"), assert = require("assert"), comb = require("comb");
 
-it.describe("it", function (it) {
+it.describe("it",function (it) {
 
     it.should("not be null", function () {
         assert.isNotNull(it);
@@ -17,6 +17,7 @@ it.describe("it", function (it) {
         assert.isFunction(it.afterAll);
         assert.isFunction(it.should);
         assert.isFunction(it.describe);
+        assert.isFunction(it.context);
     });
 
     it.describe("assert extensions", function (it) {
