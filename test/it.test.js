@@ -586,7 +586,7 @@ it.describe("it",function (it) {
             assert.isNumber(summary.it.duration);
 
 
-        })
+        });
     });
 
 }).as(module);
