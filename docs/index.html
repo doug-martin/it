@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>it</title>
+    <link rel="stylesheet" href="./assets/css/bootstrap.css">
+    <link rel="stylesheet" href="./assets/css/prettify.css">
+    <style type="text/css">
+        
+
+/*.subnav-inner {*/
+    /*width: 100%;*/
+    /*height: 36px;*/
+    /*background-color: #EEE;*/
+    /*background-repeat: repeat-x;*/
+    /*background-image: -moz-linear-gradient(top, whiteSmoke 0%, #EEE 100%);*/
+    /*background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, whiteSmoke), color-stop(100%, #EEE));*/
+    /*background-image: -webkit-linear-gradient(top, whiteSmoke 0%, #EEE 100%);*/
+    /*background-image: -ms-linear-gradient(top, whiteSmoke 0%, #EEE 100%);*/
+    /*background-image: -o-linear-gradient(top, whiteSmoke 0%, #EEE 100%);*/
+    /*filter: progid:DXImageTransform.Microsoft.gradient(startColorstr = '#f5f5f5', endColorstr = '#eeeeee', GradientType = 0);*/
+    /*background-image: linear-gradient(top, whiteSmoke 0%, #EEE 100%);*/
+    /*-webkit-border-radius: 4px;*/
+    /*-moz-border-radius: 4px;*/
+    /*border-radius: 4px;*/
+/*}*/
+
+/*.subnav .nav > li > a:hover {*/
+    /*color: black !important;*/
+/*}*/
+
+/*.subnav .nav li.dropdown .dropdown-toggle .caret,*/
+/*.subnav .nav li.dropdown.open .caret {*/
+    /*border-top-color: #999 !important;*/
+    /*border-bottom-color: #999 !important;*/
+/*}*/
+
+/*.subnav-fixed {*/
+    /*position: fixed;*/
+    /*width : 90%;*/
+    /*margin-right: auto;*/
+    /*margin-left: auto;*/
+    /*top: 40px;*/
+    /*left: 0;*/
+    /*right: 0;*/
+    /*z-index: 1020;*/
+    /*border-color: #D5D5D5;*/
+    /*border-width: 0 0 1px;*/
+    /*-webkit-border-radius: 0;*/
+    /*-moz-border-radius: 0;*/
+    /*border-radius: 0;*/
+    /*-webkit-box-shadow: inset 0 1px 0 #fff, 0 1px 5px rgba(0,0,0,.1);*/
+    /*-moz-box-shadow: inset 0 1px 0 #fff, 0 1px 5px rgba(0,0,0,.1);*/
+    /*box-shadow: inset 0 1px 0 #fff, 0 1px 5px rgba(0,0,0,.1);*/
+    /*filter: progid:DXImageTransform.Microsoft.gradient(enabled=false);*/
+/*}*/
+
+/*.navbar .nav  .dropdown-menu {*/
+    /*max-height: 500px;*/
+    /*overflow: auto;*/
+/*}​*/
+
+    </style>
+    <style type="text/css">
+        body {
+            padding: 90px;
+        }
+
+        .subnav{
+            margin-top: 40px;
+            margin-right: auto;
+            margin-left: auto;
+            z-index: 1000;
+        }
+
+        @media (max-width:979px) {
+            .subnav{
+                margin-top: auto;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="./assets/css/bootstrap-responsive.css">
+    <script type="text/javascript">
+        var init = (function () {
+            "use strict";
+
+            var processScroll = (function () {
+                var curr = null, prev = null;
+                return function (nav) {
+                    var $win = $(window);
+                    $('.subnav').each(function () {
+                        var nav = $(this);
+                        var navTop = $win.width() < 980 ? 0 : nav.offset().top - 40;
+
+                        var scrollTop = $win.scrollTop();
+                        if (scrollTop >= navTop && curr != nav) {
+                            if(curr){
+                                curr.removeClass('subnav-fixed')
+                                prev = curr;
+                            }
+                            curr = nav;
+                            curr.addClass('subnav-fixed')
+                        } else if (curr == nav && scrollTop <= navTop) {
+                            curr.removeClass('subnav-fixed');
+                            prev.addClass('subnav-fixed');
+                            curr = prev;
+                        }else{
+                            nav.removeClass('subnav-fixed');
+                        }
+                    });
+                };
+            })();
+
+            return function () {
+                window.prettyPrint && prettyPrint();
+                $(".collapse").collapse();
+                var $window = $(window);
+                //$(".subnav").affix ();
+                // fix sub nav on scroll
+//                processScroll();
+//                $(window).on('scroll', processScroll)
+            }
+        })();
+    </script>
+</head>
+<body onload="init()">
+<div class="navbar navbar-fixed-top navbar-inverse">
+    <div class="navbar-inner">
+        <div class="container">
+            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"> </span>
+            </a>
+            
+            <a href="./index.html" class="brand">it</a>
+            
+            <div class="nav-collapse">
+                <ul class="nav">
+                    
+
+                        
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                            
+                            <li><a href="it.html">it</a></li>
+                            
+                        </ul>
+                    </li>
+                    
+                    
+                </ul>
+                
+                <ul class="nav pull-right">
+
+                    <li class="divider-vertical"></li>
+                    <li><a href="https://github.com/doug-martin/it" target="#github" class="pull-right">github</a></li>
+                </ul>
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<div class="container-fluid">
+    <a name="top"></a>
+    <div class="container">
+
+
+
+
+  <h1>It</h1>
+<h2>Overview</h2>
+<p>It is a BDD testing framework for node.js. The premise behind it is to be as lightweight as possible while making testing easy and fun to do.
+
+</p>
+<h2>Installation</h2>
+<p><code>npm install it</code>
+
+</p>
+<p>To use the it executable
+
+</p>
+<p><code>npm install -g it</code>
+
+</p>
+<h2>Usage</h2>
+<p>It contains the following functions to write and run tests.
+
+</p>
+<ul>
+<li>describe - The name of object/context you are testing.</li>
+<li>should - the action that you are testing/should happen.</li>
+<li>beforeAll - an action that should happen before all tests in the current context.</li>
+<li>afterAll - an action that should happen after all tests in the current context.</li>
+<li>beforeEach - an action that should happen before each test in the current context.</li>
+<li>afterEach - an action that should happen before each test in the current context.</li>
+</ul>
+<h3>Synchronous tests</h3>
+<p>Writing synchronous tests in <strong>It</strong> is extremely simple. So lets start off with an example.
+
+</p>
+<p>Lets assume we have a Person Object
+
+</p>
+<pre class='prettyprint linenums lang-js'><code>var Person = function (name, age) {
+     this.name = name;
+     this.age = age;
+
+     this.getOlder = function (years) {
+         if (years &gt; 0) {
+             this.age = this.age + years;
+         }
+     };
+
+};</code></pre>
+<p>The first tests we could run on person could be testing the setting of name and age.
+
+</p>
+<pre class='prettyprint linenums lang-js'><code class="lang-javascript">
+var it = require(&quot;../index&quot;),
+assert = require(&quot;assert&quot;);
+
+it.describe(&quot;Person&quot;, function (it) {
+
+     it.should(&quot;set set name&quot;, function () {
+         var person = new Person(&quot;bob&quot;, 1);
+         assert.equal(person.name, &quot;bob&quot;);
+     });
+
+     it.should(&quot;set set age&quot;, function () {
+         var person = new Person(&quot;bob&quot;, 1);
+         assert.equal(person.age, 1);
+     });
+}).as(module);</code></pre>
+<p>Notice we use the <strong>it</strong> passed back to the describe callback.
+
+</p>
+<p>Next we could test different scenarios of Person#getOlder
+
+</p>
+<pre class='prettyprint linenums lang-js'><code>var it = require(&quot;../index&quot;),
+assert = require(&quot;assert&quot;);
+
+it.describe(&quot;Person&quot;, function (it) {
+
+     it.describe(&quot;#getOlder&quot;, function (it) {
+
+         it.should(&quot;accept positive numbers&quot;, function () {
+             var person = new Person(&quot;bob&quot;, 1);
+             person.getOlder(2);
+             assert.equal(person.age, 3);
+         });
+
+         it.should(&quot;not apply negative numbers&quot;, function () {
+             var person = new Person(&quot;bob&quot;, 1);
+             person.getOlder(-2);
+             assert.equal(person.age, 1);
+         });
+     });
+}).as(module);</code></pre>
+<p>In this example we are describing the <strong>getOlder</strong> method and run different tests against it.
+Notice the <strong>it</strong> passed back is used again.
+
+</p>
+<p>You may nest tests as deep as you like as long as you remember to use the proper <strong>it</strong>.
+
+</p>
+<pre class='prettyprint linenums lang-js'><code>it.describe(&quot;#getOlder nested&quot;, function (it) {
+
+     it.describe(&quot;with positive numbers&quot;, function (it) {
+
+         it.should(&quot;work&quot;, function () {
+             var person = new Person(&quot;bob&quot;, 1);
+             person.getOlder(2);
+             assert.equal(person.age, 3);
+         });
+
+     });
+
+     it.describe(&quot;with negative numbers&quot;, function () {
+
+         //uh oh wrong it
+         it.should(&quot;not work&quot;, function () {
+             var person = new Person(&quot;bob&quot;, 1);
+             person.getOlder(-2);
+             assert.equal(person.age, 1);
+         });
+     });
+
+});</code></pre>
+<h3>Asynchronous tests</h3>
+<p>Writing asynchronous tests in <strong>It</strong> is just as easy as writing synchronous tests.
+
+</p>
+<p>Lets modify Person to make get older async
+
+</p>
+<pre class='prettyprint linenums lang-js'><code>var Person = function (name, age) {
+     this.name = name;
+     this.age = age;
+
+     this.getOlder = function (years, cb) {
+         setTimeout(function () {
+             this.age = this.age + years;
+             cb.call(this, null, this);
+         }.bind(this), years * 500);
+     };
+};</code></pre>
+<p>Now that <strong>getOlder</strong> is async lets test it
+
+</p>
+<pre class='prettyprint linenums lang-js'><code>it.describe(&quot;#getOlder&quot;, function (it) {
+     //Call with next
+     it.should(&quot;accept positive numbers&quot;, function (next) {
+         var person = new Person(&quot;bob&quot;, 1);
+         person.getOlder(2, function (err, person) {
+             if(err) return next(err)
+             assert.equal(person.age, 3);
+             next();
+          });
+     });
+
+     //return promise
+     it.should(&quot;not apply negative numbers&quot;, function () {
+         var ret = new comb.Promise();
+         var person = new Person(&quot;bob&quot;, 1);
+         person.getOlder(-2, function (err, person) {
+             assert.equal(person.age, 1);
+             ret.callback();
+         });
+         return ret;
+     });
+});</code></pre>
+<p>So in the above example the first <strong>should</strong> invocation accepts a <strong>next</strong> argument which is a function that should
+be called when the current test is done. If <strong>next</strong>&#39;s function signature is <strong>next(err, ...)</strong>. So if next is invoked
+with a first argument other than null or undefined then it is assumed that the test errored.
+
+</p>
+<p>The second <strong>should</strong> used a promise as a return value if you have used <strong>comb</strong> or any other framework that uses
+<strong>Promises</strong> then this will feel pretty natural to you. The test will wait for the promise to resolve before
+continuing any other tests.
+
+</p>
+<h3>Running Tests</h3>
+<p>To run tests there are two options the <strong>it</strong> executable
+
+</p>
+<p>Options
+
+</p>
+<ul>
+<li>-d, --directory : The root directory of your tests</li>
+<li>-r, --reporter : The reporter to use when running the tests</li>
+<li>--cov-html : create coverage output in html, if an output path is included then the file will be written to that file otherwise it will defalt to <code>./coverage.html</code></li>
+<li>--reporters : Display a list of reporters that are available</li>
+<li>-h, --help : Displays help.</li>
+</ul>
+<p>To run an entire suite
+
+</p>
+<p><code>it -d ./mytests -r dotmatrix</code>
+
+
+</p>
+<p>To run an individual test
+
+</p>
+<p><code>it ./mytests/person.test.js</code>
+
+
+</p>
+<p>You can alternatively run the test directly
+
+</p>
+<pre class='prettyprint linenums lang-js'><code>
+it.describe(&quot;A Person&quot;, function(it){
+
+     it.should(&quot;set set name&quot;, function () {
+         var person = new Person(&quot;bob&quot;, 1);
+         assert.equal(person.name, &quot;bob&quot;);
+     });
+
+     it.should(&quot;set set age&quot;, function () {
+         var person = new Person(&quot;bob&quot;, 1);
+         assert.equal(person.age, 1);
+     });
+}).run();</code></pre>
+<h3>Code Coverage</h3>
+<p>If you use <a href="https://github.com/visionmedia/node-jscoverage">node-jscoverage</a> to generate coverage then by default <code>it</code>
+will output a coverage report. You may also output coverage to an <code>HTML</code> file by passing in the <code>--cov-html</code> flag to the executable.
+For example out put see <a href="http://c2fo.github.com/patio/coverage.html">patio test coverage</a>.
+
+
+
+</p>
+<h3>Reporters</h3>
+<p><strong>It</strong> currently has two reporters built in
+<em> spec
+</em> dotmatrix
+
+</p>
+<p>For the above tests the output for spec should look as follows
+
+</p>
+<pre class='prettyprint linenums lang-js'><code>Person
+
+     √ should set set name (0ms)
+     √ should set set age (0ms)
+     #getOlder
+         √ should accept positive numbers (1002ms)
+         √ should not apply negative numbers (0ms)
+Finished in  1.002s
+4 examples, 0 errors</code></pre>
+<p>With dot matrix
+
+</p>
+<pre class='prettyprint linenums lang-js'><code>Person
+
+....
+Finished in  1.002s
+4 examples, 0 errors</code></pre>
+<h3>Assert extensions</h3>
+<p>The following methods are added to assert for convenience
+
+</p>
+<ul>
+<li>lengthOf - assert the length of an array</li>
+<li>isTrue - assert that a value is true</li>
+<li>isFalse - assert that a value is false</li>
+<li>isRegExp - assert that a value is a Regular Expression</li>
+<li>isArray - assert that a value is an Array</li>
+<li>isHash - assert that a value is a plain object</li>
+<li>isObject - assert that a value is a object</li>
+<li>isNumber - assert that a value is a Number</li>
+<li>isDate - assert that a value is a Date</li>
+<li>isBoolean - assert that a value is a Boolean</li>
+<li>isString - assert that a value is a String</li>
+<li>isUndefined - assert that a value is undefined</li>
+<li>isUndefinedOrNull - assert that a value is undefined or null</li>
+<li>isPromiseLike - assert that a value is Promise like (contains the funtions &quot;then&quot;, &quot;addErrback&quot;, and &quot;addCallback&quot;)</li>
+<li>isFunction - assert that a value is a function</li>
+<li>isNull - assert that a value is null</li>
+<li>isNotNull - assert that a value is not null</li>
+<li>instanceOf - assert that a value is an instanceof a particular object</li>
+</ul>
+
+
+<hr>
+
+    
+  <h2>License</h2>
+<p>MIT <a href="https://github.com/doug-martin/it/raw/master/LICENSE">https://github.com/doug-martin/it/raw/master/LICENSE</a>
+
+</p>
+<h2>Meta</h2>
+<p>Code: <code>git clone git://github.com/doug-martin/it.git</code></p>
+
+
+
+
+</div>
+</div>
+<script type="text/javascript" src="./assets/js/jquery.js"></script>
+<script type="text/javascript" src="./assets/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="./assets/js/prettify.js"></script>
+
+</body>
+</html>
+
