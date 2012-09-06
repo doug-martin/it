@@ -19,7 +19,7 @@
     "comb": ">=0.1.2",
     "commander": ">=0.5.1"
   },
-  "homepage": "http://github.com/doug-martin/it",
+  "homepage": "http://doug-martin.github.com/it",
   "author": {
     "name": "Doug Martin",
     "url": "http://blog.dougamartin.com"
