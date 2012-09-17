@@ -1,4 +1,3 @@
-"use strict";
 var it = require("../index"), assert = require("assert"), comb = require("comb");
 
 it.describe("it",function (it) {
