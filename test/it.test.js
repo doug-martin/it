@@ -92,6 +92,15 @@ it.describe("it",function (it) {
             assert.doesNotThrow(function () {
                 assert.isFalse(false);
             });
+
+            assert.doesNotThrow(function () {
+                assert.truthy('hello');
+            });
+
+            assert.doesNotThrow(function () {
+                assert.falsy('');
+            });
+
             assert.doesNotThrow(function () {
                 assert.isNull(null);
             });
