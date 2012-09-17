@@ -24,16 +24,18 @@ it.describe("it",function (it) {
 
         it.should('add methods', function () {
             assert.isFunction(assert.isFunction);
-            assert.isFunction(assert.isArray)
-            assert.isFunction(assert.isDate)
-            assert.isFunction(assert.isBoolean)
-            assert.isFunction(assert.isString)
-            assert.isFunction(assert.isUndefined)
-            assert.isFunction(assert.isUndefinedOrNull)
+            assert.isFunction(assert.isArray);
+            assert.isFunction(assert.isDate);
+            assert.isFunction(assert.isBoolean);
+            assert.isFunction(assert.isString);
+            assert.isFunction(assert.isUndefined);
+            assert.isFunction(assert.isUndefinedOrNull);
             assert.isFunction(assert.isPromiseLike);
             assert.isFunction(assert.isRegExp);
             assert.isFunction(assert.isTrue);
             assert.isFunction(assert.isFalse);
+            assert.isFunction(assert.truthy);
+            assert.isFunction(assert.falsy);
             assert.isFunction(assert.isNull);
             assert.isFunction(assert.isNotNull);
             assert.isFunction(assert.instanceOf);
@@ -90,6 +92,15 @@ it.describe("it",function (it) {
             assert.doesNotThrow(function () {
                 assert.isFalse(false);
             });
+
+            assert.doesNotThrow(function () {
+                assert.truthy('hello');
+            });
+
+            assert.doesNotThrow(function () {
+                assert.falsy('');
+            });
+
             assert.doesNotThrow(function () {
                 assert.isNull(null);
             });
@@ -148,6 +159,15 @@ it.describe("it",function (it) {
             assert.throws(function () {
                 assert.isFalse(true);
             });
+
+            assert.throws(function () {
+                assert.truthy('');
+            });
+
+            assert.throws(function () {
+                assert.falsy('hi');
+            });
+
             assert.throws(function () {
                 assert.isNull(undefined);
             });
