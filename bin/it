@@ -41,12 +41,12 @@ var runTests = function (files) {
             suite.reporter = program.reporter;
         }
         return suite.run ? suite.run.bind(suite) : null;
-    }))).then(function (results) {
+    }))).chain(function (results) {
             var its = {};
             results.forEach(function (summary) {
                 comb.merge(its, summary);
             });
-            it.printSummary(its);
+            return it.printSummary(its);
         });
 };
 
@@ -89,11 +89,12 @@ process.emit = function (event) {
     }
 };
 startTests().then(
-    function () {
-        process.exit();
+    function (code) {
+        process.exit(code);
     },
     function (error) {
         console.log(error);
+        process.exit(1);
     }
 );
 
