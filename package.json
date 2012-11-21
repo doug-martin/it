@@ -16,8 +16,8 @@
     "url": "git@github.com:doug-martin/it.git"
   },
   "dependencies": {
-    "comb": ">=0.1.2",
-    "commander": ">=0.5.1"
+    "comb": "~0.2.0",
+    "commander": "~1.1.1"
   },
   "homepage": "http://doug-martin.github.com/it",
   "author": {

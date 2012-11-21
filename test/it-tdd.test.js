@@ -1,28 +1,29 @@
+"use strict";
 var it = require("../index"), assert = require("assert"), comb = require("comb");
 
-it.describe("it",function (it) {
+it.suite("it tdd",function (it) {
 
-    it.should("not be null", function () {
+    it.test("should not be null", function () {
         assert.isNotNull(it);
     });
 
-    it.should("describe", function () {
-        assert.equal(it.topic, "it");
+    it.test("should describe", function () {
+        assert.equal(it.description, "it tdd");
     });
 
-    it.should("have methods", function () {
+    it.test("should have methods", function () {
         assert.isFunction(it.beforeAll);
         assert.isFunction(it.beforeEach);
         assert.isFunction(it.afterEach);
         assert.isFunction(it.afterAll);
-        assert.isFunction(it.should);
-        assert.isFunction(it.describe);
+        assert.isFunction(it.test);
+        assert.isFunction(it.suite);
         assert.isFunction(it.context);
     });
 
-    it.describe("assert extensions", function (it) {
+    it.suite("assert extensions", function (it) {
 
-        it.should('add methods', function () {
+        it.test('should add methods', function () {
             assert.isFunction(assert.isFunction);
             assert.isFunction(assert.isArray);
             assert.isFunction(assert.isDate);
@@ -42,7 +43,7 @@ it.describe("it",function (it) {
             assert.isFunction(assert.lengthOf);
         });
 
-        it.should('test properly', function () {
+        it.test('should test properly', function () {
             assert.doesNotThrow(function () {
                 assert.isFunction(function () {
                 });
@@ -75,9 +76,9 @@ it.describe("it",function (it) {
 
             assert.doesNotThrow(function () {
                 assert.isPromiseLike(new comb.Promise());
-                assert.isPromiseLike({then:function () {
-                }, addCallback:function () {
-                }, addErrback:function () {
+                assert.isPromiseLike({then: function () {
+                }, addCallback: function () {
+                }, addErrback: function () {
                 }});
             });
 
@@ -110,7 +111,7 @@ it.describe("it",function (it) {
             });
 
             assert.doesNotThrow(function () {
-                assert.instanceOf(new String(), String);
+                assert.instanceOf(new Date(), Date);
             });
 
             assert.doesNotThrow(function () {
@@ -177,7 +178,7 @@ it.describe("it",function (it) {
             });
 
             assert.throws(function () {
-                assert.instanceOf(new String(), Boolean);
+                assert.instanceOf(new Date(), Boolean);
             });
 
             assert.throws(function () {
@@ -186,22 +187,23 @@ it.describe("it",function (it) {
         });
     });
 
-    it.describe("#beforeAll", function (it) {
+    it.suite("#beforeAll", function (it) {
 
         var called = 0;
         it.beforeAll(function () {
             called++;
         });
 
-        it.should("call beforeAll", function () {
+        it.test("should call beforeAll", function () {
             assert.equal(called, 1);
         });
-        it.should("call not call beforeAll more than once", function () {
+
+        it.test("should call not call beforeAll more than once", function () {
             assert.equal(called, 1);
         });
     });
 
-    it.describe("#beforeAll multi", function (it) {
+    it.suite("#beforeAll multi", function (it) {
 
         var called = 0, called2 = 0;
         it.beforeAll(function () {
@@ -212,32 +214,33 @@ it.describe("it",function (it) {
             called2++;
         });
 
-        it.should("call beforeAll", function () {
+        it.test("should call beforeAll", function () {
             assert.equal(called, 1);
             assert.equal(called2, 1);
         });
-        it.should("call not call beforeAll more than once", function () {
+        it.test("should not call beforeAll more than once", function () {
             assert.equal(called, 1);
             assert.equal(called2, 1);
         });
     });
 
-    it.describe("#beforeEach", function (it) {
+    it.suite("#beforeEach", function (it) {
 
         var called = 0;
         it.beforeEach(function () {
             called++;
         });
 
-        it.should("call beforeEach", function () {
+        it.test("should call beforeEach", function () {
             assert.equal(called, 1);
         });
-        it.should("call beforeEach again", function () {
+        it.test("should call beforeEach again", function () {
             assert.equal(called, 2);
+            called = 0;
         });
     });
 
-    it.describe("#beforeEach multi", function (it) {
+    it.suite("#beforeEach multi", function (it) {
 
         var called = 0, called2 = 0;
         it.beforeEach(function () {
@@ -248,36 +251,37 @@ it.describe("it",function (it) {
             called2++;
         });
 
-        it.should("call beforeEach", function () {
+        it.test("should call beforeEach", function () {
             assert.equal(called, 1);
             assert.equal(called2, 1);
         });
-        it.should("call beforeEach again", function () {
+        it.test("should call beforeEach again", function () {
             assert.equal(called, 2);
             assert.equal(called2, 2);
+            called = called2 = 0;
         });
     });
 
-    it.describe("#afterEach", function (it) {
+    it.suite("#afterEach", function (it) {
 
         var called = 0;
         it.afterEach(function () {
             called++;
         });
 
-        it.should("call not have called afterEach", function () {
+        it.test("should call not have called afterEach", function () {
             assert.equal(called, 0);
         });
-        it.should("have called afterEach", function () {
+        it.test("should have called afterEach", function () {
             assert.equal(called, 1);
         });
 
-        it.should("call afterEach again", function () {
+        it.test("should call afterEach again", function () {
             assert.equal(called, 2);
         });
     });
 
-    it.describe("#afterEach multi", function (it) {
+    it.suite("#afterEach multi", function (it) {
 
         var called = 0, called2 = 0;
         it.afterEach(function () {
@@ -288,22 +292,22 @@ it.describe("it",function (it) {
             called2++;
         });
 
-        it.should("call not have called afterEach", function () {
+        it.test("should call not have called afterEach", function () {
             assert.equal(called, 0);
             assert.equal(called2, 0);
         });
-        it.should("have called afterEach", function () {
+        it.test("should have called afterEach", function () {
             assert.equal(called, 1);
             assert.equal(called2, 1);
         });
 
-        it.should("call afterEach again", function () {
+        it.test("should call afterEach again", function () {
             assert.equal(called, 2);
             assert.equal(called2, 2);
         });
     });
 
-    it.describe("#afterAll", function (it) {
+    it.suite("#afterAll", function (it) {
 
         var called = 0;
         it.afterAll(function () {
@@ -314,51 +318,51 @@ it.describe("it",function (it) {
             assert.equal(called, 1);
         });
 
-        it.should("not call afterAll", function () {
+        it.test("should not call afterAll", function () {
             assert.equal(called, 0);
         });
-        it.should("still not call afterAll", function () {
+        it.test("should still not call afterAll", function () {
             assert.equal(called, 0);
         });
 
     });
 
 
-    it.describe("#should", function (it) {
+    it.suite("#should", function (it) {
 
-        it.describe("provided a callback with an arity 0 of zero", function (it) {
+        it.suite("provided a callback with an arity 0 of zero", function (it) {
 
-            it.should("callback immediatly", function () {
+            it.test("should callback immediatly", function () {
             });
-            it.should("be called", function () {
+            it.test("should be called", function () {
                 //just to ensure it was called
                 assert.isTrue(true);
             });
         });
 
-        it.describe("provided a callback that returns a promise", function (it) {
+        it.suite("provided a callback that returns a promise", function (it) {
 
             var success = 0, error = 0, title = 0, summary = 0;
+            var orig = it.reporter;
             var mockFormatter = {
-                printSuccess:function () {
+                printSuccess: function () {
                     orig.printSuccess.apply(orig, arguments);
                     success++;
                 },
-                printError:function () {
+                printError: function () {
                     orig.printSuccess.apply(orig, arguments);
                     error++;
                     return false;
                 },
-                printTitle:function () {
+                printTitle: function () {
                     orig.printTitle.apply(orig, arguments);
                     title++;
                 },
-                printSummary:function () {
+                printSummary: function () {
                     orig.printSummary.apply(orig, arguments);
                     summary++;
                 }
             };
-            var orig = it.reporter;
             it.beforeAll(function () {
                 it.reporter = mockFormatter;
             });
@@ -366,247 +370,252 @@ it.describe("it",function (it) {
             it.afterAll(function () {
                 it.reporter = orig;
             });
-            it.should("callback when the promise is resolved", function () {
+            it.test("should callback when the promise is resolved", function () {
                 var ret = new comb.Promise();
                 setTimeout(comb.hitch(ret, "callback"), 100);
                 return ret;
             });
 
-            it.should("increment call", function () {
+            it.test("should increment call", function () {
                 assert.equal(success, 1);
             });
 
-            it.should("callback when the promise is errored", function () {
+            it.test("should callback when the promise is errored", function () {
                 var ret = new comb.Promise();
-                setTimeout(comb.hitch(ret, "errback"), 100);
+                setTimeout(comb.hitch(ret, "errback", "error"), 100);
                 return ret;
             });
 
-            it.should("increment call printError", function () {
+            it.test("should increment call printError", function () {
                 assert.equal(error, 1);
             });
         });
     });
 
-    it.describe("#run", function () {
-        it.run().then(function (summary) {
-            assert.isObject(summary);
-            var str = [];
-            var expected = [
+    it.test("should have a summary", function () {
+        var summary = it.summary;
+        assert.isObject(summary);
+        var str = [];
+        var expected = [
+            [
+                "should not be null",
+                {
+                    "status": "passed"
+                }
+            ],
+            [
+                "should describe",
+                {
+                    "status": "passed"
+                }
+            ],
+            [
+                "should have methods",
+                {
+                    "status": "passed"
+                }
+            ],
+            [
+                "assert extensions",
                 [
-                    "not be null",
+                    "should add methods",
                     {
-                        "status":"passed"
+                        "status": "passed"
                     }
                 ],
                 [
-                    "describe",
+                    "should test properly",
                     {
-                        "status":"passed"
+                        "status": "passed"
+                    }
+                ]
+            ],
+            [
+                "#beforeAll",
+                [
+                    "should call beforeAll",
+                    {
+                        "status": "passed"
                     }
                 ],
                 [
-                    "have methods",
+                    "should call not call beforeAll more than once",
                     {
-                        "status":"passed"
+                        "status": "passed"
+                    }
+                ]
+            ],
+            [
+                "#beforeAll multi",
+                [
+                    "should call beforeAll",
+                    {
+                        "status": "passed"
                     }
                 ],
                 [
-                    "assert extensions",
+                    "should not call beforeAll more than once",
+                    {
+                        "status": "passed"
+                    }
+                ]
+            ],
+            [
+                "#beforeEach",
+                [
+                    "should call beforeEach",
+                    {
+                        "status": "passed"
+                    }
+                ],
+                [
+                    "should call beforeEach again",
+                    {
+                        "status": "passed"
+                    }
+                ]
+            ],
+            [
+                "#beforeEach multi",
+                [
+                    "should call beforeEach",
+                    {
+                        "status": "passed"
+                    }
+                ],
+                [
+                    "should call beforeEach again",
+                    {
+                        "status": "passed"
+                    }
+                ]
+            ],
+            [
+                "#afterEach",
+                [
+                    "should call not have called afterEach",
+                    {
+                        "status": "passed"
+                    }
+                ],
+                [
+                    "should have called afterEach",
+                    {
+                        "status": "passed"
+                    }
+                ],
+                [
+                    "should call afterEach again",
+                    {
+                        "status": "passed"
+                    }
+                ]
+            ],
+            [
+                "#afterEach multi",
+                [
+                    "should call not have called afterEach",
+                    {
+                        "status": "passed"
+                    }
+                ],
+                [
+                    "should have called afterEach",
+                    {
+                        "status": "passed"
+                    }
+                ],
+                [
+                    "should call afterEach again",
+                    {
+                        "status": "passed"
+                    }
+                ]
+            ],
+            [
+                "#afterAll",
+                [
+                    "should not call afterAll",
+                    {
+                        "status": "passed"
+                    }
+                ],
+                [
+                    "should still not call afterAll",
+                    {
+                        "status": "passed"
+                    }
+                ]
+            ],
+            [
+                "#should",
+                [
+                    "provided a callback with an arity 0 of zero",
                     [
-                        "add methods",
+                        "should callback immediatly",
                         {
-                            "status":"passed"
+                            "status": "passed"
                         }
                     ],
                     [
-                        "test properly",
+                        "should be called",
                         {
-                            "status":"passed"
+                            "status": "passed"
                         }
                     ]
                 ],
                 [
-                    "#beforeAll",
+                    "provided a callback that returns a promise",
                     [
-                        "call beforeAll",
+                        "should callback when the promise is resolved",
                         {
-                            "status":"passed"
+                            "status": "passed"
                         }
                     ],
                     [
-                        "call not call beforeAll more than once",
+                        "should increment call",
                         {
-                            "status":"passed"
-                        }
-                    ]
-                ],
-                [
-                    "#beforeAll multi",
-                    [
-                        "call beforeAll",
-                        {
-                            "status":"passed"
+                            "status": "passed"
                         }
                     ],
                     [
-                        "call not call beforeAll more than once",
+                        "should callback when the promise is errored",
                         {
-                            "status":"passed"
-                        }
-                    ]
-                ],
-                [
-                    "#beforeEach",
-                    [
-                        "call beforeEach",
-                        {
-                            "status":"passed"
+                            "status": "passed"
                         }
                     ],
                     [
-                        "call beforeEach again",
+                        "should increment call printError",
                         {
-                            "status":"passed"
+                            "status": "passed"
                         }
-                    ]
-                ],
-                [
-                    "#beforeEach multi",
-                    [
-                        "call beforeEach",
-                        {
-                            "status":"passed"
-                        }
-                    ],
-                    [
-                        "call beforeEach again",
-                        {
-                            "status":"passed"
-                        }
-                    ]
-                ],
-                [
-                    "#afterEach",
-                    [
-                        "call not have called afterEach",
-                        {
-                            "status":"passed"
-                        }
-                    ],
-                    [
-                        "have called afterEach",
-                        {
-                            "status":"passed"
-                        }
-                    ],
-                    [
-                        "call afterEach again",
-                        {
-                            "status":"passed"
-                        }
-                    ]
-                ],
-                [
-                    "#afterEach multi",
-                    [
-                        "call not have called afterEach",
-                        {
-                            "status":"passed"
-                        }
-                    ],
-                    [
-                        "have called afterEach",
-                        {
-                            "status":"passed"
-                        }
-                    ],
-                    [
-                        "call afterEach again",
-                        {
-                            "status":"passed"
-                        }
-                    ]
-                ],
-                [
-                    "#afterAll",
-                    [
-                        "not call afterAll",
-                        {
-                            "status":"passed"
-                        }
-                    ],
-                    [
-                        "still not call afterAll",
-                        {
-                            "status":"passed"
-                        }
-                    ]
-                ],
-                [
-                    "#should",
-                    [
-                        "provided a callback with an arity 0 of zero",
-                        [
-                            "callback immediatly",
-                            {
-                                "status":"passed"
-                            }
-                        ],
-                        [
-                            "be called",
-                            {
-                                "status":"passed"
-                            }
-                        ]
-                    ],
-                    [
-                        "provided a callback that returns a promise",
-                        [
-                            "callback when the promise is resolved",
-                            {
-                                "status":"passed"
-                            }
-                        ],
-                        [
-                            "increment call",
-                            {
-                                "status":"passed"
-                            }
-                        ],
-                        [
-                            "callback when the promise is errored",
-                            {
-                                "status":"passed"
-                            }
-                        ],
-                        [
-                            "increment call printError",
-                            {
-                                "status":"passed"
-                            }
-                        ]
                     ]
                 ]
-            ];
-            (function gather(str, a) {
-                var summaries = a.summaries;
-                Object.keys(summaries).forEach(function (k) {
-                    if (summaries[k].summaries) {
-                        var newStrs = [k];
-                        gather(newStrs, summaries[k]);
-                        str.push(newStrs);
-                    } else {
-                        var sum = summaries[k];
-                        str.push([k, {status:sum.status}]);
-                    }
-                });
-            })(str, summary.it);
-            assert.deepEqual(str, expected);
-            assert.isNumber(summary.it.duration);
+            ],
+            [
+                "should have a summary",
+                {
+                    "status": "pending"
+                }
+            ]
+        ];
+        (function gather(str, a) {
+            var summaries = a.summaries;
+            Object.keys(summaries).forEach(function (k) {
+                if (summaries[k].summaries) {
+                    var newStrs = [k];
+                    gather(newStrs, summaries[k]);
+                    str.push(newStrs);
+                } else {
+                    var sum = summaries[k];
+                    str.push([k, {status: sum.status}]);
+                }
+            });
+        }(str, summary));
+        assert.deepEqual(str, expected);
+        assert.isNumber(summary.duration);
 
 
-        });
     });
 
 }).as(module);

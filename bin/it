@@ -3,17 +3,31 @@
 var path = require("path"),
     exec = require("child_process").exec,
     comb = require("comb"),
+    fs = require("fs"),
     compact = comb.array.compact,
-    sys = require("util"),
     string = comb.string,
-    it = require("../index");
-var program = require('commander');
+    it = require("../index"),
+    Module = require("module").Module,
+    _require = Module.prototype.require,
+    program = require('commander');
 
+//ensure then we call get the same it
+comb.extend(Module, {
+    require: function require(mod) {
+        if (mod === "it") {
+            return it;
+        } else {
+            return _require.apply(this, arguments);
+        }
+    }
+})
 
 program
     .version('0.0.1')
     .option('-d, --directory <path>', 'Directory of tests')
+    .option('-e, --env [string]', 'environment')
     .option('-r, --reporter [string]', 'reporter')
+    .option('-c, --config <path>', 'config')
     .option('--cov-html [path]', 'create coverage output in html')
     .option('--reporters', 'display available reporters')
     .on("reporters", function () {
@@ -22,81 +36,98 @@ program
     })
     .parse(process.argv);
 
-var prog = program.args.shift() || null;
-var directory = program.directory || process.cwd() + "/test";
-
-var covType = "coverage", covOut = null;
-if (program.covHtml) {
-    covType = "coverageHtml";
-    if (!comb.isBoolean(program.covHtml)) {
-        covOut = program.covHtml;
+var directory, prog, reporter, covType = "coverage", covOut = null;
+prog = program.args.shift() || null;
+function setupEnv(config) {
+    var env = config.environment;
+    if (env) {
+        process.env.NODE_ENV = env;
+    } else if (!process.env.NODE_ENV) {
+        process.env.NODE_ENV = "test";
+    }
+    directory = config.directory || process.cwd() + "/test";
+    reporter = config.reporter || "spec";
+    if (config.covHtml) {
+        covType = "coverageHtml";
+        if (!comb.isBoolean(config.covHtml)) {
+            covOut = config.covHtml;
+        }
     }
 }
 
+setupEnv(program)
+var configFile = program.config || path.resolve(directory || path.resolve(process.cwd(), ",/test"), "it.config");
 
-var runTests = function (files) {
-    return comb.serial(comb.array.compact(files.map(function (f) {
-        var suite = require(f);
-        if (program.reporter) {
-            suite.reporter = program.reporter;
-        }
-        return suite.run ? suite.run.bind(suite) : null;
-    }))).chain(function (results) {
-            var its = {};
-            results.forEach(function (summary) {
-                comb.merge(its, summary);
-            });
-            return it.printSummary(its);
+try {
+    config = require(configFile);
+    setupEnv(config);
+} catch (e) {
+}
+
+
+if (fs.existsSync(directory)) {
+
+    function runTests(files) {
+        it.reporter(reporter);
+        files.forEach(function (f) {
+            require(f);
         });
-};
+        return it.run();
+    }
 
-var startTests = function () {
-    var ret = new comb.Promise();
-    if (prog) {
-        console.log(prog);
-        runTests(prog.split(",").map(function (p) {
-            return path.resolve(p);
-        }));
-    } else {
-        exec("find \"" + directory + "\" -name *.test.js", function (err, stdout) {
-            if (err) ret.errback(err);
-            var files = compact(stdout.split("\n").map(function (f) {
-                if (f !== '') {
-                    return path.resolve(f);
+    function startTests() {
+        var ret = new comb.Promise();
+        if (prog) {
+            console.log(prog);
+            runTests(prog.split(",").map(function (p) {
+                return path.resolve(p);
+            })).then(ret);
+        } else {
+            exec("find \"" + directory + "\" -name *.test.js", function (err, stdout) {
+                if (err) {
+                    ret.errback(err);
+                } else {
+                    var files = compact(stdout.split("\n").map(function (f) {
+                        if (f !== '') {
+                            return path.resolve(f);
+                        }
+                    }));
+                    if (files.length) {
+                        runTests(files).then(ret);
+                    } else {
+                        ret.callback();
+                    }
                 }
-            }));
-            if (files.length) {
-                runTests(files).then(comb.hitch(ret, "callback"), comb.hitch(ret, "errback"));
-            } else {
-                ret.callback();
-            }
-
-        });
-    }
-    return ret;
-};
-
-
-var orig = process.emit;
-process.emit = function (event) {
-    if (event === 'exit') {
-        if (typeof _$jscoverage === 'object') {
-            it.printCoverage(covType, _$jscoverage, covOut);
+            });
         }
-        orig.apply(this, arguments);
-    } else {
-        orig.apply(this, arguments);
-    }
-};
-startTests().then(
-    function (code) {
-        process.exit(code);
-    },
-    function (error) {
-        console.log(error);
-        process.exit(1);
-    }
-);
+        return ret;
+    };
+
+
+    var orig = process.emit;
+    process.emit = function (event) {
+        if (event === 'exit') {
+            if (typeof _$jscoverage === 'object') {
+                it.printCoverage(covType, _$jscoverage, covOut);
+            }
+            orig.apply(this, arguments);
+        } else {
+            orig.apply(this, arguments);
+        }
+    };
+    startTests().then(
+        function (code) {
+            process.exit(code);
+        },
+        function (error) {
+            console.log(error);
+            process.exit(1);
+        }
+    );
+} else {
+    console.error("No test directory found");
+    process.exit(1);
+}
 
 
 
