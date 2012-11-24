@@ -27,6 +27,7 @@ program
     .option('-d, --directory <path>', 'Directory of tests')
     .option('-e, --env [string]', 'environment')
     .option('-r, --reporter [string]', 'reporter')
+    .option('-f, --filter [string]', "filter")
     .option('-c, --config <path>', 'config')
     .option('--cov-html [path]', 'create coverage output in html')
     .option('--reporters', 'display available reporters')
@@ -36,7 +37,7 @@ program
     })
     .parse(process.argv);
 
-var directory, prog, reporter, covType = "coverage", covOut = null;
+var directory, filter, prog, reporter, covType = "coverage", covOut = null;
 prog = program.args.shift() || null;
 function setupEnv(config) {
     var env = config.environment;
@@ -45,6 +46,7 @@ function setupEnv(config) {
     } else if (!process.env.NODE_ENV) {
         process.env.NODE_ENV = "test";
     }
+    filter = config.filter || null;
     directory = config.directory || process.cwd() + "/test";
     reporter = config.reporter || "spec";
     if (config.covHtml) {
@@ -55,7 +57,7 @@ function setupEnv(config) {
     }
 }
 
-setupEnv(program)
+setupEnv(program);
 var configFile = program.config || path.resolve(directory || path.resolve(process.cwd(), ",/test"), "it.config");
 
 try {
@@ -72,7 +74,7 @@ if (fs.existsSync(directory)) {
         files.forEach(function (f) {
             require(f);
         });
-        return it.run();
+        return it.run(filter);
     }
 
     function startTests() {

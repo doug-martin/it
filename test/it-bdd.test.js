@@ -624,4 +624,5 @@ it.describe("it bdd",function (it) {
     });
 
 
-}).as(module).run();
+}).as(module);
+
