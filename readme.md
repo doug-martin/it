@@ -189,6 +189,7 @@ To run tests there are two options the **it** executable
 Options
   
   * -d, --directory : The root directory of your tests
+  * -f --filter : A filter to apply to run certain behaviors/suites/tests
   * -r, --reporter : The reporter to use when running the tests
   * --cov-html : create coverage output in html, if an output path is included then the file will be written to that file otherwise it will defalt to `./coverage.html`
   * --reporters : Display a list of reporters that are available
@@ -202,6 +203,14 @@ To run an entire suite
 To run an individual test
 
     it ./mytests/person.test.js
+Or
+
+    it -f "Person"
+    
+To run the #getOlder spec
+
+    it -f "Person:#getOlder
+
     
 
 You can alternatively run the test directly
@@ -221,6 +230,55 @@ it.describe("A Person", function(it){
     });
     
     it.run();
+
+});
+
+```
+
+You can also filter the tests to run from within the test
+
+```javascript
+
+it.describe("A Person", function(it){
+
+     it.should("set set name", function () {
+        var person = new Person("bob", 1);
+        assert.equal(person.name, "bob");
+    });
+
+    it.should("set set age", function () {
+        var person = new Person("bob", 1);
+        assert.equal(person.age, 1);
+    });
+    
+    it.run("should set name");
+
+});
+
+```
+
+##Tdd
+
+`it` also supports tdd style tests.
+
+```javascript
+
+it.suite("Person", function (it) {
+
+    it.suite("#getOlder", function (it) {
+
+        it.test("accept positive numbers", function () {
+            var person = new Person("bob", 1);
+            person.getOlder(2);
+            assert.equal(person.age, 3);
+        });
+
+        it.test("not apply negative numbers", function () {
+            var person = new Person("bob", 1);
+            person.getOlder(-2);
+            assert.equal(person.age, 1);
+        });
+    });
 
 });
 
@@ -268,24 +326,26 @@ Finished in  1.002s
 
 The following methods are added to assert for convenience
 
-  * lengthOf - assert the length of an array
-  * isTrue - assert that a value is true
-  * isFalse - assert that a value is false 
-  * isRegExp - assert that a value is a Regular Expression
-  * isArray - assert that a value is an Array
-  * isHash - assert that a value is a plain object
-  * isObject - assert that a value is a object
-  * isNumber - assert that a value is a Number
-  * isDate - assert that a value is a Date
-  * isBoolean - assert that a value is a Boolean
-  * isString - assert that a value is a String
-  * isUndefined - assert that a value is undefined
-  * isUndefinedOrNull - assert that a value is undefined or null
-  * isPromiseLike - assert that a value is Promise like (contains the funtions "then", "addErrback", and "addCallback")
-  * isFunction - assert that a value is a function
-  * isNull - assert that a value is null
-  * isNotNull - assert that a value is not null
-  * instanceOf - assert that a value is an instanceof a particular object
+  * `lengthOf` - assert the length of an array
+  * `isTrue` - assert that a value is true
+  * `isFalse` - assert that a value is false 
+  * `isRegExp` - assert that a value is a Regular Expression
+  * `isArray` - assert that a value is an Array
+  * `isHash` - assert that a value is a plain object
+  * `isObject` - assert that a value is a object
+  * `isNumber` - assert that a value is a Number
+  * `isDate` - assert that a value is a Date
+  * `isBoolean` - assert that a value is a Boolean
+  * `isString` - assert that a value is a String
+  * `isUndefined` - assert that a value is undefined
+  * `isUndefinedOrNull` - assert that a value is undefined or null
+  * `isPromiseLike` - assert that a value is Promise like (contains the funtions "then", "addErrback", and "addCallback")
+  * `isFunction` - assert that a value is a function
+  * `isNull` - assert that a value is null
+  * `isNotNull` - assert that a value is not null
+  * `instanceOf` - assert that a value is an instanceof a particular object
+  * `truthy` - assert that the value is truthy.
+  * `falsy` - assert that the value is falsy.
 
 License
 -------

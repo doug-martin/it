@@ -145,7 +145,7 @@
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b class="caret"></b></a>
                         <ul class="dropdown-menu">
                             
-                            <li><a href="it.html">it</a></li>
+                            <li><a href="module_it.html">module.it</a></li>
                             
                         </ul>
                     </li>
@@ -174,22 +174,18 @@
 
 
   <h1>It</h1>
-<h2>Overview</h2>
-<p>It is a BDD testing framework for node.js. The premise behind it is to be as lightweight as possible while making testing easy and fun to do.
+<h2> Overview</h2>
+<p> It is a BDD testing framework for node.js. The premise behind it is to be as lightweight as possible while making testing easy and fun to do.
 
 </p>
 <h2>Installation</h2>
-<p><code>npm install it</code>
+<pre class='prettyprint linenums lang-js'><code> npm install it</code></pre>
+<p> To use the it executable
 
 </p>
-<p>To use the it executable
-
-</p>
-<p><code>npm install -g it</code>
-
-</p>
+<pre class='prettyprint linenums lang-js'><code> npm install -g it</code></pre>
 <h2>Usage</h2>
-<p>It contains the following functions to write and run tests.
+<p> It contains the following functions to write and run tests.
 
 </p>
 <ul>
@@ -198,198 +194,243 @@
 <li>beforeAll - an action that should happen before all tests in the current context.</li>
 <li>afterAll - an action that should happen after all tests in the current context.</li>
 <li>beforeEach - an action that should happen before each test in the current context.</li>
-<li>afterEach - an action that should happen before each test in the current context.</li>
-</ul>
+<li><p>afterEach - an action that should happen before each test in the current context.</p>
 <h3>Synchronous tests</h3>
-<p>Writing synchronous tests in <strong>It</strong> is extremely simple. So lets start off with an example.
-
-</p>
-<p>Lets assume we have a Person Object
-
-</p>
+<p>Writing synchronous tests in <strong>It</strong> is extremely simple. So lets start off with an example.</p>
+<p>Lets assume we have a Person Object</p>
+</li>
+</ul>
 <pre class='prettyprint linenums lang-js'><code>var Person = function (name, age) {
-     this.name = name;
-     this.age = age;
-
-     this.getOlder = function (years) {
-         if (years &gt; 0) {
-             this.age = this.age + years;
-         }
-     };
-
+   this.name = name;
+   this.age = age;
+   this.getOlder = function (years) {
+       if (years &gt; 0) {
+           this.age = this.age + years;
+       }
+   };
 };</code></pre>
-<p>The first tests we could run on person could be testing the setting of name and age.
+<p> The first tests we could run on person could be testing the setting of name and age.
 
 </p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">
-var it = require(&quot;../index&quot;),
-assert = require(&quot;assert&quot;);
+ var it = require(&quot;../index&quot;),
+ assert = require(&quot;assert&quot;);
 
-it.describe(&quot;Person&quot;, function (it) {
+ it.describe(&quot;Person&quot;, function (it) {
 
-     it.should(&quot;set set name&quot;, function () {
-         var person = new Person(&quot;bob&quot;, 1);
-         assert.equal(person.name, &quot;bob&quot;);
-     });
+    it.should(&quot;set set name&quot;, function () {
+        var person = new Person(&quot;bob&quot;, 1);
+        assert.equal(person.name, &quot;bob&quot;);
+    });
 
-     it.should(&quot;set set age&quot;, function () {
-         var person = new Person(&quot;bob&quot;, 1);
-         assert.equal(person.age, 1);
-     });
-}).as(module);</code></pre>
-<p>Notice we use the <strong>it</strong> passed back to the describe callback.
+    it.should(&quot;set set age&quot;, function () {
+        var person = new Person(&quot;bob&quot;, 1);
+        assert.equal(person.age, 1);
+    });
 
-</p>
-<p>Next we could test different scenarios of Person#getOlder
+});</code></pre>
+<p> Notice we use the <strong>it</strong> passed back to the describe callback.
 
 </p>
-<pre class='prettyprint linenums lang-js'><code>var it = require(&quot;../index&quot;),
-assert = require(&quot;assert&quot;);
-
-it.describe(&quot;Person&quot;, function (it) {
-
-     it.describe(&quot;#getOlder&quot;, function (it) {
-
-         it.should(&quot;accept positive numbers&quot;, function () {
-             var person = new Person(&quot;bob&quot;, 1);
-             person.getOlder(2);
-             assert.equal(person.age, 3);
-         });
-
-         it.should(&quot;not apply negative numbers&quot;, function () {
-             var person = new Person(&quot;bob&quot;, 1);
-             person.getOlder(-2);
-             assert.equal(person.age, 1);
-         });
-     });
-}).as(module);</code></pre>
-<p>In this example we are describing the <strong>getOlder</strong> method and run different tests against it.
-Notice the <strong>it</strong> passed back is used again.
+<p> Next we could test different scenarios of Person#getOlder
 
 </p>
-<p>You may nest tests as deep as you like as long as you remember to use the proper <strong>it</strong>.
+<pre class='prettyprint linenums lang-js'><code class="lang-javascript"> var it = require(&quot;../index&quot;),
+ assert = require(&quot;assert&quot;);
+
+ it.describe(&quot;Person&quot;, function (it) {
+
+    it.describe(&quot;#getOlder&quot;, function (it) {
+
+        it.should(&quot;accept positive numbers&quot;, function () {
+            var person = new Person(&quot;bob&quot;, 1);
+            person.getOlder(2);
+            assert.equal(person.age, 3);
+        });
+
+        it.should(&quot;not apply negative numbers&quot;, function () {
+            var person = new Person(&quot;bob&quot;, 1);
+            person.getOlder(-2);
+            assert.equal(person.age, 1);
+        });
+    });
+
+});</code></pre>
+<p> In this example we are describing the <strong>getOlder</strong> method and run different tests against it.
+ Notice the <strong>it</strong> passed back is used again.
 
 </p>
-<pre class='prettyprint linenums lang-js'><code>it.describe(&quot;#getOlder nested&quot;, function (it) {
+<p> You may nest tests as deep as you like as long as you remember to use the proper <strong>it</strong>.
 
-     it.describe(&quot;with positive numbers&quot;, function (it) {
+</p>
+<pre class='prettyprint linenums lang-js'><code class="lang-javascript"> it.describe(&quot;#getOlder nested&quot;, function (it) {
 
-         it.should(&quot;work&quot;, function () {
-             var person = new Person(&quot;bob&quot;, 1);
-             person.getOlder(2);
-             assert.equal(person.age, 3);
-         });
+    it.describe(&quot;with positive numbers&quot;, function (it) {
 
-     });
+        it.should(&quot;work&quot;, function () {
+            var person = new Person(&quot;bob&quot;, 1);
+            person.getOlder(2);
+            assert.equal(person.age, 3);
+        });
 
-     it.describe(&quot;with negative numbers&quot;, function () {
+    });
 
-         //uh oh wrong it
-         it.should(&quot;not work&quot;, function () {
-             var person = new Person(&quot;bob&quot;, 1);
-             person.getOlder(-2);
-             assert.equal(person.age, 1);
-         });
-     });
+    it.describe(&quot;with negative numbers&quot;, function () {
+
+        //uh oh wrong it
+        it.should(&quot;not work&quot;, function () {
+            var person = new Person(&quot;bob&quot;, 1);
+            person.getOlder(-2);
+            assert.equal(person.age, 1);
+        });
+
+    });
 
 });</code></pre>
 <h3>Asynchronous tests</h3>
-<p>Writing asynchronous tests in <strong>It</strong> is just as easy as writing synchronous tests.
+<p> Writing asynchronous tests in <strong>It</strong> is just as easy as writing synchronous tests.
 
 </p>
-<p>Lets modify Person to make get older async
+<p> Lets modify Person to make get older async
 
 </p>
-<pre class='prettyprint linenums lang-js'><code>var Person = function (name, age) {
-     this.name = name;
-     this.age = age;
+<pre class='prettyprint linenums lang-js'><code class="lang-javascript"> var Person = function (name, age) {
+    this.name = name;
+    this.age = age;
 
-     this.getOlder = function (years, cb) {
-         setTimeout(function () {
-             this.age = this.age + years;
-             cb.call(this, null, this);
-         }.bind(this), years * 500);
-     };
+    this.getOlder = function (years, cb) {
+        setTimeout(function () {
+            this.age = this.age + years;
+            cb.call(this, null, this);
+        }.bind(this), years * 500);
+    };
 };</code></pre>
-<p>Now that <strong>getOlder</strong> is async lets test it
+<p> Now that <strong>getOlder</strong> is async lets test it
 
 </p>
-<pre class='prettyprint linenums lang-js'><code>it.describe(&quot;#getOlder&quot;, function (it) {
-     //Call with next
-     it.should(&quot;accept positive numbers&quot;, function (next) {
-         var person = new Person(&quot;bob&quot;, 1);
-         person.getOlder(2, function (err, person) {
-             if(err) return next(err)
-             assert.equal(person.age, 3);
-             next();
-          });
-     });
+<pre class='prettyprint linenums lang-js'><code class="lang-javascript"> it.describe(&quot;#getOlder&quot;, function (it) {
+    //Call with next
+    it.should(&quot;accept positive numbers&quot;, function (next) {
+        var person = new Person(&quot;bob&quot;, 1);
+        person.getOlder(2, function (err, person) {
+            assert.equal(person.age, 3);
+            next();
+        });
+    });
 
-     //return promise
-     it.should(&quot;not apply negative numbers&quot;, function () {
-         var ret = new comb.Promise();
-         var person = new Person(&quot;bob&quot;, 1);
-         person.getOlder(-2, function (err, person) {
-             assert.equal(person.age, 1);
-             ret.callback();
-         });
-         return ret;
-     });
+    //return promise
+    it.should(&quot;not apply negative numbers&quot;, function () {
+        var ret = new comb.Promise();
+        var person = new Person(&quot;bob&quot;, 1);
+        person.getOlder(-2, function (err, person) {
+            assert.equal(person.age, 1);
+            ret.callback();
+        });
+        return ret;
+    });
 });</code></pre>
-<p>So in the above example the first <strong>should</strong> invocation accepts a <strong>next</strong> argument which is a function that should
-be called when the current test is done. If <strong>next</strong>&#39;s function signature is <strong>next(err, ...)</strong>. So if next is invoked
-with a first argument other than null or undefined then it is assumed that the test errored.
+<p> So in the above example the first <code>should</code> invocation accepts a <code>next</code> argument which is a function that should
+ be called when the current test is done. If <code>next</code>&#39;s function signature is <code>next(err, ...)</code>. So if next is invoked
+ with a first argument other than null or undefined then it is assumed that the test errored.
 
 </p>
-<p>The second <strong>should</strong> used a promise as a return value if you have used <strong>comb</strong> or any other framework that uses
-<strong>Promises</strong> then this will feel pretty natural to you. The test will wait for the promise to resolve before
-continuing any other tests.
+<p> The second <code>should</code> used a promise as a return value if you have used <code>comb</code> or any other framework that uses
+ <code>Promises</code> then this will feel pretty natural to you. The test will wait for the promise to resolve before
+ continuing any other tests.
 
 </p>
 <h3>Running Tests</h3>
-<p>To run tests there are two options the <strong>it</strong> executable
+<p> To run tests there are two options the <code>it</code> executable
 
 </p>
-<p>Options
+<p> Options
 
 </p>
 <ul>
-<li>-d, --directory : The root directory of your tests</li>
-<li>-r, --reporter : The reporter to use when running the tests</li>
-<li>--cov-html : create coverage output in html, if an output path is included then the file will be written to that file otherwise it will defalt to <code>./coverage.html</code></li>
-<li>--reporters : Display a list of reporters that are available</li>
-<li>-h, --help : Displays help.</li>
+<li><code>-d, --directory</code> : The root directory of your tests</li>
+<li><code>-f --filter</code> : A filter to apply to run certain behaviors/suites/tests</li>
+<li><code>-r, --reporter</code> : The reporter to use when running the tests</li>
+<li><code>--cov-html</code> : create coverage output in html, if an output path is included then the file will be written to that file otherwise it will defalt to <code>./coverage.html</code></li>
+<li><code>--reporters</code> : Display a list of reporters that are available</li>
+<li><code>-h, --help</code> : Displays help.</li>
 </ul>
 <p>To run an entire suite
 
 </p>
-<p><code>it -d ./mytests -r dotmatrix</code>
-
-
-</p>
-<p>To run an individual test
+<pre class='prettyprint linenums lang-js'><code>it -d ./mytests -r dotmatrix</code></pre>
+<p> To run an individual test
 
 </p>
-<p><code>it ./mytests/person.test.js</code>
-
+<pre class='prettyprint linenums lang-js'><code> it ./mytests/person.test.js</code></pre>
+<p> Or
 
 </p>
-<p>You can alternatively run the test directly
+<pre class='prettyprint linenums lang-js'><code> it -f &quot;Person&quot;</code></pre>
+<p> To run the #getOlder spec
+
+</p>
+<pre class='prettyprint linenums lang-js'><code> it -f &quot;Person:#getOlder</code></pre>
+<p> You can alternatively run the test directly
 
 </p>
 <pre class='prettyprint linenums lang-js'><code>
-it.describe(&quot;A Person&quot;, function(it){
+ it.describe(&quot;A Person&quot;, function(it){
 
      it.should(&quot;set set name&quot;, function () {
-         var person = new Person(&quot;bob&quot;, 1);
-         assert.equal(person.name, &quot;bob&quot;);
-     });
+        var person = new Person(&quot;bob&quot;, 1);
+        assert.equal(person.name, &quot;bob&quot;);
+    });
 
-     it.should(&quot;set set age&quot;, function () {
-         var person = new Person(&quot;bob&quot;, 1);
-         assert.equal(person.age, 1);
-     });
-}).run();</code></pre>
+    it.should(&quot;set set age&quot;, function () {
+        var person = new Person(&quot;bob&quot;, 1);
+        assert.equal(person.age, 1);
+    });
+
+    it.run();
+
+});</code></pre>
+<p> You can also filter the tests to run from within the test
+
+</p>
+<pre class='prettyprint linenums lang-js'><code>
+ it.describe(&quot;A Person&quot;, function(it){
+
+     it.should(&quot;set set name&quot;, function () {
+        var person = new Person(&quot;bob&quot;, 1);
+        assert.equal(person.name, &quot;bob&quot;);
+    });
+
+    it.should(&quot;set set age&quot;, function () {
+        var person = new Person(&quot;bob&quot;, 1);
+        assert.equal(person.age, 1);
+    });
+
+    it.run(&quot;should set name&quot;);
+
+});</code></pre>
+<h2>Tdd</h2>
+<p> <code>it</code> also supports tdd style tests.
+
+</p>
+<pre class='prettyprint linenums lang-js'><code>
+ it.suite(&quot;Person&quot;, function (it) {
+
+    it.suite(&quot;#getOlder&quot;, function (it) {
+
+        it.test(&quot;accept positive numbers&quot;, function () {
+            var person = new Person(&quot;bob&quot;, 1);
+            person.getOlder(2);
+            assert.equal(person.age, 3);
+        });
+
+        it.test(&quot;not apply negative numbers&quot;, function () {
+            var person = new Person(&quot;bob&quot;, 1);
+            person.getOlder(-2);
+            assert.equal(person.age, 1);
+        });
+    });
+
+});</code></pre>
 <h3>Code Coverage</h3>
 <p>If you use <a href="https://github.com/visionmedia/node-jscoverage">node-jscoverage</a> to generate coverage then by default <code>it</code>
 will output a coverage report. You may also output coverage to an <code>HTML</code> file by passing in the <code>--cov-html</code> flag to the executable.
@@ -409,11 +450,11 @@ For example out put see <a href="http://c2fo.github.com/patio/coverage.html">pat
 </p>
 <pre class='prettyprint linenums lang-js'><code>Person
 
-     √ should set set name (0ms)
-     √ should set set age (0ms)
-     #getOlder
-         √ should accept positive numbers (1002ms)
-         √ should not apply negative numbers (0ms)
+   √ should set set name (0ms)
+   √ should set set age (0ms)
+   #getOlder
+      √ should accept positive numbers (1002ms)
+      √ should not apply negative numbers (0ms)
 Finished in  1.002s
 4 examples, 0 errors</code></pre>
 <p>With dot matrix
@@ -429,24 +470,26 @@ Finished in  1.002s
 
 </p>
 <ul>
-<li>lengthOf - assert the length of an array</li>
-<li>isTrue - assert that a value is true</li>
-<li>isFalse - assert that a value is false</li>
-<li>isRegExp - assert that a value is a Regular Expression</li>
-<li>isArray - assert that a value is an Array</li>
-<li>isHash - assert that a value is a plain object</li>
-<li>isObject - assert that a value is a object</li>
-<li>isNumber - assert that a value is a Number</li>
-<li>isDate - assert that a value is a Date</li>
-<li>isBoolean - assert that a value is a Boolean</li>
-<li>isString - assert that a value is a String</li>
-<li>isUndefined - assert that a value is undefined</li>
-<li>isUndefinedOrNull - assert that a value is undefined or null</li>
-<li>isPromiseLike - assert that a value is Promise like (contains the funtions &quot;then&quot;, &quot;addErrback&quot;, and &quot;addCallback&quot;)</li>
-<li>isFunction - assert that a value is a function</li>
-<li>isNull - assert that a value is null</li>
-<li>isNotNull - assert that a value is not null</li>
-<li>instanceOf - assert that a value is an instanceof a particular object</li>
+<li><code>lengthOf</code> - assert the length of an array</li>
+<li><code>isTrue</code> - assert that a value is true</li>
+<li><code>isFalse</code> - assert that a value is false</li>
+<li><code>isRegExp</code> - assert that a value is a Regular Expression</li>
+<li><code>isArray</code> - assert that a value is an Array</li>
+<li><code>isHash</code> - assert that a value is a plain object</li>
+<li><code>isObject</code> - assert that a value is a object</li>
+<li><code>isNumber</code> - assert that a value is a Number</li>
+<li><code>isDate</code> - assert that a value is a Date</li>
+<li><code>isBoolean</code> - assert that a value is a Boolean</li>
+<li><code>isString</code> - assert that a value is a String</li>
+<li><code>isUndefined</code> - assert that a value is undefined</li>
+<li><code>isUndefinedOrNull</code> - assert that a value is undefined or null</li>
+<li><code>isPromiseLike</code> - assert that a value is Promise like (contains the funtions &quot;then&quot;, &quot;addErrback&quot;, and &quot;addCallback&quot;)</li>
+<li><code>isFunction</code> - assert that a value is a function</li>
+<li><code>isNull</code> - assert that a value is null</li>
+<li><code>isNotNull</code> - assert that a value is not null</li>
+<li><code>instanceOf</code> - assert that a value is an instanceof a particular object</li>
+<li><code>truthy</code> - assert that the value is truthy.</li>
+<li><code>falsey</code> - assert that the value is falsy.</li>
 </ul>
 
 
