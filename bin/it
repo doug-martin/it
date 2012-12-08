@@ -4,6 +4,7 @@ var path = require("path"),
     exec = require("child_process").exec,
     comb = require("comb"),
     fs = require("fs"),
+    existsSync = fs.existsSync || path.existsSync,
     compact = comb.array.compact,
     string = comb.string,
     it = require("../index"),
@@ -67,7 +68,7 @@ try {
 }
 
 
-if (fs.existsSync(directory)) {
+if (existsSync(directory)) {
 
     function runTests(files) {
         it.reporter(reporter);
