@@ -342,34 +342,6 @@ it.suite("it tdd",function (it) {
 
         it.suite("provided a callback that returns a promise", function (it) {
 
-            var success = 0, error = 0, title = 0, summary = 0;
-            var orig = it.reporter;
-            var mockFormatter = {
-                printSuccess: function () {
-                    orig.printSuccess.apply(orig, arguments);
-                    success++;
-                },
-                printError: function () {
-                    orig.printSuccess.apply(orig, arguments);
-                    error++;
-                    return false;
-                },
-                printTitle: function () {
-                    orig.printTitle.apply(orig, arguments);
-                    title++;
-                },
-                printSummary: function () {
-                    orig.printSummary.apply(orig, arguments);
-                    summary++;
-                }
-            };
-            it.beforeAll(function () {
-                it.reporter = mockFormatter;
-            });
-
-            it.afterAll(function () {
-                it.reporter = orig;
-            });
             it.test("should callback when the promise is resolved", function () {
                 var ret = new comb.Promise();
                 setTimeout(comb.hitch(ret, "callback"), 100);
@@ -377,7 +349,7 @@ it.suite("it tdd",function (it) {
             });
 
             it.test("should increment call", function () {
-                assert.equal(success, 1);
+                assert.equal(it.getAction("should callback when the promise is resolved").summary.status, "passed");
             });
 
             it.test("should callback when the promise is errored", function () {
@@ -386,8 +358,16 @@ it.suite("it tdd",function (it) {
                 return ret;
             });
 
+            var errbackAction = it.getAction("should callback when the promise is errored"), errbackCalled = false;
+            errbackAction.failed = function (start, end, err) {
+                comb.merge(this.summary, { start: start, end: end, duration: end - start, status: "passed", error: err || new Error()});
+                this.emit("success", this.summary);
+                errbackCalled = true;
+                return this.summary;
+            };
+
             it.test("should increment call printError", function () {
-                assert.equal(error, 1);
+                assert.isTrue(errbackCalled);
             });
         });
     });
