@@ -11,6 +11,7 @@
         "unit",
         "unit testing"
     ],
+    "browserify": "lib/browser/it.js",
     "repository": {
         "type": "git",
         "url": "git@github.com:doug-martin/it.git"
@@ -26,6 +27,16 @@
         "object-extended": "0.0.2",
         "promise-extended": "0.0.2",
         "commander": "~1.1.1"
+    },
+    "testling": {
+        "files": "browserling-tests/*.js",
+        "browsers": {
+            "iexplore": [ "6.0", "7.0", "8.0", "9.0" ],
+            "chrome": [ "20.0" ],
+            "firefox": [ "10.0", "15.0" ],
+            "safari": [ "5.1" ],
+            "opera": [ "12.0" ]
+        }
     },
     "devDependencies": {
         "grunt-it": "~0.2.1",

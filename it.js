@@ -6089,6 +6089,7 @@ EventEmitter.extend({
                 tests = this.__filter(filter);
             }
             if (!isEmpty(tests)) {
+                this.reporter.startTests();
                 return _.serial(_(tests).keys().map(function (k) {
                         return function () {
                             return tests[k].run().both(function (summary) {
@@ -6228,6 +6229,117 @@ Test.extend({
             return this._addAction(description, cb);
         }
     }
+}).as(module);
+});
+
+require.define("/lib/formatters/reporter.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
+var _ = require("../extended"),
+    format = _.format;
+
+_.declare({
+
+    instance: {
+
+        listenTest: function listenTest(test) {
+            test.on("addTest", _.bind(this, "listenTest"));
+            test.on("addAction", _.bind(this, "listenAction"));
+            test.on("run", _.bind(this, "printTitle"));
+            test.on("error", _.bind(this, "printError"));
+            test.on("done", _.bind(this, "printSummary", test));
+        },
+
+        listenAction: function listenAction(action) {
+            action.on("error", _.bind(this, "printActionError", action));
+            action.on("success", _.bind(this, "printActionSuccess", action));
+            action.on("pending", _.bind(this, "printActionPending", action));
+
+        },
+
+        formatMs: function formatMs(ms) {
+            return format("% 6ds", ms / 1000);
+        },
+
+        startTests: function () {
+        },
+
+        printTitle: function printTitle() {
+
+        },
+
+        printActionSuccess: function printSuccess() {
+
+        },
+
+        printActionPending: function printPending() {
+
+        },
+
+        printActionError: function printError() {
+
+        },
+
+        printError: function printError() {
+
+        },
+
+        processSummary: function processSummary(summary) {
+            if (summary.hasOwnProperty("summaries")) {
+                summary = summary.summaries;
+            }
+            var errCount = 0, successCount = 0, pendingCount = 0, errors = {}, duration = 0;
+            _(summary).forEach(function (sum) {
+                duration += sum.duration;
+            });
+            (function total(summary) {
+                _(summary).forEach(function (sum, i) {
+                    if (sum.hasOwnProperty("summaries")) {
+                        total(sum.summaries);
+                    } else if (sum.status === "passed") {
+                        successCount++;
+                    } else if (sum.status === "pending") {
+                        pendingCount++;
+                    } else {
+                        errors[i] = sum.error;
+                        errCount++;
+                    }
+                });
+            })(summary);
+            return {errCount: errCount, successCount: successCount, pendingCount: pendingCount, errors: errors, duration: duration};
+        },
+
+        printSummary: function () {
+
+        },
+
+        printFinalSummary: function () {
+            return this.printSummary.apply(this, arguments);
+        }
+
+
+    },
+
+    "static": {
+
+        reporters: {},
+
+        registerType: function (type) {
+            type = type.toLowerCase();
+            if (!this.reporters.hasOwnProperty(type)) {
+                this.reporters[type] = this;
+            }
+            return this;
+        },
+
+        getInstance: function (type, args) {
+            type = type.toLowerCase();
+            if (this.reporters.hasOwnProperty(type)) {
+                return new this.reporters[type](args || {});
+            } else {
+                throw new Error("Invalid Reporter type");
+            }
+        }
+    }
+
 }).as(module);
 });
 
@@ -6400,112 +6512,81 @@ Reporter.extend({
 }).as(module).registerType("html");
 });
 
-require.define("/lib/formatters/reporter.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
+require.define("/lib/formatters/tap.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
 var _ = require("../extended"),
-    format = _.format;
+    Reporter = require("./reporter"),
+    characters = _.characters,
+    style = _.style,
+    format = _.format,
+    multiply = _.multiply;
 
-_.declare({
 
+var stdout = process.stdout;
+
+var pluralize = function (count, str) {
+    return count !== 1 ? str + "s" : str;
+};
+
+function getActionName(action) {
+    var decription = "";
+    if (action.parent) {
+        decription += getActionName(action.parent) + ":";
+    }
+    decription += " " + action.description;
+    return decription.replace(/#/g, '');
+}
+
+Reporter.extend({
     instance: {
+        numActions: 0,
+        ran: 0,
+        passed: 0,
+        failed: 0,
 
-        listenTest: function listenTest(test) {
-            test.on("addTest", _.bind(this, "listenTest"));
-            test.on("addAction", _.bind(this, "listenAction"));
-            test.on("run", _.bind(this, "printTitle"));
-            test.on("error", _.bind(this, "printError"));
-            test.on("done", _.bind(this, "printSummary", test));
+        listenAction: function () {
+            this.numActions++;
+            return this._super(arguments);
         },
 
-        listenAction: function listenAction(action) {
-            action.on("error", _.bind(this, "printActionError", action));
-            action.on("success", _.bind(this, "printActionSuccess", action));
-            action.on("pending", _.bind(this, "printActionPending", action));
-
+        startTests: function () {
+            console.log('%d..%d', 1, this.numActions);
         },
 
-        formatMs: function formatMs(ms) {
-            return format("% 6ds", ms / 1000);
-        },
-
-        printTitle: function printTitle() {
+        printActionSuccess: function printSuccess(action) {
+            this.passed++;
+            console.log('ok %d %s', ++this.ran, getActionName(action));
 
         },
 
-        printActionSuccess: function printSuccess() {
-
+        printActionPending: function printPending(action) {
+            console.log('ok %d %s # SKIP -', ++this.ran, getActionName(action));
         },
 
-        printActionPending: function printPending() {
-
-        },
-
-        printActionError: function printError() {
-
-        },
-
-        printError: function printError() {
-
-        },
-
-        processSummary: function processSummary(summary) {
-            if (summary.hasOwnProperty("summaries")) {
-                summary = summary.summaries;
+        printActionError: function printError(action) {
+            this.failed++;
+            var summary = action.get("summary"), err = summary.error;
+            console.log('not ok %d %s', ++this.ran, getActionName(action));
+            if (err.stack) {
+                console.log(err.stack.replace(/^/gm, '  '));
             }
-            var errCount = 0, successCount = 0, pendingCount = 0, errors = {}, duration = 0;
-            _(summary).forEach(function (sum) {
-                duration += sum.duration;
-            });
-            (function total(summary) {
-                _(summary).forEach(function (sum, i) {
-                    if (sum.hasOwnProperty("summaries")) {
-                        total(sum.summaries);
-                    } else if (sum.status === "passed") {
-                        successCount++;
-                    } else if (sum.status === "pending") {
-                        pendingCount++;
-                    } else {
-                        errors[i] = sum.error;
-                        errCount++;
-                    }
-                });
-            })(summary);
-            return {errCount: errCount, successCount: successCount, pendingCount: pendingCount, errors: errors, duration: duration};
-        },
-
-        printSummary: function () {
-
         },
 
         printFinalSummary: function () {
-            return this.printSummary.apply(this, arguments);
-        }
-
-
-    },
-
-    "static": {
-
-        reporters: {},
-
-        registerType: function (type) {
-            type = type.toLowerCase();
-            if (!this.reporters.hasOwnProperty(type)) {
-                this.reporters[type] = this;
-            }
-            return this;
-        },
-
-        getInstance: function (type) {
-            type = type.toLowerCase();
-            if (this.reporters.hasOwnProperty(type)) {
-                return new this.reporters[type]();
-            } else {
-                throw new Error("Invalid Reporter type");
-            }
+            console.log('# tests ' + (this.passed + this.failed));
+            console.log('# pass ' + this.passed);
+            console.log('# fail ' + this.failed);
         }
     }
+}).as(module).registerType("tap");
 
-}).as(module);
+
+
+
+
+
+
+
+
 });
 
 require.define("/lib/extension.js",function(require,module,exports,__dirname,__filename,process,global){var assert = require("assert"),
@@ -8717,11 +8798,19 @@ require.define("/lib/browser/it.js",function(require,module,exports,__dirname,__
         var _ = require("../extended"),
             merge = _.merge,
             interfaces = require("../interfaces"),
-            HtmlReporter = require("./formatters/html");
+            Reporter = require("../formatters/reporter");
 
+        require("./formatters/html");
+        require("../formatters/tap");
 
         var it = {
             assert: require("../extension"),
+
+
+            reporter: function reporter(r, args) {
+                interfaces.reporter(Reporter.getInstance(r, args));
+            },
+
 
             /**@lends it*/
             printSummary: function printSummary() {
@@ -8741,8 +8830,11 @@ require.define("/lib/browser/it.js",function(require,module,exports,__dirname,__
         _(interfaces).forEach(function (val) {
             it = merge({}, val, it);
         });
-
-        interfaces.reporter(new HtmlReporter("it"));
+        if (typeof window !== "undefined") {
+            it.reporter("html", "it");
+        } else {
+            it.reporter("tap");
+        }
 
         /**
          * Entry point for writing tests with it.
@@ -8753,14 +8845,16 @@ require.define("/lib/browser/it.js",function(require,module,exports,__dirname,__
         return it;
     }
 
-    if ("function" === typeof this.define && this.define.amd) {
+    if (process.title !== "browser") {
+        module.exports = __defineIt();
+    } else if ("function" === typeof this.define && this.define.amd) {
         define([], function () {
             return __defineIt();
         });
     } else {
         this.it = __defineIt();
     }
-}).call(window);
+}).call(typeof window !== "undefined" ? window : global);
 });
 require("/lib/browser/it.js");
 

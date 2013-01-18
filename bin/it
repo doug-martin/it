@@ -5,8 +5,6 @@ var path = require("path"),
     _ = require("../lib/extended"),
     fs = require("fs"),
     existsSync = fs.existsSync || path.existsSync,
-    compact = _.compact,
-    string = _.string,
     it = require("../index"),
     Module = require("module").Module,
     _require = Module.prototype.require,
@@ -17,7 +15,7 @@ var path = require("path"),
     };
 
 //ensure then we call get the same it
-_.extend(Module, {
+_(Module).extend({
     require: function require(mod) {
         if (mod === "it") {
             return it;
@@ -25,7 +23,7 @@ _.extend(Module, {
             return _require.apply(this, arguments);
         }
     }
-})
+});
 
 program
     .version('0.0.1')
@@ -56,14 +54,14 @@ function setupEnv(config) {
     reporter = config.reporter || "spec";
     if (config.covHtml) {
         covType = "coverageHtml";
-        if (!comb.isBoolean(config.covHtml)) {
+        if (!_.isBoolean(config.covHtml)) {
             covOut = config.covHtml;
         }
     }
 }
 
 setupEnv(program);
-var configFile = program.config || path.resolve(directory || path.resolve(process.cwd(), ",/test"), "it.config");
+var configFile = program.config || path.resolve(directory || path.resolve(process.cwd(), "./test"), "it.config");
 
 try {
     config = require(configFile);
