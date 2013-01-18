@@ -23,7 +23,7 @@ module.exports = function (grunt) {
 
         browserify: {
             'it.js': {
-                entries: ['browser/it.js']
+                entries: ['lib/browser/it.js']
             }
         },
 
