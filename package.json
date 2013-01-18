@@ -29,7 +29,7 @@
         "commander": "~1.1.1"
     },
     "testling": {
-        "files": ["browserling-tests/it.bdd.test.js","browserling-tests/it.tdd.test.js"],
+        "files": ["browserling-tests/it-bdd.test.js","browserling-tests/it-tdd.test.js"],
         "browsers": {
             "chrome": [ "20.0" ]
         }
