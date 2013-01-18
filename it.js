@@ -5420,6 +5420,7 @@ var Test = require("./common").Test,
 
 module.exports = {
 
+    Test: Test,
     bdd: bdd,
     tdd: tdd,
 
@@ -8830,10 +8831,17 @@ require.define("/lib/browser/it.js",function(require,module,exports,__dirname,__
         _(interfaces).forEach(function (val) {
             it = merge({}, val, it);
         });
-        if (typeof window !== "undefined") {
-            it.reporter("html", "it");
-        } else {
-            it.reporter("tap");
+
+        if (!interfaces.Test.reporter) {
+            if (typeof window !== "undefined") {
+                try {
+                    it.reporter("html", "it");
+                } catch (e) {
+                    it.reporter("tap");
+                }
+            } else {
+                it.reporter("tap");
+            }
         }
 
         /**
