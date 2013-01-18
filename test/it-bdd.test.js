@@ -353,7 +353,7 @@ it.describe("it bdd",function (it) {
             });
 
             it.should("increment call", function () {
-                assert.equal(it.getAction("should callback when the promise is resolved").summary.status, "passed");
+                assert.equal(it.getAction("should callback when the promise is resolved").get("summary").status, "passed");
             });
 
             it.should("callback when the promise is errored", function () {
@@ -364,10 +364,10 @@ it.describe("it bdd",function (it) {
 
             var errbackAction = it.getAction("should callback when the promise is errored"), errbackCalled = false;
             errbackAction.failed = function (start, end, err) {
-                comb.merge(this.summary, { start: start, end: end, duration: end - start, status: "passed", error: err || new Error()});
-                this.emit("success", this.summary);
+                comb.merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "passed", error: err || new Error()});
+                this.emit("success", this.get("summary"));
                 errbackCalled = true;
-                return this.summary;
+                return this.get("summary");
             };
 
             it.should("increment call printError", function () {
@@ -377,7 +377,7 @@ it.describe("it bdd",function (it) {
     });
 
     it.should("have a summary", function () {
-        var summary = it.summary;
+        var summary = it.get("summary");
         assert.isObject(summary);
         var str = [];
         var expected = [
@@ -603,5 +603,5 @@ it.describe("it bdd",function (it) {
     });
 
 
-}).as(module);
+}).as(module).run();
 

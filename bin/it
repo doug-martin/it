@@ -2,18 +2,22 @@
 
 var path = require("path"),
     exec = require("child_process").exec,
-    comb = require("comb"),
+    _ = require("../lib/extended"),
     fs = require("fs"),
     existsSync = fs.existsSync || path.existsSync,
-    compact = comb.array.compact,
-    string = comb.string,
+    compact = _.compact,
+    string = _.string,
     it = require("../index"),
     Module = require("module").Module,
     _require = Module.prototype.require,
-    program = require('commander');
+    program = require('commander'),
+    coverage = {
+        coverage: require("../lib/formatters/coverage"),
+        coverageHtml: require("../lib/formatters/coverage-html")
+    };
 
 //ensure then we call get the same it
-comb.extend(Module, {
+_.extend(Module, {
     require: function require(mod) {
         if (mod === "it") {
             return it;
@@ -79,7 +83,7 @@ if (existsSync(directory)) {
     }
 
     function startTests() {
-        var ret = new comb.Promise();
+        var ret = new _.Promise();
         if (prog) {
             console.log(prog);
             runTests(prog.split(",").map(function (p) {
@@ -90,13 +94,13 @@ if (existsSync(directory)) {
                 if (err) {
                     ret.errback(err);
                 } else {
-                    var files = compact(stdout.split("\n").map(function (f) {
+                    var files = _(stdout.split("\n")).map(function (f) {
                         if (f !== '') {
                             return path.resolve(f);
                         }
-                    }));
+                    }).compact().value();
                     if (files.length) {
-                        runTests(files).then(ret);
+                        runTests(files).then(ret.callback, ret.errback);
                     } else {
                         ret.callback();
                     }
@@ -104,14 +108,14 @@ if (existsSync(directory)) {
             });
         }
         return ret;
-    };
+    }
 
 
     var orig = process.emit;
     process.emit = function (event) {
         if (event === 'exit') {
             if (typeof _$jscoverage === 'object') {
-                it.printCoverage(covType, _$jscoverage, covOut);
+                coverage[covType].showCoverage(_$jscoverage, covOut);
             }
             orig.apply(this, arguments);
         } else {

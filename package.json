@@ -1,37 +1,49 @@
 {
-  "name": "it",
-  "description": "A testing framework for node",
-  "version": "0.1.1",
-  "keywords": [
-    "testing",
-    "test",
-    "async",
-    "function testing",
-    "bdd",
-    "unit",
-    "unit testing"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git@github.com:doug-martin/it.git"
-  },
-  "dependencies": {
-    "comb": "~0.2.0",
-    "commander": "~1.1.1"
-  },
-  "homepage": "http://doug-martin.github.com/it",
-  "author": {
-    "name": "Doug Martin",
-    "url": "http://blog.dougamartin.com"
-  },
-  "main": "index.js",
-  "bin": {
-    "it": "./bin/it"
-  },
-  "directories": {
-    "lib": "lib"
-  },
-  "engines": {
-    "node": ">= 0.6.1"
-  }
+    "name": "it",
+    "description": "A testing framework for node",
+    "version": "0.1.1",
+    "keywords": [
+        "testing",
+        "test",
+        "async",
+        "function testing",
+        "bdd",
+        "unit",
+        "unit testing"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:doug-martin/it.git"
+    },
+    "dependencies": {
+        "declare.js": "0.0.3",
+        "extended": "0.0.2",
+        "is-extended": "0.0.2",
+        "string-extended": "0.0.2",
+        "array-extended": "0.0.2",
+        "date-extended": "0.0.2",
+        "function-extended": "0.0.2",
+        "object-extended": "0.0.2",
+        "promise-extended": "0.0.2",
+        "commander": "~1.1.1"
+    },
+    "devDependencies": {
+        "grunt-it": "~0.2.1",
+        "grunt-browserify": "~0.1.2"
+    },
+    "homepage": "http://doug-martin.github.com/it",
+    "author": {
+        "name": "Doug Martin",
+        "url": "http://blog.dougamartin.com"
+    },
+    "main": "index.js",
+    "bin": {
+        "it": "./bin/it"
+    },
+    "directories": {
+        "lib": "lib"
+    },
+    "engines": {
+        "node": ">= 0.6.1"
+    }
 }

@@ -349,7 +349,7 @@ it.suite("it tdd",function (it) {
             });
 
             it.test("should increment call", function () {
-                assert.equal(it.getAction("should callback when the promise is resolved").summary.status, "passed");
+                assert.equal(it.getAction("should callback when the promise is resolved").get("summary").status, "passed");
             });
 
             it.test("should callback when the promise is errored", function () {
@@ -360,10 +360,10 @@ it.suite("it tdd",function (it) {
 
             var errbackAction = it.getAction("should callback when the promise is errored"), errbackCalled = false;
             errbackAction.failed = function (start, end, err) {
-                comb.merge(this.summary, { start: start, end: end, duration: end - start, status: "passed", error: err || new Error()});
-                this.emit("success", this.summary);
+                comb.merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "passed", error: err || new Error()});
+                this.emit("success", this.get("summary"));
                 errbackCalled = true;
-                return this.summary;
+                return this.get("summary");
             };
 
             it.test("should increment call printError", function () {
@@ -373,7 +373,7 @@ it.suite("it tdd",function (it) {
     });
 
     it.test("should have a summary", function () {
-        var summary = it.summary;
+        var summary = it.get("summary");
         assert.isObject(summary);
         var str = [];
         var expected = [
