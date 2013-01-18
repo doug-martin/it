@@ -1,6 +1,6 @@
 "use strict";
 var it = require("../lib/browser/it"),
-    assert = require("assert");
+    assert = it.assert;
 
 it.reporter("tap");
 it.suite("it tdd",function (it) {
