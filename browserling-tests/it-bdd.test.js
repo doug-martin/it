@@ -1,8 +1,5 @@
 "use strict";
-require("../lib/browser/it");
 var assert = it.assert;
-
-it.reporter("tap");
 it.describe("it bdd", function (it) {
 
 
@@ -615,5 +612,4 @@ it.describe("it bdd", function (it) {
     });
 });
 
-it.run();
 

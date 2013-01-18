@@ -1,9 +1,8 @@
 "use strict";
-require("../lib/browser/it");
+
 var assert = it.assert;
 
-it.reporter("tap");
-it.suite("it tdd",function (it) {
+it.suite("it tdd", function (it) {
 
     it.test("should not be null", function () {
         assert.isNotNull(it);
@@ -610,4 +609,3 @@ it.suite("it tdd",function (it) {
 
 });
 
-it.run()
