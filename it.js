@@ -8853,9 +8853,7 @@ require.define("/lib/browser/it.js",function(require,module,exports,__dirname,__
         return it;
     }
 
-    if (process.title !== "browser") {
-        module.exports = __defineIt();
-    } else if ("function" === typeof this.define && this.define.amd) {
+    if ("function" === typeof this.define && this.define.amd) {
         define([], function () {
             return __defineIt();
         });
