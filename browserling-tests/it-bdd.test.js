@@ -3,7 +3,7 @@ require("../lib/browser/it");
 var assert = it.assert;
 
 it.reporter("tap");
-it.describe("it bdd",function (it) {
+it.describe("it bdd", function (it) {
 
 
     it.should("not be null", function () {
@@ -14,7 +14,15 @@ it.describe("it bdd",function (it) {
         assert.equal(it.description, "it bdd");
     });
 
-    it.should("have methods");
+    it.should("have methods", function () {
+        assert.isFunction(it.beforeAll);
+        assert.isFunction(it.beforeEach);
+        assert.isFunction(it.afterEach);
+        assert.isFunction(it.afterAll);
+        assert.isFunction(it.should);
+        assert.isFunction(it.describe);
+        assert.isFunction(it.context);
+    });
 
     it.describe("assert extensions", function (it) {
 
@@ -402,7 +410,7 @@ it.describe("it bdd",function (it) {
             [
                 "should have methods",
                 {
-                    "status": "pending"
+                    "status": "passed"
                 }
             ],
             [
@@ -605,7 +613,7 @@ it.describe("it bdd",function (it) {
         assert.deepEqual(str, expected);
         assert.isNumber(summary.duration);
     });
-}).run().both(function () {
-        it.printSummary();
-    });
+});
+
+it.run();
 

@@ -608,4 +608,6 @@ it.suite("it tdd",function (it) {
 
     });
 
-}).run();
+});
+
+it.run()
