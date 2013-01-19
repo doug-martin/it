@@ -1,5 +1,5 @@
 "use strict";
-var it = require("../index"), assert = require("assert"), comb = require("comb");
+var it = require("../index"), assert = require("assert");
 
 it.suite("it tdd",function (it) {
 
@@ -75,10 +75,7 @@ it.suite("it tdd",function (it) {
             });
 
             assert.doesNotThrow(function () {
-                assert.isPromiseLike(new comb.Promise());
                 assert.isPromiseLike({then: function () {
-                }, addCallback: function () {
-                }, addErrback: function () {
                 }});
             });
 
@@ -343,8 +340,13 @@ it.suite("it tdd",function (it) {
         it.suite("provided a callback that returns a promise", function (it) {
 
             it.test("should callback when the promise is resolved", function () {
-                var ret = new comb.Promise();
-                setTimeout(comb.hitch(ret, "callback"), 100);
+                var ret = {
+                    then: function (cb) {
+                        setTimeout(function () {
+                            cb();
+                        }, 100);
+                    }
+                };
                 return ret;
             });
 
@@ -353,14 +355,23 @@ it.suite("it tdd",function (it) {
             });
 
             it.test("should callback when the promise is errored", function () {
-                var ret = new comb.Promise();
-                setTimeout(comb.hitch(ret, "errback", "error"), 100);
-                return ret;
+                return {
+                    then: function (cb, eb) {
+                        setTimeout(function () {
+                            eb("error");
+                        }, 100);
+                    }
+                };
             });
 
             var errbackAction = it.getAction("should callback when the promise is errored"), errbackCalled = false;
             errbackAction.failed = function (start, end, err) {
-                comb.merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "passed", error: err || new Error()});
+                var summary = this.get("summary");
+                summary.start = start;
+                summary.end = end;
+                summary.duration = end - start;
+                summary.status = "passed";
+                summary.error = err || new Error();
                 this.emit("success", this.get("summary"));
                 errbackCalled = true;
                 return this.get("summary");
