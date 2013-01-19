@@ -30,9 +30,10 @@
     },
     "testling": {
         "files": "browserling-tests/it.test.js",
-        "browsers": {
-            "chrome": [ "20.0" ]
-        }
+        "browsers": [
+            "ie6", "ie7", "ie8", "ie9",
+            "firefox/15", "chrome/22", "opera/12", "safari/5.1"
+        ]
     },
     "devDependencies": {
         "grunt-it": "~0.2.1",
