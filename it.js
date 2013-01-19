@@ -4187,6 +4187,10 @@ require.define("/node_modules/string-extended/index.js",function(require,module,
 
     function defineString(extended, is, date) {
 
+        var stringify = typeof JSON !== "undefined" ? JSON.stringify : function (obj) {
+            return "" + obj;
+        };
+
         var isHash = is.isHash, aSlice = Array.prototype.slice;
 
         var FORMAT_REGEX = /%((?:-?\+?.?\d*)?|(?:\[[^\[|\]]*\]))?([sjdDZ])/g;
@@ -4246,7 +4250,7 @@ require.define("/node_modules/string-extended/index.js",function(require,module,
                 }
             }
             try {
-                ret = JSON.stringify(object, null, spacing);
+                ret = stringify(object, null, spacing);
             } catch (e) {
                 throw new Error("stringExtended.format : Unable to parse json from ", object);
             }
@@ -4526,7 +4530,7 @@ require.define("/node_modules/string-extended/index.js",function(require,module,
                         ret = replacer.toUTCString();
                     } else if (m === "%j") {
                         try {
-                            ret = JSON.stringify(replacer);
+                            ret = stringify(replacer);
                         } catch (e) {
                             throw new Error("stringExtended.format : Unable to parse json from ", replacer);
                         }
