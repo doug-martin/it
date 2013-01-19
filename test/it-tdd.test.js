@@ -592,7 +592,7 @@ it.suite("it tdd",function (it) {
         ];
         (function gather(str, a) {
             var summaries = a.summaries;
-            Object.keys(summaries).forEach(function (k) {
+            for (var k in summaries) {
                 if (summaries[k].summaries) {
                     var newStrs = [k];
                     gather(newStrs, summaries[k]);
@@ -601,7 +601,7 @@ it.suite("it tdd",function (it) {
                     var sum = summaries[k];
                     str.push([k, {status: sum.status}]);
                 }
-            });
+            }
         }(str, summary));
         assert.deepEqual(str, expected);
         assert.isNumber(summary.duration);

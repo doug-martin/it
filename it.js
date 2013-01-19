@@ -3032,7 +3032,7 @@ require.define("/node_modules/date-extended/package.json",function(require,modul
 require.define("/node_modules/date-extended/index.js",function(require,module,exports,__dirname,__filename,process,global){(function () {
     "use strict";
 
-    function defineDate(extended, is) {
+    function defineDate(extended, is, array) {
 
         function _pad(string, length, ch, end) {
             string = "" + string; //check for numbers
@@ -3870,10 +3870,10 @@ require.define("/node_modules/date-extended/index.js",function(require,module,ex
                                 }
                                 //Case-insensitive comparison
                                 v = v.toLowerCase();
-                                days = days.map(function (d) {
+                                days = array.map(days, function (d) {
                                     return d.toLowerCase();
                                 });
-                                var d = days.indexOf(v);
+                                var d = array.indexOf(days, v);
                                 if (d === -1) {
                                     v = parseInt(v, 10);
                                     if (isNaN(v) || v > days.length) {
@@ -3918,8 +3918,8 @@ require.define("/node_modules/date-extended/index.js",function(require,module,ex
                         result[3] = 0; //12am -> 0
                     }
                     var dateObject = new Date(result[0], result[1], result[2], result[3], result[4], result[5], result[6]); // Date
-                    var dateToken = (tokens.indexOf('d') !== -1),
-                        monthToken = (tokens.indexOf('M') !== -1),
+                    var dateToken = (array.indexOf(tokens, 'd') !== -1),
+                        monthToken = (array.indexOf(tokens, 'M') !== -1),
                         month = result[1],
                         day = result[2],
                         dateMonth = dateObject.getMonth(),
@@ -3957,15 +3957,15 @@ require.define("/node_modules/date-extended/index.js",function(require,module,ex
 
     if ("undefined" !== typeof exports) {
         if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineDate(require("extended"), require("is-extended"));
+            module.exports = defineDate(require("extended"), require("is-extended"), require("array-extended"));
 
         }
     } else if ("function" === typeof define) {
         define(["require"], function (require) {
-            return defineDate(require("extended"), require("is-extended"));
+            return defineDate(require("extended"), require("is-extended"), require("array-extended"));
         });
     } else {
-        this.dateExtended = defineDate(this.extended, this.isExtended);
+        this.dateExtended = defineDate(this.extended, this.isExtended, this.arrayExtended);
     }
 
 }).call(this);
