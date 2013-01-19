@@ -1842,11 +1842,15 @@ require.define("/node_modules/declare.js/declare.js",function(require,module,exp
             child.prototype = childProto;
             if (proto) {
                 var instance = meta.proto = proto.instance || {};
-                !instance.hasOwnProperty("constructor") && (instance.constructor = defaultFunction);
                 var stat = childMeta.proto = proto.static || {};
                 stat.init = stat.init || defaultFunction;
                 defineProps(childProto, instance);
                 defineProps(child, stat);
+                if (!instance.hasOwnProperty("constructor")) {
+                    childProto.constructor = instance.constructor = functionWrapper(defaultFunction, "constructor");
+                } else {
+                    childProto.constructor = functionWrapper(instance.constructor, "constructor");
+                }
             } else {
                 meta.proto = {};
                 childMeta.proto = {};
