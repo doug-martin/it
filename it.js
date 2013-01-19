@@ -1939,6 +1939,16 @@ require.define("/node_modules/is-extended/index.js",function(require,module,expo
             return pSlice.call(args, slice);
         }
 
+        function keys(obj) {
+            var ret = [];
+            for (var i in obj) {
+                if (obj.hasOwnProperty(i)) {
+                    ret.push(i);
+                }
+            }
+            return ret;
+        }
+
         //taken from node js assert.js
         //https://github.com/joyent/node/blob/master/lib/assert.js
         function deepEqual(actual, expected) {
@@ -1976,6 +1986,8 @@ require.define("/node_modules/is-extended/index.js",function(require,module,expo
 
                 // 7.4. Other pairs that do not both pass typeof value == 'object',
                 // equivalence is determined by ==.
+            } else if (isString(actual) && isString(expected) && actual !== expected) {
+                return false;
             } else if (typeof actual !== 'object' && typeof expected !== 'object') {
                 return actual === expected;
 
@@ -2011,8 +2023,8 @@ require.define("/node_modules/is-extended/index.js",function(require,module,expo
                 return deepEqual(a, b);
             }
             try {
-                var ka = Object.keys(a),
-                    kb = Object.keys(b),
+                var ka = keys(a),
+                    kb = keys(b),
                     i;
                 // having the same number of owned properties (keys incorporates
                 // hasOwnProperty)

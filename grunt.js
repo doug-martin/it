@@ -33,15 +33,6 @@ module.exports = function (grunt) {
             ]
         },
 
-        it: {
-            all: {
-                src: 'test/**/*.test.js',
-                options: {
-                    timeout: 3000, // not fully supported yet
-                    reporter: 'dotmatrix'
-                }
-            }
-        },
         min: {
             dist: {
                 src: ['<banner:meta.banner>', 'it.js'],
@@ -56,8 +47,7 @@ module.exports = function (grunt) {
     });
 
     // Default task.
-    grunt.registerTask('default', 'lint it browserify min');
-    grunt.loadNpmTasks('grunt-it');
+    grunt.registerTask('default', 'lint browserify min');
     grunt.loadNpmTasks('grunt-browserify');
 
 };

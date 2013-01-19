@@ -594,8 +594,6 @@ it.suite("it tdd",function (it) {
         }(str, summary));
         assert.deepEqual(str, expected);
         assert.isNumber(summary.duration);
-
-
     });
 
 }).as(module);

@@ -1,4 +1,4 @@
-require("../lib/browser/it");
+var it = require("..");
 
 it.reporter("tap");
 
