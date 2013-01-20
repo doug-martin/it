@@ -368,7 +368,7 @@ it.suite("it tdd", function (it) {
                 summary.duration = end - start;
                 summary.status = "passed";
                 summary.error = err || new Error();
-                this.emit("success", this.get("summary"));
+                this.emit("success", this);
                 errbackCalled = true;
                 return this.get("summary");
             };

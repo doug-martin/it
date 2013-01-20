@@ -400,7 +400,8 @@ require.define("/lib/extended.js",function(require,module,exports,__dirname,__fi
     .register(require("string-extended"))
     .register(require("promise-extended"))
     .register(require("function-extended"))
-    .register("declare", require("declare.js"));
+    .register("declare", require("declare.js"))
+    .register("bus", new (require("events").EventEmitter)());
 });
 
 require.define("/node_modules/extended/package.json",function(require,module,exports,__dirname,__filename,process,global){module.exports = {"main":"index.js"}
@@ -5261,7 +5262,6 @@ require.define("/node_modules/function-extended/index.js",function(require,modul
         }
 
 
-
         function hitchIgnore(scope, method, args) {
             args = argsToArray(arguments, 2);
             if ((isString(method) && !(method in scope))) {
@@ -5288,7 +5288,7 @@ require.define("/node_modules/function-extended/index.js",function(require,modul
 
         function hitchAll(scope) {
             var funcs = argsToArray(arguments, 1);
-            if (!isObject(scope)) {
+            if (!isObject(scope) && !isFunction(scope)) {
                 throw new TypeError("scope must be an object");
             }
             if (funcs.length === 1 && isArray(funcs[0])) {
@@ -5430,140 +5430,6 @@ require.define("/node_modules/function-extended/index.js",function(require,modul
 
 
 
-});
-
-require.define("/lib/interfaces/index.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
-
-var Test = require("./common").Test,
-    bdd = require("./bdd"),
-    tdd = require("./tdd");
-
-module.exports = {
-
-    Test: Test,
-    bdd: bdd,
-    tdd: tdd,
-
-    reporter: function reporter(r) {
-        Test.reporter = r;
-        bdd.reporter(r);
-        tdd.reporter(r);
-    },
-
-    printSummary: function printSummary() {
-        return Test.printSummary();
-    },
-
-    run: function run(filter) {
-        return Test.run(filter);
-    }
-};
-});
-
-require.define("/lib/interfaces/common/index.js",function(require,module,exports,__dirname,__filename,process,global){exports.Action = require("./action");
-exports.Test = require("./test.js");
-});
-
-require.define("/lib/interfaces/common/action.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
-var _ = require("../../extended"),
-    isFunction = _.isFunction,
-    EventEmitter = require("./emitter"),
-    merge = _.merge,
-    Promise = _.Promise,
-    utils = require("../../utils"),
-    setUpCb = utils.setUpCb;
-
-EventEmitter.extend({
-
-    instance: {
-
-        level: 0,
-
-        constructor: function (description, parent, level, action) {
-            this._super(arguments);
-            this.level = level;
-            this.description = description;
-            this.parent = parent;
-            this.fn = action;
-            this.__summary = {
-                description: description,
-                start: null,
-                end: null,
-                duration: 0, // test is pending
-                status: 'pending',
-                error: false
-            };
-            var stub = this.stub = !isFunction(action);
-            this.action = !stub ? setUpCb(action) : _.resolve(this.__summary);
-        },
-
-        success: function (start, end) {
-            merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "passed"});
-            this.emit("success", this.summary);
-            return this.get("summary");
-        },
-
-        failed: function (start, end, err) {
-            merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "failed", error: err || new Error()});
-            this.emit("error", err);
-            return this.get("summary");
-        },
-
-        run: function () {
-            var ret = new Promise();
-            var start = new Date();
-            if (this.stub) {
-                // this test is pending (read: not defined yet)
-                ret = this.action;
-                this.emit("pending", this.get("summary"));
-            } else {
-                ret = this.action(this.parent).then(
-                    _.bind(this, function () {
-                        return this.success(start, new Date());
-                    }),
-                    _.bind(this, function (err) {
-                        return this.failed(start, new Date(), err);
-                    })
-                );
-            }
-            return ret;
-        },
-
-        getters: {
-
-            summary: function () {
-                return this.__summary;
-            },
-
-            fullName: function () {
-                var decription = "";
-                if (this.parent) {
-                    decription += this.parent.get("fullName") + ":";
-                }
-                decription += " " + this.description;
-                return decription;
-            }
-
-        }
-    }
-
-}).as(module);
-});
-
-require.define("/lib/interfaces/common/emitter.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
-var _ = require("../../extended"),
-    EventEmitter = require("events").EventEmitter;
-
-var instance = _.merge({}, EventEmitter.prototype, {
-    constructor: function () {
-        EventEmitter.call(this);
-        return this._super(arguments);
-    }
-});
-
-_.declare({
-    instance: instance
-}).as(module);
 });
 
 require.define("events",function(require,module,exports,__dirname,__filename,process,global){if (!process.EventEmitter) process.EventEmitter = function () {};
@@ -5747,6 +5613,140 @@ EventEmitter.prototype.listeners = function(type) {
 
 });
 
+require.define("/lib/interfaces/index.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
+
+var Test = require("./common").Test,
+    bdd = require("./bdd"),
+    tdd = require("./tdd");
+
+module.exports = {
+
+    Test: Test,
+    bdd: bdd,
+    tdd: tdd,
+
+    reporter: function reporter(r) {
+        Test.reporter = r;
+        bdd.reporter(r);
+        tdd.reporter(r);
+    },
+
+    printSummary: function printSummary() {
+        return Test.printSummary();
+    },
+
+    run: function run(filter) {
+        return Test.run(filter);
+    }
+};
+});
+
+require.define("/lib/interfaces/common/index.js",function(require,module,exports,__dirname,__filename,process,global){exports.Action = require("./action");
+exports.Test = require("./test.js");
+});
+
+require.define("/lib/interfaces/common/action.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
+var _ = require("../../extended"),
+    isFunction = _.isFunction,
+    EventEmitter = require("./emitter"),
+    merge = _.merge,
+    Promise = _.Promise,
+    utils = require("../../utils"),
+    setUpCb = utils.setUpCb;
+
+EventEmitter.extend({
+
+    instance: {
+
+        level: 0,
+
+        constructor: function (description, parent, level, action) {
+            this._super(arguments);
+            this.level = level;
+            this.description = description;
+            this.parent = parent;
+            this.fn = action;
+            this.__summary = {
+                description: description,
+                start: null,
+                end: null,
+                duration: 0, // test is pending
+                status: 'pending',
+                error: false
+            };
+            var stub = this.stub = !isFunction(action);
+            this.action = !stub ? setUpCb(action) : _.resolve(this.__summary);
+        },
+
+        success: function (start, end) {
+            merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "passed"});
+            this.emit("success", this);
+            return this.get("summary");
+        },
+
+        failed: function (start, end, err) {
+            merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "failed", error: err || new Error()});
+            this.emit("error", this);
+            return this.get("summary");
+        },
+
+        run: function () {
+            var ret = new Promise();
+            var start = new Date();
+            if (this.stub) {
+                // this test is pending (read: not defined yet)
+                ret = this.action;
+                this.emit("pending", this);
+            } else {
+                ret = this.action(this.parent).then(
+                    _.bind(this, function () {
+                        return this.success(start, new Date());
+                    }),
+                    _.bind(this, function (err) {
+                        return this.failed(start, new Date(), err);
+                    })
+                );
+            }
+            return ret;
+        },
+
+        getters: {
+
+            summary: function () {
+                return this.__summary;
+            },
+
+            fullName: function () {
+                var decription = "";
+                if (this.parent) {
+                    decription += this.parent.get("fullName") + ":";
+                }
+                decription += " " + this.description;
+                return decription;
+            }
+
+        }
+    }
+
+}).as(module);
+});
+
+require.define("/lib/interfaces/common/emitter.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
+var _ = require("../../extended"),
+    EventEmitter = require("events").EventEmitter;
+
+var instance = _.merge({}, EventEmitter.prototype, {
+    constructor: function () {
+        EventEmitter.call(this);
+        return this._super(arguments);
+    }
+});
+
+_.declare({
+    instance: instance
+}).as(module);
+});
+
 require.define("/lib/utils.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
 var _ = require("./extended"),
     isPromiseLike = _.isPromiseLike,
@@ -5876,6 +5876,7 @@ EventEmitter.extend({
         level: 0,
 
         stopOnError: false,
+
         ignoreProcessError: false,
 
         constructor: function constructor(description, options) {
@@ -5943,7 +5944,6 @@ EventEmitter.extend({
 
         _addTest: function (description, cb) {
             var cloned = this._static.clone(this, description, {sub: true, level: this.level + 1, parent: this}, cb);
-            this.emit("addTest", cloned);
             if (cb) {
                 cb(cloned);
             }
@@ -5954,7 +5954,6 @@ EventEmitter.extend({
 
         _addAction: function (description, cb) {
             var action = new this.Action(description, this, this.level + 1, cb);
-            this.emit("addAction", action);
             this.__shoulds.push(action);
             return this;
         },
@@ -6000,8 +5999,10 @@ EventEmitter.extend({
                                     return _.bind(this, function () {
                                         var ret;
                                         if (action instanceof Action) {
+                                            this.emit("action", action);
                                             ret = this.__runAction(action);
                                         } else {
+                                            this.emit("test", action);
                                             ret = action.run();
                                         }
                                         return ret;
@@ -6016,7 +6017,7 @@ EventEmitter.extend({
                                 this.error = err;
                                 this.emit("error", this);
                             })
-                        ).both(_.bind(this, "emit", "done"));
+                        ).both(_.bind(this, "emit", "done", this));
                 }
             }
             return ret;
@@ -6084,6 +6085,12 @@ EventEmitter.extend({
                 }
                 decription += " " + this.description;
                 return decription;
+            },
+
+            length: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return instance instanceof Action ? 1 : instance.get("length");
+                }).sum().value();
             }
 
         }
@@ -6134,17 +6141,16 @@ EventEmitter.extend({
                 tests = this.__filter(filter);
             }
             if (!isEmpty(tests)) {
-                this.reporter.startTests();
+                _.bus.emit("start", {tests: tests, numActions: _(tests).values().invoke("get", "length").sum().value()});
                 return _.serial(_(tests).keys().map(function (k) {
                         return function () {
+                            _.bus.emit("test", tests[k]);
                             return tests[k].run().both(function (summary) {
                                 summaries[k] = summary;
                             });
                         };
                     }).value()).then(_.bind(this, function () {
-                        if (!filter || !filter.length) {
-                            return this.printSummary();
-                        }
+                        return this.printSummary();
                         return 0;
                     }));
             } else {
@@ -6154,7 +6160,7 @@ EventEmitter.extend({
         },
 
         printSummary: function printSummary() {
-            var formatter = this.reporter, tests = this.tests;
+            var tests = this.tests;
             if (!isEmpty(tests)) {
                 var summary = {};
                 var keys = _.hash.keys(tests), length = 0;
@@ -6166,51 +6172,19 @@ EventEmitter.extend({
                     }
                 });
                 if (length < keys.length) {
-                    formatter.printError(new Error("Async Error"));
+                    _.bus.emit("error", new Error("Async Error"));
                 }
-                return formatter.printFinalSummary({summary: summary});
+                _.bus.emit("done", {summary: summary});
             }
         }
     }
 }).as(module);
 });
 
-require.define("/lib/interfaces/bdd/index.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
+require.define("/lib/interfaces/bdd.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
 
-
-var Test = require("./test");
-
-var bdd = {
-
-    Action: Test.Action,
-    Test: Test,
-
-    reporter: function reporter(r) {
-        Test.reporter = r;
-    },
-
-    /**
-     * Creates a test with it.
-     * @param {String} description the description of the test.
-     * @param {Function} [cb] the function to invoke in the scope of the test. The it suite is passed as the first argument.
-     * @return {it.Suite} the test.
-     */
-    describe: function _description(description, cb) {
-        var test = new Test(description, {});
-        Test.reporter.listenTest(test);
-        cb(test);
-        return test;
-    }
-
-};
-
-module.exports = bdd;
-});
-
-require.define("/lib/interfaces/bdd/test.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
-
-var Test = require("../common").Test;
-
+var Test = require("./common").Test,
+    _ = require("../extended");
 
 Test.extend({
     instance: {
@@ -6222,45 +6196,36 @@ Test.extend({
         should: function (description, cb) {
             return this._addAction("should " + description, cb);
         }
-    }
-}).as(module);
-});
-
-require.define("/lib/interfaces/tdd/index.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
-
-
-var Test = require("./test");
-
-var bdd = {
-
-    Action: Test.Action,
-    Test: Test,
-
-    reporter: function reporter(r) {
-        Test.reporter = r;
     },
 
-    /**
-     * Creates a test with it.
-     * @param {String} description the description of the test.
-     * @param {Function} [cb] the function to invoke in the scope of the test. The it suite is passed as the first argument.
-     * @return {it.Suite} the test.
-     */
-    suite: function _description(description, cb) {
-        var test = new Test(description, {});
-        Test.reporter.listenTest(test);
-        cb(test);
-        return test;
+    "static": {
+
+        init: function () {
+            _.bindAll(this, ["describe"]);
+        },
+
+        /**
+         * Creates a test with it.
+         * @param {String} description the description of the test.
+         * @param {Function} [cb] the function to invoke in the scope of the test. The it suite is passed as the first argument.
+         * @return {it.Suite} the test.
+         */
+        describe: function _description(description, cb) {
+            var test = new this(description, {});
+            cb(test);
+            return test;
+        }
+
     }
+}).as(module);
 
-};
 
-module.exports = bdd;
 });
 
-require.define("/lib/interfaces/tdd/test.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
+require.define("/lib/interfaces/tdd.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
 
-var Test = require("../common").Test;
+var Test = require("./common").Test,
+    _ = require("../extended");
 
 Test.extend({
     instance: {
@@ -6273,8 +6238,30 @@ Test.extend({
         test: function (description, cb) {
             return this._addAction(description, cb);
         }
+    },
+
+    "static": {
+
+        init: function () {
+            _.bindAll(this, "suite");
+        },
+
+        /**
+         * Creates a test with it.
+         * @param {String} description the description of the test.
+         * @param {Function} [cb] the function to invoke in the scope of the test. The it suite is passed as the first argument.
+         * @return {it.Suite} the test.
+         */
+        suite: function _suite(description, cb) {
+            var test = new this(description, {});
+            cb(test);
+            return test;
+        }
+
     }
 }).as(module);
+
+
 });
 
 require.define("/lib/formatters/reporter.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
@@ -6293,20 +6280,26 @@ _.declare({
 
         constructor: function () {
             this.errors = [];
+            _.bindAll(this, ["startTests", "testError", "printFinalSummary", "listenTest", "listenAction", "testRun",
+                "testEnd", "actionError", "actionSuccess", "actionPending", "testsDone"]);
+            _.bus.on("start", this.startTests);
+            _.bus.on("error", this.testError);
+            _.bus.on("done", this.testsDone);
+            _.bus.on("test", this.listenTest);
         },
 
         listenTest: function listenTest(test) {
-            test.on("addTest", _.bind(this, "listenTest"));
-            test.on("addAction", _.bind(this, "listenAction"));
-            test.on("run", _.bind(this, "testRun"));
-            test.on("error", _.bind(this, "testError"));
-            test.on("done", _.bind(this, "testEnd", test));
+            test.on("test", this.listenTest);
+            test.on("action", this.listenAction);
+            test.on("run", this.testRun);
+            test.on("error", this.testError);
+            test.on("done", this.testEnd);
         },
 
         listenAction: function listenAction(action) {
-            action.on("error", _.bind(this, "actionError", action));
-            action.on("success", _.bind(this, "actionSuccess", action));
-            action.on("pending", _.bind(this, "actionPending", action));
+            action.on("error", this.actionError);
+            action.on("success", this.actionSuccess);
+            action.on("pending", this.actionPending);
 
         },
 
@@ -6367,11 +6360,14 @@ _.declare({
 
         },
 
+        testsDone: function (tests) {
+            this.printFinalSummary(tests);
+        },
+
         printFinalSummary: function (test) {
             this.testEnd.apply(this, arguments);
             console.log("\nSummary");
-            var summary = test.summary || test.get("summary");
-            var stats = this.processSummary(summary);
+            var stats = this.processSummary(test.summary || test.get("summary"));
             var errCount = stats.errCount, successCount = stats.successCount, pendingCount = stats.pendingCount, duration = stats.duration;
             console.log(format("Finished in %s", this.formatMs(duration)));
             var out = [
@@ -6480,6 +6476,7 @@ Reporter.extend({
     instance: {
 
         constructor: function (el) {
+            this._super(arguments);
             this.el = document.getElementById(el);
             this.header = this.el.appendChild(createDom("div", {className: "header"}, createDom("h1", {}, "It")));
             this.summary = this.header.appendChild(createDom("div", {className: "summary"}));
@@ -6587,8 +6584,8 @@ Reporter.extend({
             return this._super(arguments);
         },
 
-        startTests: function () {
-            console.log('%d..%d', 1, this.numActions);
+        startTests: function (tests) {
+            console.log('%d..%d', 1, (this.numActions = tests.numActions));
         },
 
         actionSuccess: function printSuccess(action) {
@@ -8835,7 +8832,6 @@ exports.writeIEEE754 = function(buffer, value, offset, isBE, mLen, nBytes) {
 require.define("/lib/browser/it.js",function(require,module,exports,__dirname,__filename,process,global){(function () {
     "use strict";
     function __defineIt() {
-        "use strict";
         var _ = require("../extended"),
             merge = _.merge,
             interfaces = require("../interfaces"),
@@ -8844,12 +8840,16 @@ require.define("/lib/browser/it.js",function(require,module,exports,__dirname,__
         require("./formatters/html");
         require("../formatters/tap");
 
+        var reporter;
         var it = {
             assert: require("../extension"),
 
-
-            reporter: function reporter(r, args) {
-                interfaces.reporter(Reporter.getInstance(r, args));
+            reporter: function (r, args) {
+                if (r) {
+                    reporter = Reporter.getInstance(r, args);
+                } else {
+                    return reporter;
+                }
             },
 
 
@@ -8863,6 +8863,15 @@ require.define("/lib/browser/it.js",function(require,module,exports,__dirname,__
              * @return {comb.Promise} a promise that is resolved once all tests are done running.
              */
             run: function run(filter) {
+                if (typeof window !== "undefined") {
+                    try {
+                        it.reporter("html", "it");
+                    } catch (e) {
+                        it.reporter("tap");
+                    }
+                } else {
+                    it.reporter("tap");
+                }
                 return interfaces.run(filter);
             }
 
@@ -8871,18 +8880,6 @@ require.define("/lib/browser/it.js",function(require,module,exports,__dirname,__
         _(interfaces).forEach(function (val) {
             it = merge({}, val, it);
         });
-
-        if (!interfaces.Test.reporter) {
-            if (typeof window !== "undefined") {
-                try {
-                    it.reporter("html", "it");
-                } catch (e) {
-                    it.reporter("tap");
-                }
-            } else {
-                it.reporter("tap");
-            }
-        }
 
         /**
          * Entry point for writing tests with it.

@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 
-var path = require("path"),
-    exec = require("child_process").exec,
+
+var glob = require("glob-whatev"),
     _ = require("../lib/extended"),
-    fs = require("fs"),
-    existsSync = fs.existsSync || path.existsSync,
+    path = require("path"),
     it = require("../index"),
     Module = require("module").Module,
     _require = Module.prototype.require,
@@ -27,7 +26,6 @@ _(Module).extend({
 
 program
     .version('0.0.1')
-    .option('-d, --directory <path>', 'Directory of tests')
     .option('-e, --env [string]', 'environment')
     .option('-r, --reporter [string]', 'reporter')
     .option('-f, --filter [string]', "filter")
@@ -40,8 +38,7 @@ program
     })
     .parse(process.argv);
 
-var directory, filter, prog, reporter, covType = "coverage", covOut = null;
-prog = program.args.shift() || null;
+var files = program.args.length ? program.args : glob.glob("test/*.test.js"), filter, reporter, covType = "coverage", covOut = null;
 function setupEnv(config) {
     var env = config.environment;
     if (env) {
@@ -50,7 +47,7 @@ function setupEnv(config) {
         process.env.NODE_ENV = "test";
     }
     filter = config.filter || null;
-    directory = config.directory || process.cwd() + "/test";
+    files = config.directory ? glob.glob(config.directory) : files;
     reporter = config.reporter || "spec";
     if (config.covHtml) {
         covType = "coverageHtml";
@@ -61,77 +58,64 @@ function setupEnv(config) {
 }
 
 setupEnv(program);
-var configFile = program.config || path.resolve(directory || path.resolve(process.cwd(), "./test"), "it.config");
+var configFile = program.config;
 
 try {
-    config = require(configFile);
-    setupEnv(config);
+    if (configFile) {
+        setupEnv(require(configFile));
+    } else {
+        _(glob.glob("*/it.config.json")).map(function (f) {
+            return path.resolve(f);
+        }).map(require).forEach(setupEnv);
+    }
 } catch (e) {
+    console.log(e.stack);
 }
 
 
-if (existsSync(directory) || prog) {
-
-    function runTests(files) {
-        it.reporter(reporter);
-        files.forEach(function (f) {
-            require(f);
-        });
-        return it.run(filter);
-    }
-
-    function startTests() {
-        var ret = new _.Promise();
-        if (prog) {
-            runTests(prog.split(",").map(function (p) {
-                return path.resolve(p);
-            })).then(ret);
-        } else {
-            exec("find \"" + directory + "\" -name *.test.js", function (err, stdout) {
-                if (err) {
-                    ret.errback(err);
-                } else {
-                    var files = _(stdout.split("\n")).map(function (f) {
-                        if (f !== '') {
-                            return path.resolve(f);
-                        }
-                    }).compact().value();
-                    if (files.length) {
-                        runTests(files).then(ret.callback, ret.errback);
-                    } else {
-                        ret.callback();
-                    }
-                }
-            });
-        }
-        return ret;
-    }
-
-
-    var orig = process.emit;
-    process.emit = function (event) {
-        if (event === 'exit') {
-            if (typeof _$jscoverage === 'object') {
-                coverage[covType].showCoverage(_$jscoverage, covOut);
-            }
-            orig.apply(this, arguments);
-        } else {
-            orig.apply(this, arguments);
-        }
-    };
-    startTests().then(
-        function (code) {
-            process.exit(code);
-        },
-        function (error) {
-            console.log(error);
-            process.exit(1);
-        }
-    );
-} else {
-    console.error("No test directory found");
-    process.exit(1);
+function runTests(files) {
+    it.reporter(reporter);
+    files.forEach(function (f) {
+        require(f);
+    });
+    return it.run(filter);
 }
+
+function startTests() {
+    files = _(files).map(function (f) {
+        return path.resolve(f);
+    }).value();
+
+    if (files.length) {
+        return runTests(files);
+    } else {
+        console.log("No tests found");
+        return _.resolve();
+    }
+}
+
+
+var orig = process.emit;
+process.emit = function (event) {
+    if (event === 'exit') {
+        if (typeof _$jscoverage === 'object') {
+            coverage[covType].showCoverage(_$jscoverage, covOut);
+        }
+        orig.apply(this, arguments);
+    } else {
+        orig.apply(this, arguments);
+    }
+};
+startTests().then(
+    function (code) {
+        process.exit(code);
+    },
+    function (error) {
+        console.log(error);
+        process.exit(1);
+    }
+);
+
 
 
 

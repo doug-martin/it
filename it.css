@@ -108,7 +108,7 @@ body {
 }
 
 #it > .progress > li.not-run::before {
-    color: #aaaaaa;
+    color: #676767;
     content: "•";
 }
 
