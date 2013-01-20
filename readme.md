@@ -330,23 +330,23 @@ For example out put see [patio test coverage](http://c2fo.github.com/patio/cover
 
 **`spec`**
 
-![spec](./assets/spec.png)
+![spec](https://raw.github.com/doug-martin/it/master/assets/spec.png)
 
 **`dot`**
 
-![dot](./assets/dot.png)
+![dot](https://raw.github.com/doug-martin/it/master/assets/dot.png)
 
 **`tap`**
 
-![tap](./assets/tap.png)
+![tap](https://raw.github.com/doug-martin/it/master/assets/tap.png)
 
 **`doc`**
 
-![doc](./assets/doc.png)
+![doc](https://raw.github.com/doug-martin/it/master/assets/doc.png)
 
 **`html`**
 
-![html](./assets/browser.png)
+![html](https://raw.github.com/doug-martin/it/master/assets/browser.png)
 
 
 ### Assert extensions
