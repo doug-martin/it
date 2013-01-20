@@ -250,7 +250,9 @@ To run the #getOlder spec
 
     
 
-You can alternatively run the test directly
+You can alternatively run the test directly.
+
+**Note** When running tests using the `it.run()` method, `it` will not automatically exit the program on completion, therefore if you still have items like DB connections still open your program will not exit.
 
 ```javascript
 
@@ -265,10 +267,9 @@ it.describe("A Person", function(it){
         var person = new Person("bob", 1);
         assert.equal(person.age, 1);
     });
-    
-    it.run();
-
 });
+
+it.run();
 
 ```
 
@@ -288,7 +289,9 @@ it.describe("A Person", function(it){
         assert.equal(person.age, 1);
     });
 
-}).run("should set name");
+});
+
+it.run("A Person:should set name");
 
 ```
 

@@ -38,7 +38,7 @@ program
     })
     .parse(process.argv);
 
-var files = program.args.length ? program.args : glob.glob("test/*.test.js"), filter, reporter, covType = "coverage", covOut = null;
+var files = program.args.length ? program.args : glob.glob("test/**/*.test.js"), filter, reporter, covType = "coverage", covOut = null;
 function setupEnv(config) {
     var env = config.environment;
     if (env) {
@@ -76,7 +76,12 @@ try {
 function runTests(files) {
     it.reporter(reporter);
     files.forEach(function (f) {
-        require(f);
+        try {
+            require(f);
+        } catch (e) {
+            console.log(_.style(e.stack.replace(/^/gm, '  '), ["bold", "red"]));
+            process.exit(1);
+        }
     });
     return it.run(filter);
 }

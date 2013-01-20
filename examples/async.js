@@ -78,4 +78,6 @@ it.describe("Person", function (it) {
             });
         });
     });
-}).run();
+});
+
+it.run();
