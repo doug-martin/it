@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/doug-martin/it.png?branch=master)](undefined)
+[![Build Status](https://travis-ci.org/doug-martin/it.png?branch=master)](it)
 
 [![browser support](http://ci.testling.com/doug-martin/it.png)](http://ci.testling.com/doug-martin/it)
 
