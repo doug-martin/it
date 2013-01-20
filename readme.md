@@ -13,7 +13,6 @@ It is a testing framework for node.js and the browser.
   * Supports Promises, and the mocha `done(err)` style of async tests.
   * Browser Support
   * Node.js Support
-  * Multiple Reporters
   * Proper exit codes for ci
   * Multiple reporters, including TAP for testling ci
   * Does not export global variables, you can run your tests individually with node or with the it executable.
@@ -202,7 +201,7 @@ In this example a promise is the return value. If you have used `comb`, `Q`, `pr
    });
 ```
 
-In this exampke the should callback accepts a `next(err)` argument which is a function that should be called when the current test is done. So if next is invoked with a first argument other than null or undefined then
+In this example the should callback accepts a `next(err)` argument which is a function that should be called when the current test is done. So if next is invoked with a first argument other than null or undefined then
 it is assumed that the test errored.
 
 ```javascript
@@ -217,6 +216,33 @@ it is assumed that the test errored.
            });
        });
    });
+```
+
+
+## Timeouts
+
+To set a duration limit on each test within a suite use the `timeout(duration)` method.
+
+```
+
+it.describe("#timeouts", function(){
+
+    it.timeout(100);
+
+    //this spec will fail
+    it.should("fail it action duration is > 100", function(next){
+        setTimeout(function(){
+            next();
+        }, 200);
+    });
+
+    //this spec will pass!
+    it.should("not fail it action duration < 100", function(){
+        assert.isTrue(true);
+    });
+
+});
+
 ```
 
 ### Running Tests

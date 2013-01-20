@@ -328,6 +328,60 @@ it.describe("it bdd",function (it) {
 
     });
 
+    it.describe("#timeout", function (it) {
+
+        it.describe("#action taking to long", function (it) {
+
+            it.timeout(25);
+
+            it.should("fail", function () {
+                return {
+                    then: function (cb) {
+                        setTimeout(cb, 100);
+                    }
+                };
+            });
+
+            var errbackAction = it.getAction("should fail");
+            errbackAction.failed = function (start, end, err) {
+                var summary = this.get("summary");
+                summary.start = start;
+                summary.end = end;
+                summary.duration = end - start;
+                summary.status = "passed";
+                summary.error = err || new Error();
+                this.emit("success", this);
+                return this.get("summary");
+            };
+
+            errbackAction.success = function (start, end, err) {
+                var summary = this.get("summary");
+                summary.start = start;
+                summary.end = end;
+                summary.duration = end - start;
+                summary.status = "failed";
+                summary.error = err || new Error();
+                this.emit("error", this);
+                return this.get("summary");
+            };
+
+        });
+
+        it.describe("#action not taking to long", function (it) {
+
+            it.timeout(25);
+
+            it.should("pass", function () {
+                return {
+                    then: function (cb) {
+                        setTimeout(cb, 10);
+                    }
+                };
+            });
+        });
+
+    });
+
 
     it.describe("#should", function (it) {
 
@@ -543,6 +597,27 @@ it.describe("it bdd",function (it) {
                 ]
             ],
             [
+                "#timeout",
+                [
+                    "#action taking to long",
+                    [
+                        "should fail",
+                        {
+                            "status": "passed"
+                        }
+                    ]
+                ],
+                [
+                    "#action not taking to long",
+                    [
+                        "should pass",
+                        {
+                            "status": "passed"
+                        }
+                    ]
+                ]
+            ],
+            [
                 "#should",
                 [
                     "provided a callback with an arity 0 of zero",
@@ -615,4 +690,7 @@ it.describe("it bdd",function (it) {
 
 
 }).as(module);
+
+
+it.run()
 
