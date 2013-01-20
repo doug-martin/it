@@ -6036,6 +6036,7 @@ EventEmitter.extend({
                     ret = this._static.clone(this, this.description, {
                         sub: this.sub,
                         "filtered": this.sub ? false : true,
+                        parent: this.parent,
                         __ba: this.__ba.slice(0),
                         __aa: this.__ba.slice(0),
                         "__shoulds": _(this.__shoulds).map(function (action) {
@@ -6478,7 +6479,7 @@ Reporter.extend({
         constructor: function (el) {
             this._super(arguments);
             this.el = document.getElementById(el);
-            this.header = this.el.appendChild(createDom("div", {className: "header"}, createDom("h1", {}, "It")));
+            this.header = this.el.appendChild(createDom("div", {className: "header"}, createDom("h1", {}, createDom("a", {href: "?"}, "It"))));
             this.summary = this.header.appendChild(createDom("div", {className: "summary"}));
             this.progress = this.el.appendChild(createDom("ul", {className: "progress"}));
             this.actions = this.el.appendChild(createDom("div", {className: "actions"}));
@@ -6499,7 +6500,9 @@ Reporter.extend({
             if (action.description) {
                 this.actions.appendChild(createDom("div",
                     {className: "header", style: "padding-left:" + getSpacing(action), "data-it-actionName": action.get("fullName")},
-                    action.description
+                    createDom("a", {
+                        href: "?filter=" + encodeURIComponent(action.get("fullName"))
+                    }, action.description)
                 ));
             }
         },
@@ -6508,7 +6511,9 @@ Reporter.extend({
             var summary = action.get("summary");
             this.actions.appendChild(createDom("div",
                 {className: "pending", style: "padding-left:" + getSpacing(action), "data-it-actionName": action.get("fullName")},
-                format(" %s, (%dms)", action.description, summary.duration)
+                createDom("a", {
+                    href: "?filter=" + encodeURIComponent(action.get("fullName"))
+                }, format(" %s, (%dms)", action.description, summary.duration))
             ));
             updateActionStatus(action, summary.status);
             return this;
@@ -8863,11 +8868,23 @@ require.define("/lib/browser/it.js",function(require,module,exports,__dirname,__
              * @return {comb.Promise} a promise that is resolved once all tests are done running.
              */
             run: function run(filter) {
+                var filter;
                 if (typeof window !== "undefined") {
                     try {
                         it.reporter("html", "it");
                     } catch (e) {
                         it.reporter("tap");
+                    }
+                    var paramStr = window.location.search.substring(1);
+                    var params = {};
+                    if (paramStr.length > 0) {
+                        _(paramStr.split('&')).forEach(function (part) {
+                            var p = part.split('=');
+                            params[decodeURIComponent(p[0])] = decodeURIComponent(p[1]);
+                        });
+                    }
+                    if (params.hasOwnProperty("filter")) {
+                        filter = params.filter;
                     }
                 } else {
                     it.reporter("tap");

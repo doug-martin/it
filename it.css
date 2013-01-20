@@ -5,6 +5,16 @@ body {
     overflow-y: scroll;
 }
 
+#it a {
+    text-decoration: none;
+    color: inherit;
+}
+
+#it a:hover {
+    text-decoration: underline;
+    color: inherit;
+}
+
 #it {
     color: gray;
     font-size: 10px;
