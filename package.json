@@ -1,61 +1,88 @@
 {
-    "name": "it",
-    "description": "A testing framework for node",
-    "version": "0.2.0",
-    "keywords": [
-        "testing",
-        "test",
-        "async",
-        "function testing",
-        "bdd",
-        "unit",
-        "unit testing"
-    ],
-    "repository": {
-        "type": "git",
-        "url": "git@github.com:doug-martin/it.git"
-    },
-    "scripts": {
-        "test": "./bin/it -r tap"
-    },
-    "dependencies": {
-        "declare.js": "0.0.3",
-        "extended": "0.0.2",
-        "is-extended": "0.0.2",
-        "string-extended": "0.0.2",
-        "array-extended": "0.0.2",
-        "date-extended": "0.0.2",
-        "function-extended": "0.0.2",
-        "object-extended": "0.0.2",
-        "promise-extended": "0.0.2",
-        "commander": "~1.1.1"
-    },
-    "testling": {
-        "files": "test/browserling.js",
-        "browsers": {
-            "ie": [6, 7, 8, 9],
-            "chrome": [4, 23, "canary"],
-            "firefox": [3, 3.5, 3.6, 4, 17, "nightly"],
-            "opera": [10, 10.5, 11, 11.5, 11.6, 12, "next"],
-            "safari": ["5.0.5", 5.1]
-        }
-    },
-    "devDependencies": {
-        "grunt-browserify": "~0.1.2"
-    },
-    "homepage": "http://doug-martin.github.com/it",
-    "author": {
-        "name": "Doug Martin",
-        "url": "http://blog.dougamartin.com"
-    },
-    "main": "index.js",
-    "bin": {
-        "it": "./bin/it"
-    },
-    "directories": {
-        "lib": "lib"
-    },
-    "engines": {
-        "node": ">= 0.6.1"
+  "name": "it",
+  "description": "A testing framework for node",
+  "version": "0.2.0",
+  "keywords": [
+    "testing",
+    "test",
+    "async",
+    "function testing",
+    "bdd",
+    "unit",
+    "unit testing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:doug-martin/it.git"
+  },
+  "scripts": {
+    "test": "./bin/it -r tap"
+  },
+  "dependencies": {
+    "declare.js": "0.0.3",
+    "extended": "0.0.2",
+    "is-extended": "0.0.2",
+    "string-extended": "0.0.2",
+    "array-extended": "0.0.2",
+    "date-extended": "0.0.2",
+    "function-extended": "0.0.2",
+    "object-extended": "0.0.2",
+    "promise-extended": "0.0.2",
+    "commander": "~1.1.1"
+  },
+  "testling": {
+    "files": "test/browserling.js",
+    "browsers": {
+      "ie": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "chrome": [
+        4,
+        23,
+        "canary"
+      ],
+      "firefox": [
+        3,
+        3.5,
+        3.6,
+        4,
+        17,
+        "nightly"
+      ],
+      "opera": [
+        10,
+        10.5,
+        11,
+        11.5,
+        11.6,
+        12,
+        "next"
+      ],
+      "safari": [
+        "5.0.5",
+        5.1
+      ]
     }
+  },
+  "devDependencies": {
+    "grunt-browserify": "~0.1.2"
+  },
+  "homepage": "http://doug-martin.github.com/it",
+  "author": {
+    "name": "Doug Martin",
+    "url": "http://blog.dougamartin.com"
+  },
+  "main": "index.js",
+  "bin": {
+    "it": "./bin/it"
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "engines": {
+    "node": ">= 0.6.1"
+  }
 }

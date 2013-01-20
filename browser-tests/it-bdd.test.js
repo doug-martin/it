@@ -10,7 +10,15 @@ it.describe("it bdd", function (it) {
         assert.equal(it.description, "it bdd");
     });
 
-    it.should("have methods");
+    it.should("have methods", function () {
+        assert.isFunction(it.beforeAll);
+        assert.isFunction(it.beforeEach);
+        assert.isFunction(it.afterEach);
+        assert.isFunction(it.afterAll);
+        assert.isFunction(it.describe);
+        assert.isFunction(it.should);
+        assert.isFunction(it.context);
+    });
 
     it.describe("assert extensions", function (it) {
 
@@ -398,7 +406,7 @@ it.describe("it bdd", function (it) {
             [
                 "should have methods",
                 {
-                    "status": "pending"
+                    "status": "passed"
                 }
             ],
             [

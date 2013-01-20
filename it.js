@@ -5533,6 +5533,15 @@ EventEmitter.extend({
 
             summary: function () {
                 return this.__summary;
+            },
+
+            fullName: function () {
+                var decription = "";
+                if (this.parent) {
+                    decription += this.parent.get("fullName") + ":";
+                }
+                decription += " " + this.description;
+                return decription;
             }
 
         }
@@ -5968,7 +5977,8 @@ EventEmitter.extend({
                             }
                         }),
                         _.bind(this, function actionError(err) {
-                            this.emit("error", err);
+                            this.error = err;
+                            this.emit("error", this);
                         }));
                     return ret;
                 })).then(_.bind(this, function () {
@@ -6002,7 +6012,10 @@ EventEmitter.extend({
                             _.bind(this, function () {
                                 return _.serial(this.__aa);
                             }),
-                            _.bind(this, "emit", "error")
+                            _.bind(this, function actionError(err) {
+                                this.error = err;
+                                this.emit("error", this);
+                            })
                         ).both(_.bind(this, "emit", "done"));
                 }
             }
@@ -6062,7 +6075,17 @@ EventEmitter.extend({
                 });
                 ret.duration = duration;
                 return ret;
+            },
+
+            fullName: function () {
+                var decription = "";
+                if (this.parent) {
+                    decription += this.parent.get("fullName") + ":";
+                }
+                decription += " " + this.description;
+                return decription;
             }
+
         }
     },
 
@@ -6079,6 +6102,7 @@ EventEmitter.extend({
                 level: behavior.level,
                 __be: behavior.__be.slice(),
                 __ae: behavior.__ae.slice(),
+                parent: behavior,
                 reporter: behavior.reporter,
                 stopOnError: behavior.stopOnError,
                 ignoreProcessError: behavior.ignoreProcessError
@@ -6255,24 +6279,34 @@ Test.extend({
 
 require.define("/lib/formatters/reporter.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
 var _ = require("../extended"),
+    style = _.style,
     format = _.format;
+
+
+var pluralize = function (count, str) {
+    return count !== 1 ? str + "s" : str;
+};
 
 _.declare({
 
     instance: {
 
+        constructor: function () {
+            this.errors = [];
+        },
+
         listenTest: function listenTest(test) {
             test.on("addTest", _.bind(this, "listenTest"));
             test.on("addAction", _.bind(this, "listenAction"));
-            test.on("run", _.bind(this, "printTitle"));
-            test.on("error", _.bind(this, "printError"));
-            test.on("done", _.bind(this, "printSummary", test));
+            test.on("run", _.bind(this, "testRun"));
+            test.on("error", _.bind(this, "testError"));
+            test.on("done", _.bind(this, "testEnd", test));
         },
 
         listenAction: function listenAction(action) {
-            action.on("error", _.bind(this, "printActionError", action));
-            action.on("success", _.bind(this, "printActionSuccess", action));
-            action.on("pending", _.bind(this, "printActionPending", action));
+            action.on("error", _.bind(this, "actionError", action));
+            action.on("success", _.bind(this, "actionSuccess", action));
+            action.on("pending", _.bind(this, "actionPending", action));
 
         },
 
@@ -6283,24 +6317,25 @@ _.declare({
         startTests: function () {
         },
 
-        printTitle: function printTitle() {
+        testRun: function printTitle() {
 
         },
 
-        printActionSuccess: function printSuccess() {
+        actionSuccess: function printSuccess() {
 
         },
 
-        printActionPending: function printPending() {
+        actionPending: function printPending() {
 
         },
 
-        printActionError: function printError() {
-
+        actionError: function printError(action) {
+            var error = action.get("summary").error;
+            this.errors.push({error: error, test: action});
         },
 
-        printError: function printError() {
-
+        testError: function printError(test) {
+            this.errors.push({error: test.error, test: test});
         },
 
         processSummary: function processSummary(summary) {
@@ -6328,12 +6363,26 @@ _.declare({
             return {errCount: errCount, successCount: successCount, pendingCount: pendingCount, errors: errors, duration: duration};
         },
 
-        printSummary: function () {
+        testEnd: function () {
 
         },
 
-        printFinalSummary: function () {
-            return this.printSummary.apply(this, arguments);
+        printFinalSummary: function (test) {
+            this.testEnd.apply(this, arguments);
+            console.log("\nSummary");
+            var summary = test.summary || test.get("summary");
+            var stats = this.processSummary(summary);
+            var errCount = stats.errCount, successCount = stats.successCount, pendingCount = stats.pendingCount, duration = stats.duration;
+            console.log(format("Finished in %s", this.formatMs(duration)));
+            var out = [
+                successCount + pluralize(successCount, " example"),
+                errCount + pluralize(errCount, " error"),
+                pendingCount + " pending"
+            ];
+            var color = pendingCount > 0 ? 'cyan' : errCount > 0 ? 'red' : 'green';
+            console.log(style(out.join(", "), color));
+            this._static.list(this.errors);
+            return errCount ? 1 : 0;
         }
 
 
@@ -6358,6 +6407,27 @@ _.declare({
             } else {
                 throw new Error("Invalid Reporter type");
             }
+        },
+
+        list: function (errors) {
+            console.error();
+            errors.forEach(function (test, i) {
+                // format
+                var fmt = '  %s) %s:\n' + style('     %s', "red") + style('\n%s\n', ["red", "bold"]);
+
+                // msg
+                var err = test.error,
+                    message = err.message || '',
+                    stack = err.stack || message,
+                    index = stack.indexOf(message) + message.length,
+                    msg = stack.slice(0, index);
+
+                // indent stack trace without msg
+                stack = stack.slice(index ? index + 1 : index)
+                    .replace(/^/gm, '  ');
+
+                console.error(fmt, (i + 1), test.test.get("fullName"), msg, stack);
+            });
         }
     }
 
@@ -6367,21 +6437,13 @@ _.declare({
 require.define("/lib/browser/formatters/html.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
 var _ = require("../../extended"),
     Reporter = require("../../formatters/reporter"),
-    characters = _.characters,
     format = _.format,
-    multiply = _.multiply,
     arraySlice = Array.prototype.slice;
 
 
 var pluralize = function (count, str) {
     return count !== 1 ? str + "s" : str;
 };
-
-var TAB = "&nbsp;&nbsp;&nbsp;";
-
-function formatError(err) {
-    return err.stack ? err.stack.replace(/\n/g, "</br>").replace(/\t/g, TAB).replace(/\s/g, "&nbsp;") : err;
-}
 
 function getSpacing(action) {
     return action.level * 2.5 + "em";
@@ -6406,17 +6468,8 @@ function createDom(type, attrs) {
     return el;
 }
 
-function getActionName(action) {
-    var decription = "";
-    if (action.parent) {
-        decription += getActionName(action.parent) + ":";
-    }
-    decription += " " + action.description;
-    return decription;
-}
-
 function updateActionStatus(action, status) {
-    var els = document.querySelectorAll('[data-it-actionName="' + getActionName(action) + '"]');
+    var els = document.querySelectorAll('[data-it-actionName="' + action.get("fullName") + '"]');
     for (var i = 0, l = els.length; i < l; i++) {
         var el = els.item(i), className = el.className;
         el.className = className.replace(/(not-run|pending|error|passed) */ig, "") + " " + status;
@@ -6438,27 +6491,18 @@ Reporter.extend({
             }
         },
 
-        printLineForLevel: function printLineForLevel(level) {
-            if (!level) {
-                this.el.appendChild(createDom("br"));
-            }
-            return this;
-        },
-
         listenAction: function (action) {
             this._super(arguments);
-            var actionName = getActionName(action);
+            var actionName = action.get("fullName");
             this.progress.appendChild(createDom("li", {className: "not-run", "data-it-actionName": actionName}));
 
         },
 
-        printTitle: function printTitle(action) {
+        testRun: function printTitle(action) {
             if (action.description) {
                 this.actions.appendChild(createDom("div",
-                    {className: "header", style: "padding-left:" + getSpacing(action), "data-it-actionName": getActionName(action)},
-                    createDom("br"),
-                    action.description,
-                    createDom("br")
+                    {className: "header", style: "padding-left:" + getSpacing(action), "data-it-actionName": action.get("fullName")},
+                    action.description
                 ));
             }
         },
@@ -6466,49 +6510,38 @@ Reporter.extend({
         __addAction: function (action) {
             var summary = action.get("summary");
             this.actions.appendChild(createDom("div",
-                {className: "pending", style: "padding-left:" + getSpacing(action), "data-it-actionName": getActionName(action)},
+                {className: "pending", style: "padding-left:" + getSpacing(action), "data-it-actionName": action.get("fullName")},
                 format(" %s, (%dms)", action.description, summary.duration)
             ));
             updateActionStatus(action, summary.status);
             return this;
         },
 
-        printActionSuccess: function (action) {
+        actionSuccess: function (action) {
             this.__addAction(action);
         },
 
-        printActionPending: function (action) {
+        actionPending: function (action) {
             this.__addAction(action);
         },
 
-        printActionError: function printError(action) {
-            this.__addAction(action).errors.push(action);
-        },
-
-        printError: function printError(err) {
-            this.errors.push(err);
+        actionError: function printError(action) {
+            this._super(arguments);
+            this.__addAction(action);
         },
 
         printErrors: function () {
             if (this.errors.length) {
                 //clear all actions
                 this.actions.innerHTML = "";
-                _(this.errors).forEach(function (action) {
-                    var el;
-                    if (_.isString(action)) {
-                        el = createDom("pre", {className: "failed"}, action);
-                    } else if (_.instanceOf(action, Error)) {
-                        el = createDom("pre", {className: "failed"}, action.stack);
-                    } else {
-                        var summary = action.get("summary"), err = summary.error;
-                        el = createDom("pre",
-                            {className: "failed"},
-                            format(" %s, (%dms)", getActionName(action), summary.duration),
-                            createDom("br"),
-                            (err.stack ? err.stack : err).toString()
-                        );
-                    }
-                    this.actions.appendChild(el);
+                _(this.errors).forEach(function (test, i) {
+                    var error = test.error, action = test.test;
+                    this.actions.appendChild(createDom("pre",
+                        {className: "failed"},
+                        format('  %s) %s:', i, action.get("fullName")),
+                        createDom("br"),
+                        (error.stack ? error.stack : error).toString().replace(/^/gm, '       ')
+                    ));
                 }, this);
             }
         },
@@ -6535,26 +6568,11 @@ Reporter.extend({
 
 require.define("/lib/formatters/tap.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
 var _ = require("../extended"),
-    Reporter = require("./reporter"),
-    characters = _.characters,
-    style = _.style,
-    format = _.format,
-    multiply = _.multiply;
+    Reporter = require("./reporter");
 
-
-var stdout = process.stdout;
-
-var pluralize = function (count, str) {
-    return count !== 1 ? str + "s" : str;
-};
 
 function getActionName(action) {
-    var decription = "";
-    if (action.parent) {
-        decription += getActionName(action.parent) + ":";
-    }
-    decription += " " + action.description;
-    return decription.replace(/#/g, '');
+    return action.get("fullName").replace(/#/g, '');
 }
 
 Reporter.extend({
@@ -6573,29 +6591,31 @@ Reporter.extend({
             console.log('%d..%d', 1, this.numActions);
         },
 
-        printActionSuccess: function printSuccess(action) {
+        actionSuccess: function printSuccess(action) {
             this.passed++;
             console.log('ok %d %s', ++this.ran, getActionName(action));
 
         },
 
-        printActionPending: function printPending(action) {
+        actionPending: function printPending(action) {
             console.log('ok %d %s # SKIP -', ++this.ran, getActionName(action));
         },
 
-        printActionError: function printError(action) {
+        actionError: function printError(action) {
             this.failed++;
             var summary = action.get("summary"), err = summary.error;
             console.log('not ok %d %s', ++this.ran, getActionName(action));
             if (err.stack) {
                 console.log(err.stack.replace(/^/gm, '  '));
+            } else {
+                console.log(err);
             }
         },
 
         printFinalSummary: function () {
             console.log('# tests ' + (this.passed + this.failed));
             console.log('# pass ' + this.passed);
-            console.log('# fail ' + this.failed);
+            console.log('# fail ' + this.errors.length);
         }
     }
 }).as(module).registerType("tap");

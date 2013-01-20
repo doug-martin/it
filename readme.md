@@ -340,6 +340,10 @@ For example out put see [patio test coverage](http://c2fo.github.com/patio/cover
 
 ![tap](./assets/tap.png)
 
+**`doc`**
+
+![doc](./assets/doc.png)
+
 **`html`**
 
 ![html](./assets/browser.png)

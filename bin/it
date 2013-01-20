@@ -35,7 +35,7 @@ program
     .option('--cov-html [path]', 'create coverage output in html')
     .option('--reporters', 'display available reporters')
     .on("reporters", function () {
-        console.log(["", "Reporters:", "\tspec", "\tdotmatrix", "\ttap", ""].join("\n"));
+        console.log(["", "Reporters:", "\tspec", "\tdotmatrix", "\ttap", "\doc", ""].join("\n"));
         process.exit();
     })
     .parse(process.argv);
