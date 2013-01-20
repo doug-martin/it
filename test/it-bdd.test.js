@@ -332,12 +332,12 @@ it.describe("it bdd",function (it) {
 
         it.describe("#action taking to long", function (it) {
 
-            it.timeout(25);
+            it.timeout(500);
 
             it.should("fail", function () {
                 return {
                     then: function (cb) {
-                        setTimeout(cb, 100);
+                        setTimeout(cb, 800);
                     }
                 };
             });
@@ -369,12 +369,12 @@ it.describe("it bdd",function (it) {
 
         it.describe("#action not taking to long", function (it) {
 
-            it.timeout(25);
+            it.timeout(500);
 
             it.should("pass", function () {
                 return {
                     then: function (cb) {
-                        setTimeout(cb, 10);
+                        cb();
                     }
                 };
             });
