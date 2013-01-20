@@ -692,5 +692,3 @@ it.describe("it bdd",function (it) {
 }).as(module);
 
 
-it.run()
-
