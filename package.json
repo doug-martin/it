@@ -1,7 +1,7 @@
 {
     "name": "it",
     "description": "A testing framework for node",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "keywords": [
         "testing",
         "test",
@@ -14,6 +14,9 @@
     "repository": {
         "type": "git",
         "url": "git@github.com:doug-martin/it.git"
+    },
+    "scripts": {
+        "test": "./bin/it -r tap"
     },
     "dependencies": {
         "declare.js": "0.0.3",

@@ -1,5 +1,5 @@
 var it = require("../index"),
-    comb = require("comb"),
+    p = require("promise-extended"),
     assert = require("assert");
 
 var Person = function (name, age) {
@@ -21,7 +21,7 @@ var Person = function (name, age) {
 //it.reporter = "dotmatrix";
 it.describe("Person", function (it) {
 
-    it.should("set set name", function () {
+    it.should("set name", function () {
         var person = new Person("bob", 1);
         assert.equal(person.name, "bob");
     });
@@ -43,7 +43,7 @@ it.describe("Person", function (it) {
 
         //return promise
         it.should("not apply negative numbers", function (next) {
-            var ret = new comb.Promise();
+            var ret = new p.Promise();
             var person = new Person("bob", 1);
             person.getOlder(-2, function (err, person) {
                 assert.equal(person.age, 1);
@@ -68,7 +68,7 @@ it.describe("Person", function (it) {
         //return promise
         it.describe("with negative numbers", function (it) {
             it.should("not work", function (next) {
-                var ret = new comb.Promise();
+                var ret = new p.Promise();
                 var person = new Person("bob", 1);
                 person.getOlder(-2, function (err, person) {
                     assert.equal(person.age, 1);
@@ -78,6 +78,4 @@ it.describe("Person", function (it) {
             });
         });
     });
-
-    it.run();
-});
+}).run();

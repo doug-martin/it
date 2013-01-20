@@ -1,12 +1,22 @@
+[![Build Status](https://travis-ci.org/doug-martin/it.png?branch=master)](undefined)
 [![browser support](http://ci.testling.com/doug-martin/it.png)](http://ci.testling.com/doug-martin/it)
 
-It
-===
+# It
 
-Overview
---------
+## Overview
 
-It is a BDD testing framework for node.js. The premise behind it is to be as lightweight as possible while making testing easy and fun to do.
+It is a testing framework for node.js and the browser.
+
+ **Features**
+
+  * Supports Promises, and the mocha `done(err)` style of async tests.
+  * Browser Support
+  * Node.js Support
+  * Multiple Reporters
+  * Proper exit codes for ci
+  * Multiple reporters, including TAP for testling ci
+  * Does not export global variables, you can run your tests individually with node or with the it executable.
+  * Support for filtering tests.
 
 ## Installation
 
@@ -16,18 +26,35 @@ To use the it executable
 
     npm install -g it
 
-##Usage
+In the browser
 
-It contains the following functions to write and run tests.
+```html
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta charset="utf-8">
+        <title>It Tests</title>
+        <link rel="stylesheet" type="text/css" href="it.css">
+    </head>
+    <body>
+    <div id="it"></div>
+    <script src="it.js"></script>
+    <script>
+        //optionally export assert as a global
+        assert = it.assert;
+    </script>
+    <!--Import your scripts-->
+    <script>
+        it.run();
+    </script>
+</body>
+</html>
+```
 
-  * describe - The name of object/context you are testing.
-  * should - the action that you are testing/should happen.
-  * beforeAll - an action that should happen before all tests in the current context.
-  * afterAll - an action that should happen after all tests in the current context.
-  * beforeEach - an action that should happen before each test in the current context.
-  * afterEach - an action that should happen before each test in the current context.
+## Usage
 
-###Synchronous tests
+### Synchronous tests
 
 Writing synchronous tests in **It** is extremely simple. So lets start off with an example.
 
@@ -130,7 +157,7 @@ it.describe("#getOlder nested", function (it) {
 });
 ```
 
-###Asynchronous tests 
+### Asynchronous tests
 
 Writing asynchronous tests in **It** is just as easy as writing synchronous tests.
 
@@ -141,10 +168,10 @@ var Person = function (name, age) {
     this.name = name;
     this.age = age;
 
-    this.getOlder = function (years, cb) {
+    this.getOlder = function (years, next) {
         setTimeout(function () {
             this.age = this.age + years;
-            cb.call(this, null, this);
+            next(null, this);
         }.bind(this), years * 500);
     };
 };
@@ -152,39 +179,46 @@ var Person = function (name, age) {
 
 Now that **getOlder** is async lets test it
 
-```javascript
-it.describe("#getOlder", function (it) {
-    //Call with next
-    it.should("accept positive numbers", function (next) {
-        var person = new Person("bob", 1);
-        person.getOlder(2, function (err, person) {
-            assert.equal(person.age, 3);
-            next();
-        });
-    });
+In this example a promise is the return value. If you have used `comb`, `Q`, `promises-extedned` or any other framework that uses
+**Promises** then this will feel pretty natural to you. The test will wait for the promise to resolve before  continuing any other tests.
 
-    //return promise
-    it.should("not apply negative numbers", function () {
-        var ret = new comb.Promise();
-        var person = new Person("bob", 1);
-        person.getOlder(-2, function (err, person) {
-            assert.equal(person.age, 1);
-            ret.callback();
-        });
-        return ret;
-    });
-});
+
+```javascript
+
+   var p = require("promise-extended");
+
+   it.describe("#getOlder", function (it) {
+       //return promise
+       it.should("not apply negative numbers", function () {
+           var ret = new p.promise();
+           var person = new Person("bob", 1);
+           person.getOlder(-2, function (err, person) {
+               assert.equal(person.age, 1);
+               ret.callback();
+           });
+           return ret.promise();
+       });
+   });
 ```
 
-So in the above example the first **should** invocation accepts a **next** argument which is a function that should
-be called when the current test is done. If **next**'s function signature is **next(err, ...)**. So if next is invoked
-with a first argument other than null or undefined then it is assumed that the test errored.
+In this exampke the should callback accepts a `next(err)` argument which is a function that should be called when the current test is done. So if next is invoked with a first argument other than null or undefined then
+it is assumed that the test errored.
 
-The second **should** used a promise as a return value if you have used **comb** or any other framework that uses 
-**Promises** then this will feel pretty natural to you. The test will wait for the promise to resolve before 
-continuing any other tests.
+```javascript
 
-###Running Tests
+   it.describe("#getOlder", function (it) {
+       //Call with next
+       it.should("accept positive numbers", function (next) {
+           var person = new Person("bob", 1);
+           person.getOlder(2, function (err, person) {
+               assert.equal(person.age, 3);
+               next();
+           });
+       });
+   });
+```
+
+### Running Tests
 
 To run tests there are two options the **it** executable 
 
@@ -211,7 +245,7 @@ Or
     
 To run the #getOlder spec
 
-    it -f "Person:#getOlder
+    it -f "Person:#getOlder"
 
     
 
@@ -243,23 +277,21 @@ You can also filter the tests to run from within the test
 
 it.describe("A Person", function(it){
 
-     it.should("set set name", function () {
+     it.should("set name", function () {
         var person = new Person("bob", 1);
         assert.equal(person.name, "bob");
     });
 
-    it.should("set set age", function () {
+    it.should("set age", function () {
         var person = new Person("bob", 1);
         assert.equal(person.age, 1);
     });
-    
-    it.run("should set name");
 
-});
+}).run("should set name");
 
 ```
 
-##Tdd
+## Tdd
 
 `it` also supports tdd style tests.
 
@@ -286,45 +318,33 @@ it.suite("Person", function (it) {
 
 ```
 
-###Code Coverage
+### Code Coverage
 If you use [node-jscoverage](https://github.com/visionmedia/node-jscoverage) to generate coverage then by default `it`
 will output a coverage report. You may also output coverage to an `HTML` file by passing in the `--cov-html` flag to the executable.
 For example out put see [patio test coverage](http://c2fo.github.com/patio/coverage.html).
 
 
 
-###Reporters
+### Reporters
 
-**It** currently has two reporters built in 
-  * spec
-  * dotmatrix
- 
-For the above tests the output for spec should look as follows
+**`spec`**
 
-```
-Person
+![spec](./assets/spec.png)
 
-    √ should set set name (0ms)
-	√ should set set age (0ms)
-	#getOlder
-		√ should accept positive numbers (1002ms)
-		√ should not apply negative numbers (0ms)
-Finished in  1.002s
-4 examples, 0 errors
+**`dot`**
 
-```
+![dot](./assets/dot.png)
 
-With dot matrix
+**`tap`**
 
-```
-Person
+![tap](./assets/tap.png)
 
-....
-Finished in  1.002s
-4 examples, 0 errors
-```
+**`html`**
 
-###Assert extensions
+![html](./assets/browser.png)
+
+
+### Assert extensions
 
 The following methods are added to assert for convenience
 
@@ -349,12 +369,11 @@ The following methods are added to assert for convenience
   * `truthy` - assert that the value is truthy.
   * `falsy` - assert that the value is falsy.
 
-License
--------
+### License
+
 
 MIT <https://github.com/doug-martin/it/raw/master/LICENSE>
 
-Meta
-----
+### Meta
 
 * Code: `git clone git://github.com/doug-martin/it.git`
