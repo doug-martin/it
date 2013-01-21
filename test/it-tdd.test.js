@@ -21,6 +21,14 @@ it.suite("it tdd",function (it) {
         assert.isFunction(it.context);
     });
 
+    it.suite("actions through it as a function", function (it) {
+
+        it("should support actions through the it function", function () {
+            assert.ok(true);
+        });
+
+    });
+
     it.suite("assert extensions", function (it) {
 
         it.test('should add methods', function () {
@@ -405,6 +413,15 @@ it.suite("it tdd",function (it) {
                 {
                     "status": "passed"
                 }
+            ],
+            [
+                "actions through it as a function",
+                [
+                    "should support actions through the it function",
+                    {
+                        "status": "passed"
+                    }
+                ]
             ],
             [
                 "assert extensions",

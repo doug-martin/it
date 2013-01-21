@@ -21,6 +21,14 @@ it.describe("it bdd",function (it) {
         assert.isFunction(it.context);
     });
 
+    it.describe("actions through it as a function", function (it) {
+
+        it("should support actions through the it function", function () {
+            assert.ok(true);
+        });
+
+    });
+
     it.describe("assert extensions", function (it) {
 
         it.should('add methods', function () {
@@ -465,6 +473,15 @@ it.describe("it bdd",function (it) {
                 }
             ],
             [
+                "actions through it as a function",
+                [
+                    "should support actions through the it function",
+                    {
+                        "status": "passed"
+                    }
+                ]
+            ],
+            [
                 "assert extensions",
                 [
                     "should add methods",
@@ -690,5 +707,6 @@ it.describe("it bdd",function (it) {
 
 
 }).as(module);
+
 
 

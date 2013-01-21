@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/doug-martin/it.png?branch=master)](https://travis-ci.org/doug-martin/it)
+[![Build Status](https://travis-ci.org/doug-martin/it.png)](https://travis-ci.org/doug-martin/it)
 
 [![browser support](http://ci.testling.com/doug-martin/it.png)](http://ci.testling.com/doug-martin/it)
 
@@ -12,6 +12,7 @@ It is a testing framework for node.js and the browser.
 
   * Supports Promises, and the mocha `done(err)` style of async tests.
   * Browser Support
+  * AMD support
   * Node.js Support
   * Proper exit codes for ci
   * Multiple reporters, including TAP for testling ci
@@ -50,6 +51,33 @@ In the browser
     </script>
 </body>
 </html>
+```
+
+With requirejs
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="utf-8">
+    <title>It Tests Requirejs</title>
+    <link rel="stylesheet" type="text/css" href="it.css">
+</head>
+<body>
+<div id="it"></div>
+<script data-main="scripts/main" src="scripts/require.js"></script>
+<script>
+    require([
+        'it',
+        //require your tests
+    ], function (it) {
+        it.run();
+    });
+</script>
+</body>
+</html>
+
 ```
 
 ## Usage
