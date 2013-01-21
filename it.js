@@ -5903,6 +5903,7 @@ EventEmitter.extend({
             if (!this.sub && !this.filtered) {
                 this._static.tests[description] = this;
             }
+            _.bindAll(this, ["_addAction", "_addTest", "timeout", "getAction", "beforeAll", "beforeEach", "afterAll", "afterEach", "context", "get", "set", "skip"]);
         },
 
         timeout: function (num) {
@@ -5956,11 +5957,22 @@ EventEmitter.extend({
             return cloned;
         },
 
+        skip: function (description) {
+            this._addAction(description);
+        },
+
 
         _addTest: function (description, cb) {
             var cloned = this._static.clone(this, description, {sub: true, level: this.level + 1, parent: this}, cb);
+            var it = cloned._addAction;
+            _(["suite", "test", "should", "describe", "timeout", "getAction", "beforeAll", "beforeEach",
+                "afterAll", "afterEach", "context", "get", "set", "skip"]).forEach(function (key) {
+                    if (_.isFunction(cloned[key])) {
+                        it[key] = cloned[key];
+                    }
+                });
             if (cb) {
-                cb(cloned);
+                cb(it);
             }
             this.__shoulds.push(cloned);
             return cloned;
@@ -6206,6 +6218,11 @@ var Test = require("./common").Test,
 Test.extend({
     instance: {
 
+        constructor: function () {
+            this._super(arguments);
+            _.bindAll(this, ["describe", "should"]);
+        },
+
         describe: function (description, cb) {
             return this._addTest(description, cb);
         },
@@ -6229,7 +6246,12 @@ Test.extend({
          */
         describe: function _description(description, cb) {
             var test = new this(description, {});
-            cb(test);
+            var it = test._addAction;
+            _(["description", "should", "describe", "timeout", "getAction", "beforeAll", "beforeEach",
+                "afterAll", "afterEach", "context", "get", "set", "skip"]).forEach(function (key) {
+                    it[key] = test[key];
+                });
+            cb(it);
             return test;
         }
 
@@ -6246,6 +6268,12 @@ var Test = require("./common").Test,
 
 Test.extend({
     instance: {
+
+        constructor: function () {
+            this._super(arguments);
+            _.bindAll(this, ["suite", "test"]);
+        },
+
 
         suite: function (description, cb) {
             return this._addTest(description, cb);
@@ -6271,6 +6299,11 @@ Test.extend({
          */
         suite: function _suite(description, cb) {
             var test = new this(description, {});
+            var it = test._addAction;
+            _(["suite", "test", "timeout", "getAction", "beforeAll", "beforeEach",
+                "afterAll", "afterEach", "context", "get", "set", "skip"]).forEach(function (key) {
+                    it[key] = test[key];
+                });
             cb(test);
             return test;
         }

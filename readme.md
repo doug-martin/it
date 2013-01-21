@@ -273,6 +273,33 @@ it.describe("#timeouts", function(){
 
 ```
 
+## Skip
+
+If you wish to skip an action you can use the `skip` method which will put the action into a `pending` state, and not run it.
+
+```javascript
+
+
+it.describe("#timeouts", function(){
+
+    it.timeout(100);
+
+    //this spec be skipped
+    it.skip("fail it action duration is > 100", function(next){
+        setTimeout(function(){
+            next();
+        }, 200);
+    });
+
+    //this spec will not
+    it("not fail it action duration < 100", function(){
+        assert.isTrue(true);
+    });
+
+});
+
+```
+
 ### Running Tests
 
 To run tests there are two options the **it** executable 

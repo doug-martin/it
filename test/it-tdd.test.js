@@ -332,6 +332,14 @@ it.suite("it tdd",function (it) {
 
     });
 
+    it.suite("#skip", function (it) {
+
+        it.skip("should skip this test", function () {
+            throw new Error("Not Skipped");
+        });
+
+    });
+
 
     it.suite("#should", function (it) {
 
@@ -552,6 +560,15 @@ it.suite("it tdd",function (it) {
                     "should still not call afterAll",
                     {
                         "status": "passed"
+                    }
+                ]
+            ],
+            [
+                "#skip",
+                [
+                    "should skip this test",
+                    {
+                        "status": "pending"
                     }
                 ]
             ],

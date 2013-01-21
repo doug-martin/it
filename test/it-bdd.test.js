@@ -390,6 +390,14 @@ it.describe("it bdd",function (it) {
 
     });
 
+    it.describe("#skip", function (it) {
+
+        it.skip("should skip this test", function () {
+            throw new Error("Not Skipped");
+        });
+
+    });
+
 
     it.describe("#should", function (it) {
 
@@ -635,6 +643,15 @@ it.describe("it bdd",function (it) {
                 ]
             ],
             [
+                "#skip",
+                [
+                    "should skip this test",
+                    {
+                        "status": "pending"
+                    }
+                ]
+            ],
+            [
                 "#should",
                 [
                     "provided a callback with an arity 0 of zero",
@@ -707,6 +724,3 @@ it.describe("it bdd",function (it) {
 
 
 }).as(module);
-
-
-
