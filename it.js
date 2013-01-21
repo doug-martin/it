@@ -5687,6 +5687,7 @@ EventEmitter.extend({
 
         failed: function (start, end, err) {
             merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "failed", error: err || new Error()});
+            this.error = err;
             this.emit("error", this);
             return this.get("summary");
         },
@@ -5712,6 +5713,10 @@ EventEmitter.extend({
         },
 
         getters: {
+
+            status: function () {
+                return this.__summary.status;
+            },
 
             summary: function () {
                 return this.__summary;
@@ -6119,6 +6124,24 @@ EventEmitter.extend({
                 return _(this.__shoulds).map(function (instance) {
                     return instance instanceof Action ? 1 : instance.get("length");
                 }).sum().value();
+            },
+
+            errorCount: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return (instance instanceof Action) ? (instance.get("status") === "failed" ? 1 : 0) : instance.get("errorCount");
+                }).sum().value();
+            },
+
+            successCount: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return (instance instanceof Action) ? (instance.get("status") === "passed" ? 1 : 0) : instance.get("successCount");
+                }).sum().value();
+            },
+
+            pendingCount: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return (instance instanceof Action) ? (instance.get("status") === "pending" ? 1 : 0) : instance.get("pendingCount");
+                }).sum().value();
             }
 
         }
@@ -6172,16 +6195,13 @@ EventEmitter.extend({
             if (!isEmpty(tests)) {
                 _.bus.emit("start", {tests: tests, numActions: _(tests).values().invoke("get", "length").sum().value()});
                 return _.serial(_(tests).keys().map(function (k) {
-                        return function () {
-                            _.bus.emit("test", tests[k]);
-                            return tests[k].run().both(function (summary) {
-                                summaries[k] = summary;
-                            });
-                        };
-                    }).value()).then(_.bind(this, function () {
-                        return this.printSummary();
-                        return 0;
-                    }));
+                    return function () {
+                        _.bus.emit("test", tests[k]);
+                        return tests[k].run().both(function (summary) {
+                            summaries[k] = summary;
+                        });
+                    };
+                }).value()).then(_.bindIgnore(this, "printSummary"));
             } else {
                 console.warn("No Tests found");
                 return _.resolve();
@@ -6190,21 +6210,25 @@ EventEmitter.extend({
 
         printSummary: function printSummary() {
             var tests = this.tests;
+            var summary = {summary: {}, errorCount: 0, successCount: 0, pendingCount: 0};
             if (!isEmpty(tests)) {
-                var summary = {};
-                var keys = _.hash.keys(tests), length = 0;
+                var keys = _.hash.keys(tests), length = 0, errorCount = 0, successCount = 0, pendingCount = 0;
                 _(tests).forEach(function (test, k) {
                     var testSummary = test.get("summary");
+                    summary.errorCount += test.get("errorCount");
+                    summary.successCount += test.get("successCount");
+                    summary.pendingCount += test.get("pendingCount");
                     if (testSummary) {
-                        summary[k] = testSummary;
+                        summary.summary[k] = testSummary;
                         length += 1;
                     }
                 });
                 if (length < keys.length) {
                     _.bus.emit("error", new Error("Async Error"));
                 }
-                _.bus.emit("done", {summary: summary});
+                _.bus.emit("done", summary);
             }
+            return summary;
         }
     }
 }).as(module);
@@ -6667,6 +6691,7 @@ Reporter.extend({
             console.log('# tests ' + (this.passed + this.failed));
             console.log('# pass ' + this.passed);
             console.log('# fail ' + this.failed);
+            return this.failed ? 1 : 0;
         }
     }
 }).as(module).registerType("tap");
