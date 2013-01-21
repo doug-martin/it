@@ -82,6 +82,36 @@ With requirejs
 
 ## Usage
 
+### Getting Started
+
+The basic structure of a test in `it` looks like the following.
+
+```javascript
+
+var it = require("it"),
+    assert = require("assert");
+
+it.describe("an it test", function(it){
+
+    //the should method is a conveience over writing it("should").
+    it.should("have a should method", function(){
+        assert.isFunction(it.should);
+    });
+
+    //it can also be used as a function
+    it("should be able to be called as a function", function(){
+        assert.isFunction(it);
+    });
+
+    it.describe("#describe", function(it){
+        //now we can write some more tests!
+    });
+
+});
+
+```
+
+
 ### Synchronous tests
 
 Writing synchronous tests in **It** is extremely simple. So lets start off with an example.
@@ -246,8 +276,48 @@ it is assumed that the test errored.
    });
 ```
 
+### context
 
-## Timeouts
+`it` also supports the concept of a context, which is a set of functionality that should belong to the current `describe` or `suite` tests but needs something extra like extra setup or tear down functionality.
+
+In fact anything you can do withing the `describe` callback you can do in a `context`.
+
+
+```
+
+it.describe("contexts", function(it){
+
+    it.context(function(it){
+
+        var called;
+        it.beforeAll(function(){
+            called = true;
+        });
+
+        it("should allow custom beforeAll", function(){
+            assert.isTrue(called);
+        });
+    });
+
+    it.context(function(it){
+
+        var called
+        it.beforeEach(function(){
+            called = true;
+        });
+
+        it("should allow custom beforeEach", function(){
+            assert.isTrue(called);
+        });
+    });
+})
+
+```
+
+
+
+
+### Timeouts
 
 To set a duration limit on each test within a suite use the `timeout(duration)` method.
 
@@ -273,7 +343,7 @@ it.describe("#timeouts", function(){
 
 ```
 
-## Skip
+### Skip
 
 If you wish to skip an action you can use the `skip` method which will put the action into a `pending` state, and not run it.
 
@@ -294,6 +364,33 @@ it.describe("#timeouts", function(){
     //this spec will not
     it("not fail it action duration < 100", function(){
         assert.isTrue(true);
+    });
+
+});
+
+```
+
+## Tdd
+
+`it` also supports tdd style tests.
+
+```javascript
+
+it.suite("Person", function (it) {
+
+    it.suite("#getOlder", function (it) {
+
+        it.test("accept positive numbers", function () {
+            var person = new Person("bob", 1);
+            person.getOlder(2);
+            assert.equal(person.age, 3);
+        });
+
+        it.test("not apply negative numbers", function () {
+            var person = new Person("bob", 1);
+            person.getOlder(-2);
+            assert.equal(person.age, 1);
+        });
     });
 
 });
@@ -376,40 +473,6 @@ it.run("A Person:should set name");
 
 ```
 
-## Tdd
-
-`it` also supports tdd style tests.
-
-```javascript
-
-it.suite("Person", function (it) {
-
-    it.suite("#getOlder", function (it) {
-
-        it.test("accept positive numbers", function () {
-            var person = new Person("bob", 1);
-            person.getOlder(2);
-            assert.equal(person.age, 3);
-        });
-
-        it.test("not apply negative numbers", function () {
-            var person = new Person("bob", 1);
-            person.getOlder(-2);
-            assert.equal(person.age, 1);
-        });
-    });
-
-});
-
-```
-
-### Code Coverage
-If you use [node-jscoverage](https://github.com/visionmedia/node-jscoverage) to generate coverage then by default `it`
-will output a coverage report. You may also output coverage to an `HTML` file by passing in the `--cov-html` flag to the executable.
-For example out put see [patio test coverage](http://c2fo.github.com/patio/coverage.html).
-
-
-
 ### Reporters
 
 **`spec`**
@@ -431,6 +494,11 @@ For example out put see [patio test coverage](http://c2fo.github.com/patio/cover
 **`html`**
 
 ![html](https://raw.github.com/doug-martin/it/master/assets/browser.png)
+
+### Code Coverage
+If you use [node-jscoverage](https://github.com/visionmedia/node-jscoverage) to generate coverage then by default `it` will output a coverage report. You may also output coverage to an `HTML` file by passing in the `--cov-html` flag to the executable.
+
+For example out put see [patio test coverage](http://c2fo.github.com/patio/coverage.html).
 
 
 ### Assert extensions
