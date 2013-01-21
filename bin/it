@@ -112,8 +112,8 @@ process.emit = function (event) {
     }
 };
 startTests().then(
-    function (code) {
-        process.exit(code);
+    function (summary) {
+        process.exit(summary.errorCount ? 1 : 0);
     },
     function (error) {
         console.log(error);
