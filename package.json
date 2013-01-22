@@ -1,7 +1,7 @@
 {
     "name": "it",
     "description": "A testing framework for node",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "keywords": [
         "testing",
         "test",
@@ -20,52 +20,25 @@
     },
     "dependencies": {
         "declare.js": "0.0.3",
-        "extended": "0.0.2",
-        "is-extended": "0.0.2",
-        "string-extended": "0.0.2",
-        "array-extended": "0.0.2",
-        "date-extended": "0.0.2",
-        "function-extended": "0.0.2",
-        "object-extended": "0.0.2",
-        "promise-extended": "0.0.2",
+        "extended": "~0.0.3",
+        "is-extended": "~0.0.3",
+        "string-extended": "~0.0.3",
+        "array-extended": "~0.0.3",
+        "date-extended": "~0.0.3",
+        "function-extended": "~0.0.3",
+        "object-extended": "~0.0.3",
+        "promise-extended": "~0.0.3",
         "commander": "~1.1.1",
         "glob-whatev": "0.1.8"
     },
     "testling": {
         "files": "test/browserling.js",
         "browsers": {
-            "ie": [
-                6,
-                7,
-                8,
-                9
-            ],
-            "chrome": [
-                4,
-                23,
-                "canary"
-            ],
-            "firefox": [
-                3,
-                3.5,
-                3.6,
-                4,
-                17,
-                "nightly"
-            ],
-            "opera": [
-                10,
-                10.5,
-                11,
-                11.5,
-                11.6,
-                12,
-                "next"
-            ],
-            "safari": [
-                "5.0.5",
-                5.1
-            ]
+            "ie": [6,7,8,9],
+            "chrome": [4,23,"canary"],
+            "firefox": [3,3.5,3.6,4,17,"nightly"],
+            "opera": [10,10.5,11,11.5,11.6,12,"next"],
+            "safari": ["5.0.5",5.1]
         }
     },
     "devDependencies": {

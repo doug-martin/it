@@ -960,14 +960,15 @@ require.define("/node_modules/extended/node_modules/extender/extender.js",functi
             function _extender(obj) {
                 var ret = obj, i, l;
                 if (!(obj instanceof Base)) {
-                    var base = {}, instance = (base.instance = {"__extender__": _extender});
+                    var OurBase = Base;
                     for (i = 0, l = defined.length; i < l; i++) {
                         var definer = defined[i];
                         if (definer[0](obj)) {
-                            merge(instance, definer[1]);
+                            OurBase = OurBase.extend({instance: definer[1]});
                         }
                     }
-                    ret = new (Base.extend(base))(obj);
+                    ret = new OurBase(obj);
+                    ret["__extender__"] = _extender;
                 }
                 return ret;
             }
@@ -985,6 +986,16 @@ require.define("/node_modules/extended/node_modules/extender/extender.js",functi
                     decorate = decorate || {};
                     var proto = {};
                     decorateProto(proto, decorate);
+                    //handle browsers like which skip over the constructor while looping
+                    if (!proto.hasOwnProperty("constructor")) {
+                        if (decorate.hasOwnProperty("constructor")) {
+                            addMethod(proto, "constructor", decorate.constructor);
+                        } else {
+                            proto.constructor = function () {
+                                this._super(arguments);
+                            };
+                        }
+                    }
                     defined.push([tester, proto]);
                 }
                 return _extender;
@@ -2106,8 +2117,15 @@ require.define("/node_modules/is-extended/index.js",function(require,module,expo
             return obj !== undef && obj === null;
         }
 
-        function isArguments(object) {
+
+        var isArguments = function _isArguments(object) {
             return !isUndefinedOrNull(object) && Object.prototype.toString.call(object) === '[object Arguments]';
+        };
+
+        if (!isArguments(arguments)) {
+            isArguments = function _isArguments(obj) {
+                return !!(obj && obj.hasOwnProperty("callee"));
+            };
         }
 
 
@@ -3171,7 +3189,7 @@ require.define("/node_modules/date-extended/index.js",function(require,module,ex
                             weeks = parseInt(days / 7, 10);
                             // Mark the date advanced by the number of
                             // round weeks (may be zero)
-                            var dtMark = new Date(date1);
+                            var dtMark = new Date(+date1);
                             dtMark.setDate(dtMark[utc ? "getUTCDate" : "getDate"]() + (weeks * 7));
                             var dayMark = dtMark[utc ? "getUTCDay" : "getDay"]();
 
@@ -3483,8 +3501,8 @@ require.define("/node_modules/date-extended/index.js",function(require,module,ex
              * @returns -1 if date1 is < date2 0 if date1 === date2  1 if date1 > date2
              */
             compare: function (/*Date*/date1, /*Date*/date2, /*String*/portion) {
-                date1 = new Date(date1);
-                date2 = new Date((date2 || new Date()));
+                date1 = new Date(+date1);
+                date2 = new Date(+(date2 || new Date()));
 
                 if (portion === "date") {
                     // Ignore times and compare dates.
@@ -3561,7 +3579,7 @@ require.define("/node_modules/date-extended/index.js",function(require,module,ex
                 var res = addTransform(interval, date, amount || 0);
                 amount = res[0];
                 var property = res[1];
-                var sum = new Date(date);
+                var sum = new Date(+date);
                 var fixOvershoot = res[2];
                 if (property) {
                     sum["set" + property](sum["get" + property]() + amount);
@@ -3809,7 +3827,7 @@ require.define("/node_modules/date-extended/index.js",function(require,module,ex
             };
         }
 
-        var intervals = ["year", "month", "day", "hour", "minute", "second"], interval;
+        var intervals = ["year", "month", "day", "hour", "minute", "second"];
         for (var i = 0, l = intervals.length; i < l; i++) {
             addInterval(intervals[i]);
         }
@@ -4192,9 +4210,149 @@ require.define("/node_modules/string-extended/index.js",function(require,module,
 
     function defineString(extended, is, date) {
 
-        var stringify = typeof JSON !== "undefined" ? JSON.stringify : function (obj) {
-            return "" + obj;
-        };
+        var stringify;
+        if (typeof JSON === "undefined") {
+            /*
+             json2.js
+             2012-10-08
+
+             Public Domain.
+
+             NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+             */
+
+            (function () {
+                function f(n) {
+                    // Format integers to have at least two digits.
+                    return n < 10 ? '0' + n : n;
+                }
+
+                var isPrimitive = is.tester().isString().isNumber().isBoolean().tester();
+
+                function toJSON(obj) {
+                    if (is.isDate(obj)) {
+                        return isFinite(obj.valueOf())
+                            ? obj.getUTCFullYear() + '-' +
+                            f(obj.getUTCMonth() + 1) + '-' +
+                            f(obj.getUTCDate()) + 'T' +
+                            f(obj.getUTCHours()) + ':' +
+                            f(obj.getUTCMinutes()) + ':' +
+                            f(obj.getUTCSeconds()) + 'Z'
+                            : null;
+                    } else if (isPrimitive(obj)) {
+                        return obj.valueOf();
+                    }
+                    return obj;
+                }
+
+                var cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+                    escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+                    gap,
+                    indent,
+                    meta = {    // table of character substitutions
+                        '\b': '\\b',
+                        '\t': '\\t',
+                        '\n': '\\n',
+                        '\f': '\\f',
+                        '\r': '\\r',
+                        '"': '\\"',
+                        '\\': '\\\\'
+                    },
+                    rep;
+
+
+                function quote(string) {
+                    escapable.lastIndex = 0;
+                    return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
+                        var c = meta[a];
+                        return typeof c === 'string' ? c : '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+                    }) + '"' : '"' + string + '"';
+                }
+
+
+                function str(key, holder) {
+
+                    var i, k, v, length, mind = gap, partial, value = holder[key];
+                    if (value) {
+                        value = toJSON(value);
+                    }
+                    if (typeof rep === 'function') {
+                        value = rep.call(holder, key, value);
+                    }
+                    switch (typeof value) {
+                        case 'string':
+                            return quote(value);
+                        case 'number':
+                            return isFinite(value) ? String(value) : 'null';
+                        case 'boolean':
+                        case 'null':
+                            return String(value);
+                        case 'object':
+                            if (!value) {
+                                return 'null';
+                            }
+                            gap += indent;
+                            partial = [];
+                            if (Object.prototype.toString.apply(value) === '[object Array]') {
+                                length = value.length;
+                                for (i = 0; i < length; i += 1) {
+                                    partial[i] = str(i, value) || 'null';
+                                }
+                                v = partial.length === 0 ? '[]' : gap ? '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']' : '[' + partial.join(',') + ']';
+                                gap = mind;
+                                return v;
+                            }
+                            if (rep && typeof rep === 'object') {
+                                length = rep.length;
+                                for (i = 0; i < length; i += 1) {
+                                    if (typeof rep[i] === 'string') {
+                                        k = rep[i];
+                                        v = str(k, value);
+                                        if (v) {
+                                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                                        }
+                                    }
+                                }
+                            } else {
+                                for (k in value) {
+                                    if (Object.prototype.hasOwnProperty.call(value, k)) {
+                                        v = str(k, value);
+                                        if (v) {
+                                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                                        }
+                                    }
+                                }
+                            }
+                            v = partial.length === 0 ? '{}' : gap ? '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}' : '{' + partial.join(',') + '}';
+                            gap = mind;
+                            return v;
+                    }
+                }
+
+                stringify = function (value, replacer, space) {
+                    var i;
+                    gap = '';
+                    indent = '';
+                    if (typeof space === 'number') {
+                        for (i = 0; i < space; i += 1) {
+                            indent += ' ';
+                        }
+                    } else if (typeof space === 'string') {
+                        indent = space;
+                    }
+                    rep = replacer;
+                    if (replacer && typeof replacer !== 'function' &&
+                        (typeof replacer !== 'object' ||
+                            typeof replacer.length !== 'number')) {
+                        throw new Error('JSON.stringify');
+                    }
+                    return str('', {'': value});
+                };
+            }());
+        }else{
+            stringify = JSON.stringify;
+        }
+
 
         var isHash = is.isHash, aSlice = Array.prototype.slice;
 
@@ -5082,7 +5240,7 @@ require.define("/node_modules/promise-extended/index.js",function(require,module
             return function _wrap() {
                 var ret = new Promise();
                 var args = argsToArray(arguments);
-                args.push(ret.resolve.bind(ret));
+                args.push(ret.resolve);
                 fn.apply(scope || this, args);
                 return ret.promise();
             };
@@ -5114,10 +5272,10 @@ require.define("/node_modules/promise-extended/index.js",function(require,module
             return function waiter() {
                 if (!resolved) {
                     args = arguments;
-                    return p.then(function doneWaiting() {
+                    return p.then(bind(this, function doneWaiting() {
                         resolved = true;
                         return fn.apply(this, args);
-                    }.bind(this));
+                    }));
                 } else {
                     return when(fn.apply(this, arguments));
                 }
