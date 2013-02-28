@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>it</title>
-    <link rel="stylesheet" href="./assets/css/bootstrap.css">
+    <link rel="stylesheet" href="./assets/css/bootstrap.min.css">
     <link rel="stylesheet" href="./assets/css/prettify.css">
     <style type="text/css">
         
@@ -74,13 +74,18 @@
             z-index: 1000;
         }
 
+        .dropdown-menu{
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
         @media (max-width:979px) {
             .subnav{
                 margin-top: auto;
             }
         }
     </style>
-    <link rel="stylesheet" href="./assets/css/bootstrap-responsive.css">
+    <link rel="stylesheet" href="./assets/css/bootstrap-responsive.min.css">
     <script type="text/javascript">
         var init = (function () {
             "use strict";
@@ -141,6 +146,15 @@
                     
 
                         
+                    <li class="dropdown">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">Namespaces<b class="caret"></b></a>
+                        <ul class="dropdown-menu">
+                            
+                            <li><a href="it.html">it</a></li>
+                            
+                        </ul>
+                    </li>
+                    
                     
                 </ul>
                 
@@ -164,20 +178,12 @@
 
 
 
-  <p><a href="https://travis-ci.org/doug-martin/it"><img src="https://travis-ci.org/doug-martin/it.png" alt="Build Status"></a>
-
-</p>
-<p><a href="http://ci.testling.com/doug-martin/it"><img src="http://ci.testling.com/doug-martin/it.png" alt="browser support"></a>
-
-</p>
+  <p><a href="https://travis-ci.org/doug-martin/it"><img src="https://travis-ci.org/doug-martin/it.png" alt="Build Status"></a></p>
+<p><a href="http://ci.testling.com/doug-martin/it"><img src="http://ci.testling.com/doug-martin/it.png" alt="browser support"></a></p>
 <h1>It</h1>
 <h2>Overview</h2>
-<p>It is a testing framework for node.js and the browser.
-
-</p>
-<p> <strong>Features</strong>
-
-</p>
+<p>It is a testing framework for node.js and the browser.</p>
+<p> <strong>Features</strong></p>
 <ul>
 <li>Supports Promises, and the mocha <code>done(err)</code> style of async tests.</li>
 <li>Browser Support</li>
@@ -190,13 +196,9 @@
 </ul>
 <h2>Installation</h2>
 <pre class='prettyprint linenums lang-js'><code>npm install it</code></pre>
-<p>To use the it executable
-
-</p>
+<p>To use the it executable</p>
 <pre class='prettyprint linenums lang-js'><code>npm install -g it</code></pre>
-<p>In the browser
-
-</p>
+<p>In the browser</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-html">&lt;!DOCTYPE html&gt;
 &lt;html&gt;
     &lt;head&gt;
@@ -218,9 +220,7 @@
     &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;</code></pre>
-<p>With requirejs
-
-</p>
+<p>With requirejs</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-html">&lt;!DOCTYPE html&gt;
 &lt;html&gt;
 &lt;head&gt;
@@ -244,9 +244,7 @@
 &lt;/html&gt;</code></pre>
 <h2>Usage</h2>
 <h3>Getting Started</h3>
-<p>The basic structure of a test in <code>it</code> looks like the following.
-
-</p>
+<p>The basic structure of a test in <code>it</code> looks like the following.</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">
 var it = require(&quot;it&quot;),
     assert = require(&quot;assert&quot;);
@@ -269,12 +267,8 @@ it.describe(&quot;an it test&quot;, function(it){
 
 });</code></pre>
 <h3>Synchronous tests</h3>
-<p>Writing synchronous tests in <strong>It</strong> is extremely simple. So lets start off with an example.
-
-</p>
-<p>Lets assume we have a Person Object
-
-</p>
+<p>Writing synchronous tests in <strong>It</strong> is extremely simple. So lets start off with an example.</p>
+<p>Lets assume we have a Person Object</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">var Person = function (name, age) {
     this.name = name;
     this.age = age;
@@ -286,9 +280,7 @@ it.describe(&quot;an it test&quot;, function(it){
     };
 
 };</code></pre>
-<p>The first tests we could run on person could be testing the setting of name and age.
-
-</p>
+<p>The first tests we could run on person could be testing the setting of name and age.</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">
 var it = require(&quot;../index&quot;),
     assert = require(&quot;assert&quot;);
@@ -306,12 +298,8 @@ it.describe(&quot;Person&quot;, function (it) {
     });
 
 });</code></pre>
-<p>Notice we use the <strong>it</strong> passed back to the describe callback.
-
-</p>
-<p>Next we could test different scenarios of Person#getOlder
-
-</p>
+<p>Notice we use the <strong>it</strong> passed back to the describe callback.</p>
+<p>Next we could test different scenarios of Person#getOlder</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">var it = require(&quot;../index&quot;),
     assert = require(&quot;assert&quot;);
 
@@ -333,13 +321,9 @@ it.describe(&quot;Person&quot;, function (it) {
     });
 
 });</code></pre>
-<p>In this example we are describing the <strong>getOlder</strong> method and run different tests against it.
-Notice the <strong>it</strong> passed back is used again.
-
-</p>
-<p>You may nest tests as deep as you like as long as you remember to use the proper <strong>it</strong>.
-
-</p>
+<p>In this example we are describing the <strong>getOlder</strong> method and run different tests against it. 
+Notice the <strong>it</strong> passed back is used again.</p>
+<p>You may nest tests as deep as you like as long as you remember to use the proper <strong>it</strong>. </p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">it.describe(&quot;#getOlder nested&quot;, function (it) {
 
     it.describe(&quot;with positive numbers&quot;, function (it) {
@@ -354,7 +338,7 @@ Notice the <strong>it</strong> passed back is used again.
 
     it.describe(&quot;with negative numbers&quot;, function () {
 
-        //uh oh wrong it
+        //uh oh wrong it 
         it.should(&quot;not work&quot;, function () {
             var person = new Person(&quot;bob&quot;, 1);
             person.getOlder(-2);
@@ -365,12 +349,8 @@ Notice the <strong>it</strong> passed back is used again.
 
 });</code></pre>
 <h3>Asynchronous tests</h3>
-<p>Writing asynchronous tests in <strong>It</strong> is just as easy as writing synchronous tests.
-
-</p>
-<p>Lets modify Person to make get older async
-
-</p>
+<p>Writing asynchronous tests in <strong>It</strong> is just as easy as writing synchronous tests.</p>
+<p>Lets modify Person to make get older async</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">var Person = function (name, age) {
     this.name = name;
     this.age = age;
@@ -382,14 +362,9 @@ Notice the <strong>it</strong> passed back is used again.
         }.bind(this), years * 500);
     };
 };</code></pre>
-<p>Now that <strong>getOlder</strong> is async lets test it
-
-</p>
+<p>Now that <strong>getOlder</strong> is async lets test it</p>
 <p>In this example a promise is the return value. If you have used <code>comb</code>, <code>Q</code>, <code>promises-extedned</code> or any other framework that uses
-<strong>Promises</strong> then this will feel pretty natural to you. The test will wait for the promise to resolve before  continuing any other tests.
-
-
-</p>
+<strong>Promises</strong> then this will feel pretty natural to you. The test will wait for the promise to resolve before  continuing any other tests.</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">
    var p = require(&quot;promise-extended&quot;);
 
@@ -406,9 +381,7 @@ Notice the <strong>it</strong> passed back is used again.
        });
    });</code></pre>
 <p>In this example the should callback accepts a <code>next(err)</code> argument which is a function that should be called when the current test is done. So if next is invoked with a first argument other than null or undefined then
-it is assumed that the test errored.
-
-</p>
+it is assumed that the test errored.</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">
    it.describe(&quot;#getOlder&quot;, function (it) {
        //Call with next
@@ -421,13 +394,8 @@ it is assumed that the test errored.
        });
    });</code></pre>
 <h3>context</h3>
-<p><code>it</code> also supports the concept of a context, which is a set of functionality that should belong to the current <code>describe</code> or <code>suite</code> tests but needs something extra like extra setup or tear down functionality.
-
-</p>
-<p>In fact anything you can do withing the <code>describe</code> callback you can do in a <code>context</code>.
-
-
-</p>
+<p><code>it</code> also supports the concept of a context, which is a set of functionality that should belong to the current <code>describe</code> or <code>suite</code> tests but needs something extra like extra setup or tear down functionality.</p>
+<p>In fact anything you can do withing the <code>describe</code> callback you can do in a <code>context</code>.</p>
 <pre class='prettyprint linenums lang-js'><code>
 it.describe(&quot;contexts&quot;, function(it){
 
@@ -456,9 +424,7 @@ it.describe(&quot;contexts&quot;, function(it){
     });
 })</code></pre>
 <h3>Timeouts</h3>
-<p>To set a duration limit on each test within a suite use the <code>timeout(duration)</code> method.
-
-</p>
+<p>To set a duration limit on each test within a suite use the <code>timeout(duration)</code> method.</p>
 <pre class='prettyprint linenums lang-js'><code>
 it.describe(&quot;#timeouts&quot;, function(){
 
@@ -478,9 +444,7 @@ it.describe(&quot;#timeouts&quot;, function(){
 
 });</code></pre>
 <h3>Skip</h3>
-<p>If you wish to skip an action you can use the <code>skip</code> method which will put the action into a <code>pending</code> state, and not run it.
-
-</p>
+<p>If you wish to skip an action you can use the <code>skip</code> method which will put the action into a <code>pending</code> state, and not run it.</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">
 
 it.describe(&quot;#timeouts&quot;, function(){
@@ -501,9 +465,7 @@ it.describe(&quot;#timeouts&quot;, function(){
 
 });</code></pre>
 <h2>Tdd</h2>
-<p><code>it</code> also supports tdd style tests.
-
-</p>
+<p><code>it</code> also supports tdd style tests.</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">
 it.suite(&quot;Person&quot;, function (it) {
 
@@ -524,12 +486,8 @@ it.suite(&quot;Person&quot;, function (it) {
 
 });</code></pre>
 <h3>Running Tests</h3>
-<p>To run tests there are two options the <strong>it</strong> executable
-
-</p>
-<p>Options
-
-</p>
+<p>To run tests there are two options the <strong>it</strong> executable </p>
+<p>Options</p>
 <ul>
 <li>-d, --directory : The root directory of your tests</li>
 <li>-f --filter : A filter to apply to run certain behaviors/suites/tests</li>
@@ -538,28 +496,16 @@ it.suite(&quot;Person&quot;, function (it) {
 <li>--reporters : Display a list of reporters that are available</li>
 <li>-h, --help : Displays help.</li>
 </ul>
-<p>To run an entire suite
-
-</p>
+<p>To run an entire suite</p>
 <pre class='prettyprint linenums lang-js'><code>it -d ./mytests -r dotmatrix</code></pre>
-<p>To run an individual test
-
-</p>
+<p>To run an individual test</p>
 <pre class='prettyprint linenums lang-js'><code>it ./mytests/person.test.js</code></pre>
-<p>Or
-
-</p>
+<p>Or</p>
 <pre class='prettyprint linenums lang-js'><code>it -f &quot;Person&quot;</code></pre>
-<p>To run the #getOlder spec
-
-</p>
+<p>To run the #getOlder spec</p>
 <pre class='prettyprint linenums lang-js'><code>it -f &quot;Person:#getOlder&quot;</code></pre>
-<p>You can alternatively run the test directly.
-
-</p>
-<p><strong>Note</strong> When running tests using the <code>it.run()</code> method, <code>it</code> will not automatically exit the program on completion, therefore if you still have items like DB connections still open your program will not exit.
-
-</p>
+<p>You can alternatively run the test directly.</p>
+<p><strong>Note</strong> When running tests using the <code>it.run()</code> method, <code>it</code> will not automatically exit the program on completion, therefore if you still have items like DB connections still open your program will not exit.</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">
 it.describe(&quot;A Person&quot;, function(it){
 
@@ -575,9 +521,7 @@ it.describe(&quot;A Person&quot;, function(it){
 });
 
 it.run();</code></pre>
-<p>You can also filter the tests to run from within the test
-
-</p>
+<p>You can also filter the tests to run from within the test</p>
 <pre class='prettyprint linenums lang-js'><code class="lang-javascript">
 it.describe(&quot;A Person&quot;, function(it){
 
@@ -595,52 +539,25 @@ it.describe(&quot;A Person&quot;, function(it){
 
 it.run(&quot;A Person:should set name&quot;);</code></pre>
 <h3>Reporters</h3>
-<p><strong><code>spec</code></strong>
-
-</p>
-<p><img src="https://raw.github.com/doug-martin/it/master/assets/spec.png" alt="spec">
-
-</p>
-<p><strong><code>dot</code></strong>
-
-</p>
-<p><img src="https://raw.github.com/doug-martin/it/master/assets/dot.png" alt="dot">
-
-</p>
-<p><strong><code>tap</code></strong>
-
-</p>
-<p><img src="https://raw.github.com/doug-martin/it/master/assets/tap.png" alt="tap">
-
-</p>
-<p><strong><code>doc</code></strong>
-
-</p>
-<p><img src="https://raw.github.com/doug-martin/it/master/assets/doc.png" alt="doc">
-
-</p>
-<p><strong><code>html</code></strong>
-
-</p>
-<p><img src="https://raw.github.com/doug-martin/it/master/assets/browser.png" alt="html">
-
-</p>
+<p><strong><code>spec</code></strong></p>
+<p><img src="https://raw.github.com/doug-martin/it/master/assets/spec.png" alt="spec"></p>
+<p><strong><code>dot</code></strong></p>
+<p><img src="https://raw.github.com/doug-martin/it/master/assets/dot.png" alt="dot"></p>
+<p><strong><code>tap</code></strong></p>
+<p><img src="https://raw.github.com/doug-martin/it/master/assets/tap.png" alt="tap"></p>
+<p><strong><code>doc</code></strong></p>
+<p><img src="https://raw.github.com/doug-martin/it/master/assets/doc.png" alt="doc"></p>
+<p><strong><code>html</code></strong></p>
+<p><img src="https://raw.github.com/doug-martin/it/master/assets/browser.png" alt="html"></p>
 <h3>Code Coverage</h3>
-<p>If you use <a href="https://github.com/visionmedia/node-jscoverage">node-jscoverage</a> to generate coverage then by default <code>it</code> will output a coverage report. You may also output coverage to an <code>HTML</code> file by passing in the <code>--cov-html</code> flag to the executable.
-
-</p>
-<p>For example out put see <a href="http://c2fo.github.com/patio/coverage.html">patio test coverage</a>.
-
-
-</p>
+<p>If you use <a href="https://github.com/visionmedia/node-jscoverage">node-jscoverage</a> to generate coverage then by default <code>it</code> will output a coverage report. You may also output coverage to an <code>HTML</code> file by passing in the <code>--cov-html</code> flag to the executable.</p>
+<p>For example out put see <a href="http://c2fo.github.com/patio/coverage.html">patio test coverage</a>.</p>
 <h3>Assert extensions</h3>
-<p>The following methods are added to assert for convenience
-
-</p>
+<p>The following methods are added to assert for convenience</p>
 <ul>
 <li><code>lengthOf</code> - assert the length of an array</li>
 <li><code>isTrue</code> - assert that a value is true</li>
-<li><code>isFalse</code> - assert that a value is false</li>
+<li><code>isFalse</code> - assert that a value is false </li>
 <li><code>isRegExp</code> - assert that a value is a Regular Expression</li>
 <li><code>isArray</code> - assert that a value is an Array</li>
 <li><code>isHash</code> - assert that a value is a plain object</li>
@@ -660,9 +577,7 @@ it.run(&quot;A Person:should set name&quot;);</code></pre>
 <li><code>falsy</code> - assert that the value is falsy.</li>
 </ul>
 <h3>License</h3>
-<p>MIT <a href="https://github.com/doug-martin/it/raw/master/LICENSE">https://github.com/doug-martin/it/raw/master/LICENSE</a>
-
-</p>
+<p>MIT <a href="https://github.com/doug-martin/it/raw/master/LICENSE">https://github.com/doug-martin/it/raw/master/LICENSE</a></p>
 <h3>Meta</h3>
 <ul>
 <li>Code: <code>git clone git://github.com/doug-martin/it.git</code></li>
