@@ -1558,6 +1558,16 @@ require.define("/node_modules/declare.js/declare.js",function(require,module,exp
             return ret && obj.constructor === Object;
         }
 
+        var isArguments = function _isArguments(object) {
+            return Object.prototype.toString.call(object) === '[object Arguments]';
+        };
+
+        if (!isArguments(arguments)) {
+            isArguments = function _isArguments(obj) {
+                return !!(obj && obj.hasOwnProperty("callee"));
+            };
+        }
+
         function indexOf(arr, item) {
             if (arr && arr.length) {
                 for (var i = 0, l = arr.length; i < l; i++) {
@@ -1587,7 +1597,7 @@ require.define("/node_modules/declare.js/declare.js",function(require,module,exp
                 supers = meta.supers,
                 l = supers.length, superMeta = meta.superMeta, pos = superMeta.pos;
             if (l > pos) {
-                a && (args = a);
+                args = !args ? [] : (!isArguments(args) && !isArray(args)) ? [args] : args;
                 var name = superMeta.name, f = superMeta.f, m;
                 do {
                     m = supers[pos][name];
@@ -1597,6 +1607,7 @@ require.define("/node_modules/declare.js/declare.js",function(require,module,exp
                     }
                 } while (l > ++pos);
             }
+
             return null;
         }
 
@@ -1693,7 +1704,7 @@ require.define("/node_modules/declare.js/declare.js",function(require,module,exp
                 }
             }
             for (var j in proto) {
-                if (j != "getters" && j != "setters") {
+                if (j !== "getters" && j !== "setters") {
                     var p = proto[j];
                     if ("function" === typeof p) {
                         if (!child.hasOwnProperty(j)) {
@@ -1949,6 +1960,8 @@ require.define("/node_modules/is-extended/index.js",function(require,module,expo
     function defineIsa(extended) {
 
         var undef, pSlice = Array.prototype.slice;
+
+        var hasOwnProperty = Object.prototype.hasOwnProperty;
 
         function argsToArray(args, slice) {
             slice = slice || 0;
@@ -2239,6 +2252,42 @@ require.define("/node_modules/is-extended/index.js",function(require,module,expo
             return !isIn(obj, arr);
         }
 
+        function containsAt(arr, obj, index) {
+            if (isArray(arr) && arr.length > index) {
+                return isEq(arr[index], obj);
+            }
+            return false;
+        }
+
+        function notContainsAt(arr, obj, index) {
+            if (isArray(arr)) {
+                return !isEq(arr[index], obj);
+            }
+            return false;
+        }
+
+        function has(obj, prop) {
+            return hasOwnProperty.call(obj, prop);
+        }
+
+        function notHas(obj, prop) {
+            return !has(obj, prop);
+        }
+
+        function length(obj, l) {
+            if (has(obj, "length")) {
+                return obj.length === l;
+            }
+            return false;
+        }
+
+        function notLength(obj, l) {
+            if (has(obj, "length")) {
+                return obj.length !== l;
+            }
+            return false;
+        }
+
         var isa = {
             isFunction: isFunction,
             isObject: isObject,
@@ -2273,7 +2322,13 @@ require.define("/node_modules/is-extended/index.js",function(require,module,expo
             isLike: isLike,
             isNotLike: isNotLike,
             contains: contains,
-            notContains: notContains
+            notContains: notContains,
+            has: has,
+            notHas: notHas,
+            isLength: length,
+            isNotLength: notLength,
+            containsAt: containsAt,
+            notContainsAt: notContainsAt
         };
 
         var tester = {
@@ -2380,7 +2435,7 @@ require.define("/node_modules/is-extended/index.js",function(require,module,expo
             return defineIsa((require("extended")));
         });
     } else {
-        this.is = defineIsa(this.extended);
+        this.isExtended = defineIsa(this.extended);
     }
 
 }).call(this);
@@ -2402,12 +2457,21 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
     function defineArray(extended, is) {
 
         var isString = is.isString,
-            isArray = is.isArray,
+            isArray = Array.isArray || is.isArray,
             isDate = is.isDate,
             floor = Math.floor,
             abs = Math.abs,
             mathMax = Math.max,
-            mathMin = Math.min;
+            mathMin = Math.min,
+            arrayProto = Array.prototype,
+            arrayIndexOf = arrayProto.indexOf,
+            arrayForEach = arrayProto.forEach,
+            arrayMap = arrayProto.map,
+            arrayReduce = arrayProto.reduce,
+            arrayReduceRight = arrayProto.reduceRight,
+            arrayFilter = arrayProto.filter,
+            arrayEvery = arrayProto.every,
+            arraySome = arrayProto.some;
 
 
         function cross(num, cros) {
@@ -2432,7 +2496,7 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
 
         function intersection(a, b) {
             var ret = [], aOne;
-            if (isArray(a) && isArray(b) && a.length && b.length) {
+            if (a && b && a.length && b.length) {
                 for (var i = 0, l = a.length; i < l; i++) {
                     aOne = a[i];
                     if (indexOf(b, aOne) !== -1) {
@@ -2492,7 +2556,10 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
 
         })();
 
-        function indexOf(arr, searchElement) {
+        function indexOf(arr, searchElement, from) {
+            if (arr && arrayIndexOf && arrayIndexOf === arr.indexOf) {
+                return arr.indexOf(searchElement, from);
+            }
             if (!isArray(arr)) {
                 throw new TypeError();
             }
@@ -2522,7 +2589,7 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
             return -1;
         }
 
-        function lastIndexOf(arr, searchElement) {
+        function lastIndexOf(arr, searchElement, from) {
             if (!isArray(arr)) {
                 throw new TypeError();
             }
@@ -2554,6 +2621,9 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
         }
 
         function filter(arr, iterator, scope) {
+            if (arr && arrayFilter && arrayFilter === arr.filter) {
+                return arr.filter(iterator, scope);
+            }
             if (!isArray(arr) || typeof iterator !== "function") {
                 throw new TypeError();
             }
@@ -2576,13 +2646,21 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
             if (!isArray(arr) || typeof iterator !== "function") {
                 throw new TypeError();
             }
+            if (arr && arrayForEach && arrayForEach === arr.forEach) {
+                arr.forEach(iterator, scope);
+                return arr;
+            }
             for (var i = 0, len = arr.length; i < len; ++i) {
                 iterator.call(scope || arr, arr[i], i, arr);
             }
+
             return arr;
         }
 
         function every(arr, iterator, scope) {
+            if (arr && arrayEvery && arrayEvery === arr.every) {
+                return arr.every(iterator, scope);
+            }
             if (!isArray(arr) || typeof iterator !== "function") {
                 throw new TypeError();
             }
@@ -2597,6 +2675,9 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
         }
 
         function some(arr, iterator, scope) {
+            if (arr && arraySome && arraySome === arr.some) {
+                return arr.some(iterator, scope);
+            }
             if (!isArray(arr) || typeof iterator !== "function") {
                 throw new TypeError();
             }
@@ -2611,6 +2692,9 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
         }
 
         function map(arr, iterator, scope) {
+            if (arr && arrayMap && arrayMap === arr.map) {
+                return arr.map(iterator, scope);
+            }
             if (!isArray(arr) || typeof iterator !== "function") {
                 throw new TypeError();
             }
@@ -2627,6 +2711,10 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
         }
 
         function reduce(arr, accumulator, curr) {
+            var initial = arguments.length > 2;
+            if (arr && arrayReduce && arrayReduce === arr.reduce) {
+                return initial ? arr.reduce(accumulator, curr) : arr.reduce(accumulator);
+            }
             if (!isArray(arr) || typeof accumulator !== "function") {
                 throw new TypeError();
             }
@@ -2650,6 +2738,10 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
         }
 
         function reduceRight(arr, accumulator, curr) {
+            var initial = arguments.length > 2;
+            if (arr && arrayReduceRight && arrayReduceRight === arr.reduceRight) {
+                return initial ? arr.reduceRight(accumulator, curr) : arr.reduceRight(accumulator);
+            }
             if (!isArray(arr) || typeof accumulator !== "function") {
                 throw new TypeError();
             }
@@ -2757,15 +2849,14 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
         }
 
         function removeDuplicates(arr) {
-            var ret = arr;
+            var ret = [];
             if (isArray(arr)) {
-                ret = reduce(arr, function (a, b) {
-                    if (indexOf(a, b) === -1) {
-                        return a.concat(b);
-                    } else {
-                        return a;
+                for (var i = 0, l = arr.length; i < l; i++) {
+                    var item = arr[i];
+                    if (indexOf(ret, item) === -1) {
+                        ret.push(item);
                     }
-                }, []);
+                }
             }
             return ret;
         }
@@ -2882,27 +2973,28 @@ require.define("/node_modules/array-extended/index.js",function(require,module,e
             var ret = [];
             var arrs = argsToArray(arguments);
             if (arrs.length > 1) {
-                ret = removeDuplicates(reduce(arrs, function (a, b) {
-                    return a.concat(b);
-                }, []));
+                for (var i = 0, l = arrs.length; i < l; i++) {
+                    ret = ret.concat(arrs[i]);
+                }
+                ret = removeDuplicates(ret);
             }
             return ret;
         }
 
         function intersect() {
-            var collect = [], set;
+            var collect = [], sets;
             var args = argsToArray(arguments);
             if (args.length > 1) {
                 //assume we are intersections all the lists in the array
-                set = args;
+                sets = args;
             } else {
-                set = args[0];
+                sets = args[0];
             }
-            if (isArray(set)) {
-                var x = set.shift();
-                collect = reduce(set, function (a, b) {
-                    return intersection(a, b);
-                }, x);
+            if (isArray(sets)) {
+                var collect = sets.shift();
+                for (var i = 0, l = sets.length; i < l; i++) {
+                    collect = intersection(collect, sets[i]);
+                }
             }
             return removeDuplicates(collect);
         }
@@ -5922,8 +6014,8 @@ function splitFilter(filter) {
     var ret = [];
     if (isString(filter)) {
         ret = _(filter.split("|")).map(function (filter) {
-            return _(filter.trim().split(":")).map(function (f) {
-                return f.trim();
+            return _(filter.replace(/^\s*|\s$/g, "").split(":")).map(function (f) {
+                return f.replace(/^\s*|\s$/g, "");
             }).value();
         }).value();
     }
@@ -5940,7 +6032,7 @@ function setUpCb(cb, timeout) {
             isCallback = false,
             oldErrorHandler;
 
-        var ignoreProcessError = it.ignoreProcessError === true;
+        var ignoreProcessError = it.ignoreErrors() === true;
         var errorHandler = function (err) {
             if (!isCallback) {
                 isCallback = true;
@@ -6051,7 +6143,7 @@ EventEmitter.extend({
 
         stopOnError: false,
 
-        ignoreProcessError: false,
+        __ignoreProcessError: false,
 
         constructor: function constructor(description, options) {
             this._super(arguments);
@@ -6066,7 +6158,15 @@ EventEmitter.extend({
             if (!this.sub && !this.filtered) {
                 this._static.tests[description] = this;
             }
-            _.bindAll(this, ["_addAction", "_addTest", "timeout", "getAction", "beforeAll", "beforeEach", "afterAll", "afterEach", "context", "get", "set", "skip"]);
+            _.bindAll(this, ["_addAction", "ignoreErrors", "_addTest", "timeout", "getAction", "beforeAll", "beforeEach", "afterAll", "afterEach", "context", "get", "set", "skip"]);
+        },
+
+        ignoreErrors: function (val) {
+            if (_.isBoolean(val)) {
+                this.__ignoreProcessError = val;
+            } else {
+                return this.__ignoreProcessError;
+            }
         },
 
         timeout: function (num) {
@@ -6128,7 +6228,7 @@ EventEmitter.extend({
         _addTest: function (description, cb) {
             var cloned = this._static.clone(this, description, {sub: true, level: this.level + 1, parent: this}, cb);
             var it = cloned._addAction;
-            _(["suite", "test", "should", "describe", "timeout", "getAction", "beforeAll", "beforeEach",
+            _(["suite", "test", "should", "describe", "timeout", "ignoreErrors", "getAction", "beforeAll", "beforeEach",
                 "afterAll", "afterEach", "context", "get", "set", "skip"]).forEach(function (key) {
                     if (_.isFunction(cloned[key])) {
                         it[key] = cloned[key];
@@ -6320,9 +6420,8 @@ EventEmitter.extend({
                 __be: behavior.__be.slice(),
                 __ae: behavior.__ae.slice(),
                 parent: behavior,
-                reporter: behavior.reporter,
                 stopOnError: behavior.stopOnError,
-                ignoreProcessError: behavior.ignoreProcessError
+                __ignoreProcessError: behavior.ignoreErrors()
             }, options), cb);
         },
 
@@ -6430,7 +6529,7 @@ Test.extend({
             var test = new this(description, {});
             var it = test._addAction;
             _(["description", "should", "describe", "timeout", "getAction", "beforeAll", "beforeEach",
-                "afterAll", "afterEach", "context", "get", "set", "skip"]).forEach(function (key) {
+                "afterAll", "afterEach", "context", "get", "set", "skip", "ignoreErrors"]).forEach(function (key) {
                     it[key] = test[key];
                 });
             cb(it);
@@ -6483,7 +6582,7 @@ Test.extend({
             var test = new this(description, {});
             var it = test._addAction;
             _(["suite", "test", "timeout", "getAction", "beforeAll", "beforeEach",
-                "afterAll", "afterEach", "context", "get", "set", "skip"]).forEach(function (key) {
+                "afterAll", "afterEach", "context", "get", "set", "skip", "ignoreErrors"]).forEach(function (key) {
                     it[key] = test[key];
                 });
             cb(test);
@@ -6801,6 +6900,7 @@ Reporter.extend({
 
 require.define("/lib/formatters/tap.js",function(require,module,exports,__dirname,__filename,process,global){"use strict";
 var _ = require("../extended"),
+    format = _.format,
     Reporter = require("./reporter");
 
 
@@ -6821,25 +6921,27 @@ Reporter.extend({
         },
 
         startTests: function (tests) {
-            console.log('%d..%d', 1, (this.numActions = tests.numActions));
+            console.log(format('%d..%d', 1, (this.numActions = tests.numActions)));
         },
 
         actionSuccess: function printSuccess(action) {
             this.passed++;
-            console.log('ok %d %s', ++this.ran, getActionName(action));
+            console.log(format('ok %d %s', ++this.ran, getActionName(action)));
 
         },
 
         actionPending: function printPending(action) {
-            console.log('ok %d %s # SKIP -', ++this.ran, getActionName(action));
+            console.log(format('ok %d %s # SKIP -', ++this.ran, getActionName(action)));
         },
 
         actionError: function printError(action) {
             this.failed++;
             var summary = action.get("summary"), err = summary.error;
-            console.log('not ok %d %s', ++this.ran, getActionName(action));
+            console.log(format('not ok %d %s', ++this.ran, getActionName(action)));
             if (err.stack) {
                 console.log(err.stack.replace(/^/gm, '  '));
+            } else if (err.message) {
+                console.log(err.message);
             } else {
                 console.log(err);
             }
