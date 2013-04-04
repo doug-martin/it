@@ -67,7 +67,7 @@ try {
     if (configFile) {
         setupEnv(require(configFile));
     } else {
-        _(glob.sync("**/it.config.json")).map(function (f) {
+        _(glob.sync("*/test/**/it.config.json")).map(function (f) {
             return path.resolve(f);
         }).map(function (p) {
                 return require(p);
