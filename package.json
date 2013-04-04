@@ -1,7 +1,7 @@
 {
     "name": "it",
     "description": "A testing framework for node",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "keywords": [
         "testing",
         "test",
@@ -29,7 +29,8 @@
         "object-extended": "~0.0.3",
         "promise-extended": "~0.0.3",
         "commander": "~1.1.1",
-        "glob-whatev": "~0.1.8"
+        "glob": "~3.1.21",
+        "grunt": "~0.4.1"
     },
     "testling": {
         "files": "test/browserling.js",
@@ -39,11 +40,14 @@
             "firefox/10..latest",
             "safari/latest",
             "opera/11.0..latest",
-            "iphone/6", "ipad/6"
+            "iphone/6",
+            "ipad/6"
         ]
     },
     "devDependencies": {
-        "grunt-browserify": "~0.1.2"
+        "grunt-browserify": "~0.1.3",
+        "grunt-contrib-uglify": "~0.2.0",
+        "grunt-contrib-jshint": "~0.3.0"
     },
     "homepage": "http://doug-martin.github.com/it",
     "author": {
