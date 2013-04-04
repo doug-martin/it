@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/doug-martin/it.png)](https://travis-ci.org/doug-martin/it)
 
-[![browser support](http://ci.testling.com/doug-martin/it.png)](http://ci.testling.com/doug-martin/it)
+[![browser support](https://ci.testling.com/doug-martin/it.png)](https://ci.testling.com/doug-martin/it)
 
 # It
 
