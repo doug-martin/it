@@ -18,12 +18,22 @@ module.exports = function (grunt) {
 
         browserify: {
             'it.js': {
-                entries: ['lib/browser/it.js']
+                src: ['lib/browser/it.js'],
+                ignore: [
+                    'lib/formatters/coverage.js',
+                    'lib/formatters/coverage-html.js',
+                    'lib/formatters/doc.js',
+                    'lib/formatters/dot.js',
+                    'lib/formatters/spec.js',
+                    'lib/formatters/tap.js'
+                ],
+                dest: 'it.js'
             }
         },
 
         uglify: {
             options: {
+                report: "gzip",
                 banner: '/*! <%= pkg.name %> - v<%= pkg.version %> - ' +
                     '<%= grunt.template.today("yyyy-mm-dd") %>\n' +
                     '<%= pkg.homepage ? "* " + pkg.homepage + "\\n" : "" %>' +

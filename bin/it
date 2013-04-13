@@ -25,7 +25,7 @@ _(Module).extend({
 });
 
 program
-    .version('0.0.1')
+    .version(require("../package.json").version)
     .option('-e, --env [string]', 'environment')
     .option('-r, --reporter [string]', 'reporter')
     .option('-f, --filter [string]', "filter")
@@ -67,7 +67,7 @@ try {
     if (configFile) {
         setupEnv(require(configFile));
     } else {
-        _(glob.sync("*/test/**/it.config.json")).map(function (f) {
+        _(glob.sync("test/**/it.config.json")).map(function (f) {
             return path.resolve(f);
         }).map(function (p) {
                 return require(p);
