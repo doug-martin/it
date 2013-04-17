@@ -80,7 +80,7 @@
     }
 }).call(typeof window !== "undefined" ? window : global);
 })(window)
-},{"../formatters/reporter":2,"../extended":3,"./formatters/html":4,"../formatters/tap":5,"../extension":6,"../interfaces":7}],5:[function(require,module,exports){
+},{"../extended":2,"./formatters/html":3,"../formatters/reporter":4,"../formatters/tap":5,"../extension":6,"../interfaces":7}],5:[function(require,module,exports){
 
 },{}],8:[function(require,module,exports){
 // shim for using process in browser
@@ -701,175 +701,7 @@ assert.instanceOf = function (val, cls, message) {
 };
 
 module.exports = assert;
-},{"assert":10,"./extended":3}],2:[function(require,module,exports){
-"use strict";
-var _ = require("../extended"),
-    style = _.style,
-    format = _.format;
-
-
-var pluralize = function (count, str) {
-    return count !== 1 ? str + "s" : str;
-};
-
-_.declare({
-
-    instance: {
-
-        constructor: function () {
-            this.errors = [];
-            _.bindAll(this, ["startTests", "testError", "printFinalSummary", "listenTest", "listenAction", "testRun",
-                "testEnd", "actionError", "actionSuccess", "actionPending", "testsDone"]);
-            _.bus.on("start", this.startTests);
-            _.bus.on("error", this.testError);
-            _.bus.on("done", this.testsDone);
-            _.bus.on("test", this.listenTest);
-        },
-
-        listenTest: function listenTest(test) {
-            test.on("test", this.listenTest);
-            test.on("action", this.listenAction);
-            test.on("run", this.testRun);
-            test.on("error", this.testError);
-            test.on("done", this.testEnd);
-        },
-
-        listenAction: function listenAction(action) {
-            action.on("error", this.actionError);
-            action.on("success", this.actionSuccess);
-            action.on("pending", this.actionPending);
-
-        },
-
-        formatMs: function formatMs(ms) {
-            return format("% 6ds", ms / 1000);
-        },
-
-        startTests: function () {
-        },
-
-        testRun: function printTitle() {
-
-        },
-
-        actionSuccess: function printSuccess() {
-
-        },
-
-        actionPending: function printPending() {
-
-        },
-
-        actionError: function printError(action) {
-            var error = action.get("summary").error;
-            this.errors.push({error: error, test: action});
-        },
-
-        testError: function printError(test) {
-            this.errors.push({error: test.error, test: test});
-        },
-
-        processSummary: function processSummary(summary) {
-            if (summary.hasOwnProperty("summaries")) {
-                summary = summary.summaries;
-            }
-            var errCount = 0, successCount = 0, pendingCount = 0, errors = {}, duration = 0;
-            _(summary).forEach(function (sum) {
-                duration += sum.duration;
-            });
-            (function total(summary) {
-                _(summary).forEach(function (sum, i) {
-                    if (sum.hasOwnProperty("summaries")) {
-                        total(sum.summaries);
-                    } else if (sum.status === "passed") {
-                        successCount++;
-                    } else if (sum.status === "pending") {
-                        pendingCount++;
-                    } else {
-                        errors[i] = sum.error;
-                        errCount++;
-                    }
-                });
-            })(summary);
-            return {errCount: errCount, successCount: successCount, pendingCount: pendingCount, errors: errors, duration: duration};
-        },
-
-        testEnd: function () {
-
-        },
-
-        testsDone: function (tests) {
-            this.printFinalSummary(tests);
-        },
-
-        printFinalSummary: function (test) {
-            this.testEnd.apply(this, arguments);
-            console.log("\nSummary");
-            var stats = this.processSummary(test.summary || test.get("summary"));
-            var errCount = stats.errCount, successCount = stats.successCount, pendingCount = stats.pendingCount, duration = stats.duration;
-            console.log(format("Finished in %s", this.formatMs(duration)));
-            var out = [
-                successCount + pluralize(successCount, " example"),
-                errCount + pluralize(errCount, " error"),
-                pendingCount + " pending"
-            ];
-            var color = pendingCount > 0 ? 'cyan' : errCount > 0 ? 'red' : 'green';
-            console.log(style(out.join(", "), color));
-            this._static.list(this.errors);
-            return errCount ? 1 : 0;
-        }
-
-
-    },
-
-    "static": {
-
-        reporters: {},
-
-        registerType: function (type) {
-            type = type.toLowerCase();
-            if (!this.reporters.hasOwnProperty(type)) {
-                this.reporters[type] = this;
-            }
-            return this;
-        },
-
-        getInstance: function (type, args) {
-            type = type.toLowerCase();
-            if (this.reporters.hasOwnProperty(type)) {
-                return new this.reporters[type](args || {});
-            } else {
-                throw new Error("Invalid Reporter type");
-            }
-        },
-
-        list: function (errors) {
-            console.error();
-            errors.forEach(function (test, i) {
-                // format
-                var fmt = '  %s.%d) %s:\n' + style('     %s', "red") + style('\n%s\n', ["red", "bold"]);
-                // msg
-                var errs = test.error;
-                _((_.isArray(errs) ? errs : [errs])).forEach(function (err, j) {
-                    if (err) {
-                        var message = err.message || '',
-                            stack = err.stack || message,
-                            index = stack.indexOf(message) + message.length,
-                            msg = stack.slice(0, index);
-
-                        // indent stack trace without msg
-                        stack = stack.slice(index ? index + 1 : index)
-                            .replace(/^/gm, '  ');
-
-                        console.error(fmt, (i + 1), j, test.test.get("fullName"), msg, stack);
-                    }
-                });
-            });
-        }
-    }
-
-}).as(module);
-},{"../extended":3}],11:[function(require,module,exports){
+},{"assert":10,"./extended":2}],11:[function(require,module,exports){
 var events = require('events');
 
 exports.isArray = isArray;
@@ -1224,7 +1056,176 @@ exports.format = function(f) {
 
 },{"events":9}],4:[function(require,module,exports){
 "use strict";
+var _ = require("../extended"),
+    style = _.style,
+    format = _.format;
+
+
+var pluralize = function (count, str) {
+    return count !== 1 ? str + "s" : str;
+};
+
+_.declare({
+
+    instance: {
+
+        constructor: function () {
+            this.errors = [];
+            _.bindAll(this, ["startTests", "testError", "printFinalSummary", "listenTest", "listenAction", "testRun",
+                "testEnd", "actionError", "actionSuccess", "actionPending", "testsDone"]);
+            _.bus.on("start", this.startTests);
+            _.bus.on("error", this.testError);
+            _.bus.on("done", this.testsDone);
+            _.bus.on("test", this.listenTest);
+        },
+
+        listenTest: function listenTest(test) {
+            test.on("test", this.listenTest);
+            test.on("action", this.listenAction);
+            test.on("run", this.testRun);
+            test.on("error", this.testError);
+            test.on("done", this.testEnd);
+        },
+
+        listenAction: function listenAction(action) {
+            action.on("error", this.actionError);
+            action.on("success", this.actionSuccess);
+            action.on("pending", this.actionPending);
+
+        },
+
+        formatMs: function formatMs(ms) {
+            return format("% 6ds", ms / 1000);
+        },
+
+        startTests: function () {
+        },
+
+        testRun: function printTitle() {
+
+        },
+
+        actionSuccess: function printSuccess() {
+
+        },
+
+        actionPending: function printPending() {
+
+        },
+
+        actionError: function printError(action) {
+            var error = action.get("summary").error;
+            this.errors.push({error: error, test: action});
+        },
+
+        testError: function printError(test) {
+            this.errors.push({error: test.error, test: test});
+        },
+
+        processSummary: function processSummary(summary) {
+            if (summary.hasOwnProperty("summaries")) {
+                summary = summary.summaries;
+            }
+            var errCount = 0, successCount = 0, pendingCount = 0, errors = {}, duration = 0;
+            _(summary).forEach(function (sum) {
+                duration += sum.duration;
+            });
+            (function total(summary) {
+                _(summary).forEach(function (sum, i) {
+                    if (sum.hasOwnProperty("summaries")) {
+                        total(sum.summaries);
+                    } else if (sum.status === "passed") {
+                        successCount++;
+                    } else if (sum.status === "pending") {
+                        pendingCount++;
+                    } else {
+                        errors[i] = sum.error;
+                        errCount++;
+                    }
+                });
+            })(summary);
+            return {errCount: errCount, successCount: successCount, pendingCount: pendingCount, errors: errors, duration: duration};
+        },
+
+        testEnd: function () {
+
+        },
+
+        testsDone: function (tests) {
+            this.printFinalSummary(tests);
+        },
+
+        printFinalSummary: function (test) {
+            this.testEnd.apply(this, arguments);
+            console.log("\nSummary");
+            var stats = this.processSummary(test.summary || test.get("summary"));
+            var errCount = stats.errCount, successCount = stats.successCount, pendingCount = stats.pendingCount, duration = stats.duration;
+            console.log(format("Finished in %s", this.formatMs(duration)));
+            var out = [
+                successCount + pluralize(successCount, " example"),
+                errCount + pluralize(errCount, " error"),
+                pendingCount + " pending"
+            ];
+            var color = pendingCount > 0 ? 'cyan' : errCount > 0 ? 'red' : 'green';
+            console.log(style(out.join(", "), color));
+            this._static.list(this.errors);
+            return errCount ? 1 : 0;
+        }
+
+
+    },
+
+    "static": {
+
+        reporters: {},
+
+        registerType: function (type) {
+            type = type.toLowerCase();
+            if (!this.reporters.hasOwnProperty(type)) {
+                this.reporters[type] = this;
+            }
+            return this;
+        },
+
+        getInstance: function (type, args) {
+            type = type.toLowerCase();
+            if (this.reporters.hasOwnProperty(type)) {
+                return new this.reporters[type](args || {});
+            } else {
+                throw new Error("Invalid Reporter type");
+            }
+        },
+
+        list: function (errors) {
+            console.error();
+            errors.forEach(function (test, i) {
+                // format
+                var fmt = '  %s.%d) %s:\n' + style('     %s', "red") + style('\n%s\n', ["red", "bold"]);
+                // msg
+                var errs = test.error;
+                _((_.isArray(errs) ? errs : [errs])).forEach(function (err, j) {
+                    if (err) {
+                        var message = err.message || '',
+                            stack = err.stack || message,
+                            index = stack.indexOf(message) + message.length,
+                            msg = stack.slice(0, index);
+
+                        // indent stack trace without msg
+                        stack = stack.slice(index ? index + 1 : index)
+                            .replace(/^/gm, '  ');
+
+                        console.error(fmt, (i + 1), j, test.test.get("fullName"), msg, stack);
+                    }
+                });
+            });
+        }
+    }
+
+}).as(module);
+},{"../extended":2}],3:[function(require,module,exports){
+"use strict";
 var _ = require("../../extended"),
+    AssertionError = require("assert").AssertionError,
     Reporter = require("../../formatters/reporter"),
     format = _.format,
     arraySlice = Array.prototype.slice;
@@ -1311,6 +1312,33 @@ Reporter.extend({
             return this;
         },
 
+        __formatError: function (error) {
+            var str = error.stack || error.toString();
+
+            if (error instanceof AssertionError) {
+                str = error.toString() + "\n" + (error.stack || "").replace(/AssertionError.*\n/, "");
+            }
+
+            if (error.message) {
+                // FF / Opera do not add the message
+                if (!~str.indexOf(error.message)) {
+                    str = error.message + '\n' + str;
+                }
+
+                // <=IE7 stringifies to [Object Error]. Since it can be overloaded, we
+                // check for the result of the stringifying.
+                if ('[object Error]' === str) {
+                    str = error.message;
+                }
+            }
+
+            // Safari doesn't give you a stack. Let's at least provide a source line.
+            if (!error.stack && error.sourceURL && error.line !== undefined) {
+                str += "\n(" + error.sourceURL + ":" + error.line + ")";
+            }
+            return str;
+        },
+
         actionSuccess: function (action) {
             this.__addAction(action);
         },
@@ -1334,7 +1362,7 @@ Reporter.extend({
                         {className: "failed"},
                         format('  %s) %s:', i, action.get("fullName")),
                         createDom("br"),
-                        (error.stack ? error.stack : error).toString().replace(/^/gm, '       ')
+                        this.__formatError(error).replace(/^/gm, '       ')
                     ));
                 }, this);
             }
@@ -1358,7 +1386,7 @@ Reporter.extend({
         }
     }
 }).as(module).registerType("html");
-},{"../../extended":3,"../../formatters/reporter":2}],7:[function(require,module,exports){
+},{"assert":10,"../../formatters/reporter":4,"../../extended":2}],7:[function(require,module,exports){
 "use strict";
 
 var Test = require("./common").Test,
@@ -1385,7 +1413,7 @@ module.exports = {
         return Test.run(filter);
     }
 };
-},{"./bdd":13,"./tdd":14,"./common":15}],3:[function(require,module,exports){
+},{"./bdd":13,"./tdd":14,"./common":15}],2:[function(require,module,exports){
 module.exports = require("extended")()
     .register(require("is-extended"))
     .register(require("array-extended"))
@@ -1396,7 +1424,7 @@ module.exports = require("extended")()
     .register(require("function-extended"))
     .register("declare", require("declare.js"))
     .register("bus", new (require("events").EventEmitter)());
-},{"events":9,"extended":16,"is-extended":17,"array-extended":18,"date-extended":19,"object-extended":20,"string-extended":21,"function-extended":22,"promise-extended":23,"declare.js":24}],25:[function(require,module,exports){
+},{"events":9,"extended":16,"is-extended":17,"array-extended":18,"date-extended":19,"object-extended":20,"string-extended":21,"promise-extended":22,"function-extended":23,"declare.js":24}],25:[function(require,module,exports){
 exports.readIEEE754 = function(buffer, offset, isBE, mLen, nBytes) {
   var e, m,
       eLen = nBytes * 8 - mLen - 1,
@@ -2938,7 +2966,7 @@ Test.extend({
 }).as(module);
 
 
-},{"../extended":3,"./common":15}],14:[function(require,module,exports){
+},{"../extended":2,"./common":15}],14:[function(require,module,exports){
 "use strict";
 
 var Test = require("./common").Test,
@@ -2990,12 +3018,12 @@ Test.extend({
 }).as(module);
 
 
-},{"../extended":3,"./common":15}],15:[function(require,module,exports){
+},{"../extended":2,"./common":15}],24:[function(require,module,exports){
+module.exports = require("./declare.js");
+},{"./declare.js":27}],15:[function(require,module,exports){
 exports.Action = require("./action");
 exports.Test = require("./test.js");
-},{"./test.js":27,"./action":28}],24:[function(require,module,exports){
-module.exports = require("./declare.js");
-},{"./declare.js":29}],29:[function(require,module,exports){
+},{"./test.js":28,"./action":29}],27:[function(require,module,exports){
 (function () {
 
     /**
@@ -3984,7 +4012,7 @@ module.exports = require("./declare.js");
 
 
 })()
-},{"extender":30}],23:[function(require,module,exports){
+},{"extender":30}],22:[function(require,module,exports){
 (function(process){(function () {
     "use strict";
     /*global setImmediate, MessageChannel*/
@@ -4476,8 +4504,8 @@ module.exports = require("./declare.js");
             module.exports = definePromise(require("declare.js"), require("extended"), require("array-extended"), require("is-extended"), require("function-extended"));
         }
     } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return definePromise(require("declare.js"), require("extended"), require("array-extended"), require("is-extended"), require("function-extended"));
+        define(["declare", "extended", "array-extended", "is-extended", "function-extended"], function (declare, extended, array, is, fn) {
+            return definePromise(declare, extended, array, is, fn);
         });
     } else {
         this.promiseExtended = definePromise(this.declare, this.extended, this.arrayExtended, this.isExtended, this.functionExtended);
@@ -4492,380 +4520,7 @@ module.exports = require("./declare.js");
 
 
 })(require("__browserify_process"))
-},{"declare.js":31,"extended":32,"array-extended":33,"is-extended":34,"function-extended":35,"__browserify_process":8}],27:[function(require,module,exports){
-"use strict";
-
-var utils = require("../../utils"),
-    splitFilter = utils.splitFilter,
-    setUpCb = utils.setUpCb,
-    _ = require("../../extended"),
-    EventEmitter = require("./emitter"),
-    isEmpty = _.isEmpty,
-    isString = _.isString,
-    merge = _.merge,
-    Promise = _.Promise,
-    Action = require("./action");
-
-EventEmitter.extend({
-    instance: {
-
-        sub: false,
-
-        __timeout: null,
-
-        parent: null,
-
-        level: 0,
-
-        stopOnError: false,
-
-        __ignoreProcessError: false,
-
-        constructor: function constructor(description, options) {
-            this._super(arguments);
-            this.Action = this._static.Action;
-            this.description = description;
-            this.__shoulds = [];
-            this.__ba = [];
-            this.__be = [];
-            this.__aa = [];
-            this.__ae = [];
-            merge(this, options);
-            if (!this.sub && !this.filtered) {
-                this._static.tests[description] = this;
-            }
-            _.bindAll(this, ["_addAction", "ignoreErrors", "_addTest", "timeout", "getAction", "beforeAll", "beforeEach", "afterAll", "afterEach", "context", "get", "set", "skip"]);
-        },
-
-        ignoreErrors: function (val) {
-            if (_.isBoolean(val)) {
-                this.__ignoreProcessError = val;
-            } else {
-                return this.__ignoreProcessError;
-            }
-        },
-
-        timeout: function (num) {
-            this.__timeout = num;
-        },
-
-        getAction: function getAction(name) {
-            var matched = _.filter(this.__shoulds, function (should) {
-                if (should instanceof this.Action) {
-                    return should.description === name;
-                } else {
-                    return false;
-                }
-            }, this);
-            return matched.length !== 0 ? matched[0] : null;
-        },
-
-        as: function (mod) {
-            mod.exports = this;
-            return this;
-        },
-
-        beforeAll: function (cb) {
-            this.__ba.push(_.partial(setUpCb(cb), this));
-            return this;
-        },
-
-        beforeEach: function (cb) {
-            this.__be.push(_.partial(setUpCb(cb), this));
-            return this;
-        },
-
-        afterAll: function (cb) {
-            this.__aa.push(_.partial(setUpCb(cb), this));
-            return this;
-        },
-
-        afterEach: function (cb) {
-            this.__ae.push(_.partial(setUpCb(cb), this));
-            return this;
-        },
-
-
-        context: function (cb) {
-            var cloned = this._static.clone(this, null, {sub: true});
-            this.emit("addTest", cloned);
-            if (cb) {
-                cb(cloned);
-            }
-            this.__shoulds.push(cloned);
-            return cloned;
-        },
-
-        skip: function (description) {
-            this._addAction(description);
-        },
-
-
-        _addTest: function (description, cb) {
-            var cloned = this._static.clone(this, description, {sub: true, level: this.level + 1, parent: this}, cb);
-            var it = cloned._addAction;
-            _(["suite", "test", "should", "describe", "timeout", "ignoreErrors", "getAction", "beforeAll", "beforeEach",
-                "afterAll", "afterEach", "context", "get", "set", "skip"]).forEach(function (key) {
-                    if (_.isFunction(cloned[key])) {
-                        it[key] = cloned[key];
-                    }
-                });
-            if (cb) {
-                cb(it);
-            }
-            this.__shoulds.push(cloned);
-            return cloned;
-        },
-
-
-        _addAction: function (description, cb) {
-            var action = new this.Action(description, this, this.level + 1, cb);
-            this.__shoulds.push(action);
-            return this;
-        },
-
-
-        __runAction: function (action) {
-            var stopOnError = this.stopOnError;
-            return _.serial(this.__be)
-                .then(_.bind(this, function () {
-                    var ret = new Promise();
-                    action.run(this).then(
-                        _.bind(this, function actionSuccess() {
-                            var summary = action.get("summary");
-                            if (summary.status === "pending") {
-                                ret.callback();
-                            } else if (summary.status === "passed") {
-                                ret.callback();
-                            } else {
-                                ret[stopOnError ? "errback" : "callback"]();
-                            }
-                        }),
-                        _.bind(this, function actionError(err) {
-                            this.error = err;
-                            this.emit("error", this);
-                        }));
-                    return ret;
-                })).then(_.bind(this, function () {
-                    return _.serial(this.__ae);
-                }));
-        },
-
-        run: function (filter) {
-            var ret;
-            if (filter) {
-                ret = this.filter(filter).run();
-            } else {
-                ret = this.__runPromise;
-                if (!ret) {
-                    this.emit("run", this);
-                    ret = this.__runPromise = _.serial(this.__ba).then(
-                            _.bind(this, function () {
-                                return _.serial(_.map(this.__shoulds, function (action) {
-                                    return _.bind(this, function () {
-                                        var ret;
-                                        if (action instanceof Action) {
-                                            this.emit("action", action);
-                                            ret = this.__runAction(action);
-                                        } else {
-                                            this.emit("test", action);
-                                            ret = action.run();
-                                        }
-                                        return ret;
-                                    });
-                                }, this));
-                            })
-                        ).then(
-                            _.bind(this, function () {
-                                return _.serial(this.__aa);
-                            }),
-                            _.bind(this, function actionError(err) {
-                                this.error = err;
-                                this.emit("error", this);
-                            })
-                        ).both(_.bind(this, "emit", "done", this));
-                }
-            }
-            return ret;
-
-        },
-
-        matches: function matches(filter) {
-            return this.description === filter;
-        },
-
-        filter: function filter(f) {
-            var ret = this, i, l;
-            if (f.length) {
-                f = isString(f) ? splitFilter(f) : [f];
-                if (f) {
-                    ret = this._static.clone(this, this.description, {
-                        sub: this.sub,
-                        "filtered": this.sub ? false : true,
-                        parent: this.parent,
-                        __ba: this.__ba.slice(0),
-                        __aa: this.__ba.slice(0),
-                        "__shoulds": _(this.__shoulds).map(function (action) {
-                            var rest, include = false, ret = null;
-                            for (i = 0, l = f.length; i < l && !include; i++) {
-                                if (action.description === f[i][0]) {
-                                    include = true;
-                                    rest = f[i].slice(1);
-                                }
-                            }
-                            if (include) {
-                                if (action instanceof this.Action) {
-                                    ret = action;
-                                } else {
-                                    ret = action.filter(rest);
-                                }
-                            }
-                            return ret;
-                        }, this).compact().value()
-                    });
-                }
-            }
-            return ret;
-        },
-
-        getters: {
-            summary: function () {
-                var duration = 0, ret = {description: this.description, summaries: {}}, summaries = ret.summaries;
-                _.map(this.__shoulds, function (action) {
-                    var actionSum = action.get("summary");
-                    if (action instanceof Action || action.description) {
-                        summaries[action.description] = actionSum;
-                        duration += actionSum.duration;
-                    } else {
-                        merge(summaries, actionSum.summaries);
-                        duration += actionSum.duration;
-                    }
-                });
-                ret.duration = duration;
-                return ret;
-            },
-
-            fullName: function () {
-                var decription = "";
-                if (this.parent) {
-                    decription += this.parent.get("fullName") + ":";
-                }
-                decription += " " + this.description;
-                return decription;
-            },
-
-            length: function () {
-                return _(this.__shoulds).map(function (instance) {
-                    return instance instanceof Action ? 1 : instance.get("length");
-                }).sum().value();
-            },
-
-            errorCount: function () {
-                return _(this.__shoulds).map(function (instance) {
-                    return (instance instanceof Action) ? (instance.get("status") === "failed" ? 1 : 0) : instance.get("errorCount");
-                }).sum().value();
-            },
-
-            successCount: function () {
-                return _(this.__shoulds).map(function (instance) {
-                    return (instance instanceof Action) ? (instance.get("status") === "passed" ? 1 : 0) : instance.get("successCount");
-                }).sum().value();
-            },
-
-            pendingCount: function () {
-                return _(this.__shoulds).map(function (instance) {
-                    return (instance instanceof Action) ? (instance.get("status") === "pending" ? 1 : 0) : instance.get("pendingCount");
-                }).sum().value();
-            }
-
-        }
-    },
-
-    "static": {
-
-        tests: {},
-
-        init: function init() {
-            this.Action = Action;
-        },
-
-        clone: function (behavior, description, options, cb) {
-            return new this(description, merge({
-                __timeout: behavior.__timeout,
-                level: behavior.level,
-                __be: behavior.__be.slice(),
-                __ae: behavior.__ae.slice(),
-                parent: behavior,
-                stopOnError: behavior.stopOnError,
-                __ignoreProcessError: behavior.ignoreErrors()
-            }, options), cb);
-        },
-
-
-        __filter: function (filter) {
-            var ret = {}, tests = this.tests, names = _.pluck(filter, "0");
-            _.forEach(names, function (t, index) {
-                var test = tests[t];
-                if (test) {
-                    var filtered = tests[t].filter(filter[index].slice(1));
-                    if (ret[t]) {
-                        ret[t].__shoulds = ret[t].__shoulds.concat(filtered.__shoulds);
-                    } else {
-                        ret[t] = filtered;
-                    }
-
-                }
-            });
-            return ret;
-        },
-
-        run: function run(filter) {
-            var summaries = {}, tests = this.tests;
-            filter = splitFilter(filter);
-            if (filter.length) {
-                tests = this.__filter(filter);
-            }
-            if (!isEmpty(tests)) {
-                _.bus.emit("start", {tests: tests, numActions: _(tests).values().invoke("get", "length").sum().value()});
-                return _.serial(_(tests).keys().map(function (k) {
-                    return function () {
-                        _.bus.emit("test", tests[k]);
-                        return tests[k].run().both(function (summary) {
-                            summaries[k] = summary;
-                        });
-                    };
-                }).value()).then(_.bindIgnore(this, "printSummary"));
-            } else {
-                console.warn("No Tests found");
-                return _.resolve();
-            }
-        },
-
-        printSummary: function printSummary() {
-            var tests = this.tests;
-            var summary = {summary: {}, errorCount: 0, successCount: 0, pendingCount: 0};
-            if (!isEmpty(tests)) {
-                var keys = _.hash.keys(tests), length = 0, errorCount = 0, successCount = 0, pendingCount = 0;
-                _(tests).forEach(function (test, k) {
-                    var testSummary = test.get("summary");
-                    summary.errorCount += test.get("errorCount");
-                    summary.successCount += test.get("successCount");
-                    summary.pendingCount += test.get("pendingCount");
-                    if (testSummary) {
-                        summary.summary[k] = testSummary;
-                        length += 1;
-                    }
-                });
-                if (length < keys.length) {
-                    _.bus.emit("error", new Error("Async Error"));
-                }
-                _.bus.emit("done", summary);
-            }
-            return summary;
-        }
-    }
-}).as(module);
-},{"../../utils":36,"../../extended":3,"./emitter":37,"./action":28}],38:[function(require,module,exports){
+},{"declare.js":31,"extended":32,"array-extended":33,"is-extended":34,"function-extended":35,"__browserify_process":8}],36:[function(require,module,exports){
 require=(function(e,t,n,r){function i(r){if(!n[r]){if(!t[r]){if(e)return e(r);throw new Error("Cannot find module '"+r+"'")}var s=n[r]={exports:{}};t[r][0](function(e){var n=t[r][1][e];return i(n?n:e)},s,s.exports)}return n[r].exports}for(var s=0;s<r.length;s++)i(r[s]);return i})(typeof require!=="undefined"&&require,{1:[function(require,module,exports){
 exports.readIEEE754 = function(buffer, offset, isBE, mLen, nBytes) {
   var e, m,
@@ -9229,7 +8884,7 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
 
 })(require("__browserify_buffer").Buffer)
-},{"extended":16,"__browserify_buffer":38}],18:[function(require,module,exports){
+},{"extended":16,"__browserify_buffer":36}],18:[function(require,module,exports){
 (function () {
     "use strict";
 
@@ -9925,204 +9580,6 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
 
 
-},{"extended":16,"is-extended":17}],20:[function(require,module,exports){
-(function(){(function () {
-    "use strict";
-    /*global extended isExtended*/
-
-    function defineObject(extended, is) {
-
-        var deepEqual = is.deepEqual,
-            isHash = is.isHash;
-
-        function _merge(target, source) {
-            var name, s;
-            for (name in source) {
-                if (source.hasOwnProperty(name)) {
-                    s = source[name];
-                    if (!(name in target) || (target[name] !== s)) {
-                        target[name] = s;
-                    }
-                }
-            }
-            return target;
-        }
-
-        function _deepMerge(target, source) {
-            var name, s, t;
-            for (name in source) {
-                if (source.hasOwnProperty(name)) {
-                    s = source[name], t = target[name];
-                    if (!deepEqual(t, s)) {
-                        if (isHash(t) && isHash(s)) {
-                            target[name] = _deepMerge(t, s);
-                        } else if (isHash(s)) {
-                            target[name] = _deepMerge({}, s);
-                        } else {
-                            target[name] = s;
-                        }
-                    }
-                }
-            }
-            return target;
-        }
-
-
-        function merge(obj) {
-            if (!obj) {
-                obj = {};
-            }
-            for (var i = 1, l = arguments.length; i < l; i++) {
-                _merge(obj, arguments[i]);
-            }
-            return obj; // Object
-        }
-
-        function deepMerge(obj) {
-            if (!obj) {
-                obj = {};
-            }
-            for (var i = 1, l = arguments.length; i < l; i++) {
-                _deepMerge(obj, arguments[i]);
-            }
-            return obj; // Object
-        }
-
-
-        function extend(parent, child) {
-            var proto = parent.prototype || parent;
-            merge(proto, child);
-            return parent;
-        }
-
-        function forEach(hash, iterator, scope) {
-            if (!isHash(hash) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key;
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                iterator.call(scope || hash, hash[key], key, hash);
-            }
-            return hash;
-        }
-
-        function filter(hash, iterator, scope) {
-            if (!isHash(hash) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, value, ret = {};
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                value = hash[key];
-                if (iterator.call(scope || hash, value, key, hash)) {
-                    ret[key] = value;
-                }
-            }
-            return ret;
-        }
-
-        function values(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), ret = [];
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                ret.push(hash[objKeys[i]]);
-            }
-            return ret;
-        }
-
-
-        function keys(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var ret = [];
-            for (var i in hash) {
-                if (hash.hasOwnProperty(i)) {
-                    ret.push(i);
-                }
-            }
-            return ret;
-        }
-
-        function invert(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, ret = {};
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                ret[hash[key]] = key;
-            }
-            return ret;
-        }
-
-        function toArray(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, ret = [];
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                ret.push([key, hash[key]]);
-            }
-            return ret;
-        }
-
-        var hash = {
-            forEach: forEach,
-            filter: filter,
-            invert: invert,
-            values: values,
-            toArray: toArray,
-            keys: keys
-        };
-
-
-        var obj = {
-            extend: extend,
-            merge: merge,
-            deepMerge: deepMerge
-
-        };
-
-        var ret = extended.define(is.isObject, obj).define(isHash, hash).define(is.isFunction, {extend: extend}).expose({hash: hash}).expose(obj);
-        var orig = ret.extend;
-        ret.extend = function __extend() {
-            if (arguments.length === 1) {
-                return orig.extend.apply(ret, arguments);
-            } else {
-                extend.apply(null, arguments);
-            }
-        };
-        return ret;
-
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineObject(require("extended"), require("is-extended"));
-
-        }
-    } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return defineObject(require("extended"), require("is-extended"));
-        });
-    } else {
-        this.objectExtended = defineObject(extended, isExtended);
-    }
-
-}).call(this);
-
-
-
-
-
-
-
-})()
 },{"extended":16,"is-extended":17}],19:[function(require,module,exports){
 (function () {
     "use strict";
@@ -11071,7 +10528,205 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
 
 
-},{"extended":16,"is-extended":17,"array-extended":18}],21:[function(require,module,exports){
+},{"extended":16,"is-extended":17,"array-extended":18}],20:[function(require,module,exports){
+(function(){(function () {
+    "use strict";
+    /*global extended isExtended*/
+
+    function defineObject(extended, is) {
+
+        var deepEqual = is.deepEqual,
+            isHash = is.isHash;
+
+        function _merge(target, source) {
+            var name, s;
+            for (name in source) {
+                if (source.hasOwnProperty(name)) {
+                    s = source[name];
+                    if (!(name in target) || (target[name] !== s)) {
+                        target[name] = s;
+                    }
+                }
+            }
+            return target;
+        }
+
+        function _deepMerge(target, source) {
+            var name, s, t;
+            for (name in source) {
+                if (source.hasOwnProperty(name)) {
+                    s = source[name], t = target[name];
+                    if (!deepEqual(t, s)) {
+                        if (isHash(t) && isHash(s)) {
+                            target[name] = _deepMerge(t, s);
+                        } else if (isHash(s)) {
+                            target[name] = _deepMerge({}, s);
+                        } else {
+                            target[name] = s;
+                        }
+                    }
+                }
+            }
+            return target;
+        }
+
+
+        function merge(obj) {
+            if (!obj) {
+                obj = {};
+            }
+            for (var i = 1, l = arguments.length; i < l; i++) {
+                _merge(obj, arguments[i]);
+            }
+            return obj; // Object
+        }
+
+        function deepMerge(obj) {
+            if (!obj) {
+                obj = {};
+            }
+            for (var i = 1, l = arguments.length; i < l; i++) {
+                _deepMerge(obj, arguments[i]);
+            }
+            return obj; // Object
+        }
+
+
+        function extend(parent, child) {
+            var proto = parent.prototype || parent;
+            merge(proto, child);
+            return parent;
+        }
+
+        function forEach(hash, iterator, scope) {
+            if (!isHash(hash) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key;
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                iterator.call(scope || hash, hash[key], key, hash);
+            }
+            return hash;
+        }
+
+        function filter(hash, iterator, scope) {
+            if (!isHash(hash) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, value, ret = {};
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                value = hash[key];
+                if (iterator.call(scope || hash, value, key, hash)) {
+                    ret[key] = value;
+                }
+            }
+            return ret;
+        }
+
+        function values(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), ret = [];
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                ret.push(hash[objKeys[i]]);
+            }
+            return ret;
+        }
+
+
+        function keys(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var ret = [];
+            for (var i in hash) {
+                if (hash.hasOwnProperty(i)) {
+                    ret.push(i);
+                }
+            }
+            return ret;
+        }
+
+        function invert(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, ret = {};
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                ret[hash[key]] = key;
+            }
+            return ret;
+        }
+
+        function toArray(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, ret = [];
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                ret.push([key, hash[key]]);
+            }
+            return ret;
+        }
+
+        var hash = {
+            forEach: forEach,
+            filter: filter,
+            invert: invert,
+            values: values,
+            toArray: toArray,
+            keys: keys
+        };
+
+
+        var obj = {
+            extend: extend,
+            merge: merge,
+            deepMerge: deepMerge
+
+        };
+
+        var ret = extended.define(is.isObject, obj).define(isHash, hash).define(is.isFunction, {extend: extend}).expose({hash: hash}).expose(obj);
+        var orig = ret.extend;
+        ret.extend = function __extend() {
+            if (arguments.length === 1) {
+                return orig.extend.apply(ret, arguments);
+            } else {
+                extend.apply(null, arguments);
+            }
+        };
+        return ret;
+
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineObject(require("extended"), require("is-extended"));
+
+        }
+    } else if ("function" === typeof define) {
+        define(["require"], function (require) {
+            return defineObject(require("extended"), require("is-extended"));
+        });
+    } else {
+        this.objectExtended = defineObject(extended, isExtended);
+    }
+
+}).call(this);
+
+
+
+
+
+
+
+})()
+},{"extended":16,"is-extended":17}],21:[function(require,module,exports){
 (function () {
     "use strict";
 
@@ -11698,7 +11353,7 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
 
 
-},{"extended":16,"is-extended":17,"date-extended":19}],22:[function(require,module,exports){
+},{"extended":16,"is-extended":17,"date-extended":19}],23:[function(require,module,exports){
 (function () {
     "use strict";
 
@@ -11944,6 +11599,379 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
 },{"extended":16,"is-extended":17}],28:[function(require,module,exports){
 "use strict";
+
+var utils = require("../../utils"),
+    splitFilter = utils.splitFilter,
+    setUpCb = utils.setUpCb,
+    _ = require("../../extended"),
+    EventEmitter = require("./emitter"),
+    isEmpty = _.isEmpty,
+    isString = _.isString,
+    merge = _.merge,
+    Promise = _.Promise,
+    Action = require("./action");
+
+EventEmitter.extend({
+    instance: {
+
+        sub: false,
+
+        __timeout: null,
+
+        parent: null,
+
+        level: 0,
+
+        stopOnError: false,
+
+        __ignoreProcessError: false,
+
+        constructor: function constructor(description, options) {
+            this._super(arguments);
+            this.Action = this._static.Action;
+            this.description = description;
+            this.__shoulds = [];
+            this.__ba = [];
+            this.__be = [];
+            this.__aa = [];
+            this.__ae = [];
+            merge(this, options);
+            if (!this.sub && !this.filtered) {
+                this._static.tests[description] = this;
+            }
+            _.bindAll(this, ["_addAction", "ignoreErrors", "_addTest", "timeout", "getAction", "beforeAll", "beforeEach", "afterAll", "afterEach", "context", "get", "set", "skip"]);
+        },
+
+        ignoreErrors: function (val) {
+            if (_.isBoolean(val)) {
+                this.__ignoreProcessError = val;
+            } else {
+                return this.__ignoreProcessError;
+            }
+        },
+
+        timeout: function (num) {
+            this.__timeout = num;
+        },
+
+        getAction: function getAction(name) {
+            var matched = _.filter(this.__shoulds, function (should) {
+                if (should instanceof this.Action) {
+                    return should.description === name;
+                } else {
+                    return false;
+                }
+            }, this);
+            return matched.length !== 0 ? matched[0] : null;
+        },
+
+        as: function (mod) {
+            mod.exports = this;
+            return this;
+        },
+
+        beforeAll: function (cb) {
+            this.__ba.push(_.partial(setUpCb(cb), this));
+            return this;
+        },
+
+        beforeEach: function (cb) {
+            this.__be.push(_.partial(setUpCb(cb), this));
+            return this;
+        },
+
+        afterAll: function (cb) {
+            this.__aa.push(_.partial(setUpCb(cb), this));
+            return this;
+        },
+
+        afterEach: function (cb) {
+            this.__ae.push(_.partial(setUpCb(cb), this));
+            return this;
+        },
+
+
+        context: function (cb) {
+            var cloned = this._static.clone(this, null, {sub: true});
+            this.emit("addTest", cloned);
+            if (cb) {
+                cb(cloned);
+            }
+            this.__shoulds.push(cloned);
+            return cloned;
+        },
+
+        skip: function (description) {
+            this._addAction(description);
+        },
+
+
+        _addTest: function (description, cb) {
+            var cloned = this._static.clone(this, description, {sub: true, level: this.level + 1, parent: this}, cb);
+            var it = cloned._addAction;
+            _(["suite", "test", "should", "describe", "timeout", "ignoreErrors", "getAction", "beforeAll", "beforeEach",
+                "afterAll", "afterEach", "context", "get", "set", "skip"]).forEach(function (key) {
+                    if (_.isFunction(cloned[key])) {
+                        it[key] = cloned[key];
+                    }
+                });
+            if (cb) {
+                cb(it);
+            }
+            this.__shoulds.push(cloned);
+            return cloned;
+        },
+
+
+        _addAction: function (description, cb) {
+            var action = new this.Action(description, this, this.level + 1, cb);
+            this.__shoulds.push(action);
+            return this;
+        },
+
+
+        __runAction: function (action) {
+            var stopOnError = this.stopOnError;
+            return _.serial(this.__be)
+                .then(_.bind(this, function () {
+                    var ret = new Promise();
+                    action.run(this).then(
+                        _.bind(this, function actionSuccess() {
+                            var summary = action.get("summary");
+                            if (summary.status === "pending") {
+                                ret.callback();
+                            } else if (summary.status === "passed") {
+                                ret.callback();
+                            } else {
+                                ret[stopOnError ? "errback" : "callback"]();
+                            }
+                        }),
+                        _.bind(this, function actionError(err) {
+                            this.error = err;
+                            this.emit("error", this);
+                        }));
+                    return ret;
+                })).then(_.bind(this, function () {
+                    return _.serial(this.__ae);
+                }));
+        },
+
+        run: function (filter) {
+            var ret;
+            if (filter) {
+                ret = this.filter(filter).run();
+            } else {
+                ret = this.__runPromise;
+                if (!ret) {
+                    this.emit("run", this);
+                    ret = this.__runPromise = _.serial(this.__ba).then(
+                            _.bind(this, function () {
+                                return _.serial(_.map(this.__shoulds, function (action) {
+                                    return _.bind(this, function () {
+                                        var ret;
+                                        if (action instanceof Action) {
+                                            this.emit("action", action);
+                                            ret = this.__runAction(action);
+                                        } else {
+                                            this.emit("test", action);
+                                            ret = action.run();
+                                        }
+                                        return ret;
+                                    });
+                                }, this));
+                            })
+                        ).then(
+                            _.bind(this, function () {
+                                return _.serial(this.__aa);
+                            }),
+                            _.bind(this, function actionError(err) {
+                                this.error = err;
+                                this.emit("error", this);
+                            })
+                        ).both(_.bind(this, "emit", "done", this));
+                }
+            }
+            return ret;
+
+        },
+
+        matches: function matches(filter) {
+            return this.description === filter;
+        },
+
+        filter: function filter(f) {
+            var ret = this, i, l;
+            if (f.length) {
+                f = isString(f) ? splitFilter(f) : [f];
+                if (f) {
+                    ret = this._static.clone(this, this.description, {
+                        sub: this.sub,
+                        "filtered": this.sub ? false : true,
+                        parent: this.parent,
+                        __ba: this.__ba.slice(0),
+                        __aa: this.__ba.slice(0),
+                        "__shoulds": _(this.__shoulds).map(function (action) {
+                            var rest, include = false, ret = null;
+                            for (i = 0, l = f.length; i < l && !include; i++) {
+                                if (action.description === f[i][0]) {
+                                    include = true;
+                                    rest = f[i].slice(1);
+                                }
+                            }
+                            if (include) {
+                                if (action instanceof this.Action) {
+                                    ret = action;
+                                } else {
+                                    ret = action.filter(rest);
+                                }
+                            }
+                            return ret;
+                        }, this).compact().value()
+                    });
+                }
+            }
+            return ret;
+        },
+
+        getters: {
+            summary: function () {
+                var duration = 0, ret = {description: this.description, summaries: {}}, summaries = ret.summaries;
+                _.map(this.__shoulds, function (action) {
+                    var actionSum = action.get("summary");
+                    if (action instanceof Action || action.description) {
+                        summaries[action.description] = actionSum;
+                        duration += actionSum.duration;
+                    } else {
+                        merge(summaries, actionSum.summaries);
+                        duration += actionSum.duration;
+                    }
+                });
+                ret.duration = duration;
+                return ret;
+            },
+
+            fullName: function () {
+                var decription = "";
+                if (this.parent) {
+                    decription += this.parent.get("fullName") + ":";
+                }
+                decription += " " + this.description;
+                return decription;
+            },
+
+            length: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return instance instanceof Action ? 1 : instance.get("length");
+                }).sum().value();
+            },
+
+            errorCount: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return (instance instanceof Action) ? (instance.get("status") === "failed" ? 1 : 0) : instance.get("errorCount");
+                }).sum().value();
+            },
+
+            successCount: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return (instance instanceof Action) ? (instance.get("status") === "passed" ? 1 : 0) : instance.get("successCount");
+                }).sum().value();
+            },
+
+            pendingCount: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return (instance instanceof Action) ? (instance.get("status") === "pending" ? 1 : 0) : instance.get("pendingCount");
+                }).sum().value();
+            }
+
+        }
+    },
+
+    "static": {
+
+        tests: {},
+
+        init: function init() {
+            this.Action = Action;
+        },
+
+        clone: function (behavior, description, options, cb) {
+            return new this(description, merge({
+                __timeout: behavior.__timeout,
+                level: behavior.level,
+                __be: behavior.__be.slice(),
+                __ae: behavior.__ae.slice(),
+                parent: behavior,
+                stopOnError: behavior.stopOnError,
+                __ignoreProcessError: behavior.ignoreErrors()
+            }, options), cb);
+        },
+
+
+        __filter: function (filter) {
+            var ret = {}, tests = this.tests, names = _.pluck(filter, "0");
+            _.forEach(names, function (t, index) {
+                var test = tests[t];
+                if (test) {
+                    var filtered = tests[t].filter(filter[index].slice(1));
+                    if (ret[t]) {
+                        ret[t].__shoulds = ret[t].__shoulds.concat(filtered.__shoulds);
+                    } else {
+                        ret[t] = filtered;
+                    }
+
+                }
+            });
+            return ret;
+        },
+
+        run: function run(filter) {
+            var summaries = {}, tests = this.tests;
+            filter = splitFilter(filter);
+            if (filter.length) {
+                tests = this.__filter(filter);
+            }
+            if (!isEmpty(tests)) {
+                _.bus.emit("start", {tests: tests, numActions: _(tests).values().invoke("get", "length").sum().value()});
+                return _.serial(_(tests).keys().map(function (k) {
+                    return function () {
+                        _.bus.emit("test", tests[k]);
+                        return tests[k].run().both(function (summary) {
+                            summaries[k] = summary;
+                        });
+                    };
+                }).value()).then(_.bindIgnore(this, "printSummary"));
+            } else {
+                console.warn("No Tests found");
+                return _.resolve();
+            }
+        },
+
+        printSummary: function printSummary() {
+            var tests = this.tests;
+            var summary = {summary: {}, errorCount: 0, successCount: 0, pendingCount: 0};
+            if (!isEmpty(tests)) {
+                var keys = _.hash.keys(tests), length = 0, errorCount = 0, successCount = 0, pendingCount = 0;
+                _(tests).forEach(function (test, k) {
+                    var testSummary = test.get("summary");
+                    summary.errorCount += test.get("errorCount");
+                    summary.successCount += test.get("successCount");
+                    summary.pendingCount += test.get("pendingCount");
+                    if (testSummary) {
+                        summary.summary[k] = testSummary;
+                        length += 1;
+                    }
+                });
+                if (length < keys.length) {
+                    _.bus.emit("error", new Error("Async Error"));
+                }
+                _.bus.emit("done", summary);
+            }
+            return summary;
+        }
+    }
+}).as(module);
+},{"../../utils":37,"./emitter":38,"../../extended":2,"./action":29}],29:[function(require,module,exports){
+"use strict";
 var _ = require("../../extended"),
     isFunction = _.isFunction,
     EventEmitter = require("./emitter"),
@@ -12033,7 +12061,7 @@ EventEmitter.extend({
     }
 
 }).as(module);
-},{"./emitter":37,"../../extended":3,"../../utils":36}],30:[function(require,module,exports){
+},{"../../extended":2,"./emitter":38,"../../utils":37}],30:[function(require,module,exports){
 module.exports = require("./extender.js");
 },{"./extender.js":39}],31:[function(require,module,exports){
 module.exports = require("./declare.js");
@@ -12926,7 +12954,107 @@ module.exports = require("./declare.js");
 
 
 
-},{}],36:[function(require,module,exports){
+},{}],32:[function(require,module,exports){
+(function(){(function () {
+    "use strict";
+    /*global extender is, dateExtended*/
+
+    function defineExtended(extender) {
+
+
+        var merge = (function merger() {
+            function _merge(target, source) {
+                var name, s;
+                for (name in source) {
+                    if (source.hasOwnProperty(name)) {
+                        s = source[name];
+                        if (!(name in target) || (target[name] !== s)) {
+                            target[name] = s;
+                        }
+                    }
+                }
+                return target;
+            }
+
+            return function merge(obj) {
+                if (!obj) {
+                    obj = {};
+                }
+                for (var i = 1, l = arguments.length; i < l; i++) {
+                    _merge(obj, arguments[i]);
+                }
+                return obj; // Object
+            };
+        }());
+
+        function getExtended() {
+
+            var loaded = {};
+
+
+            //getInitial instance;
+            var extended = extender.define();
+            extended.expose({
+                register: function register(alias, extendWith) {
+                    if (!extendWith) {
+                        extendWith = alias;
+                        alias = null;
+                    }
+                    var type = typeof extendWith;
+                    if (alias) {
+                        extended[alias] = extendWith;
+                    } else if (extendWith && type === "function") {
+                        extended.extend(extendWith);
+                    } else if (type === "object") {
+                        extended.expose(extendWith);
+                    } else {
+                        throw new TypeError("extended.register must be called with an extender function");
+                    }
+                    return extended;
+                },
+
+                define: function () {
+                    return extender.define.apply(extender, arguments);
+                }
+            });
+
+            return extended;
+        }
+
+        function extended() {
+            return getExtended();
+        }
+
+        extended.define = function define() {
+            return extender.define.apply(extender, arguments);
+        };
+
+        return extended;
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineExtended(require("extender"));
+
+        }
+    } else if ("function" === typeof define) {
+        define(["extender"], function (extender) {
+            return defineExtended(extender);
+        });
+    } else {
+        this.extended = defineExtended(this.extender);
+    }
+
+}).call(this);
+
+
+
+
+
+
+
+})()
+},{"extender":41}],37:[function(require,module,exports){
 (function(process){"use strict";
 var _ = require("./extended"),
     isPromiseLike = _.isPromiseLike,
@@ -13051,107 +13179,7 @@ function setUpCb(cb, timeout) {
 
 exports.setUpCb = setUpCb;
 })(require("__browserify_process"))
-},{"./extended":3,"__browserify_process":8}],32:[function(require,module,exports){
-(function(){(function () {
-    "use strict";
-    /*global extender isa, dateExtended*/
-
-    function defineExtended(extender, require) {
-
-
-        var merge = (function merger() {
-            function _merge(target, source) {
-                var name, s;
-                for (name in source) {
-                    if (source.hasOwnProperty(name)) {
-                        s = source[name];
-                        if (!(name in target) || (target[name] !== s)) {
-                            target[name] = s;
-                        }
-                    }
-                }
-                return target;
-            }
-
-            return function merge(obj) {
-                if (!obj) {
-                    obj = {};
-                }
-                for (var i = 1, l = arguments.length; i < l; i++) {
-                    _merge(obj, arguments[i]);
-                }
-                return obj; // Object
-            };
-        }());
-
-        function getExtended() {
-
-            var loaded = {};
-
-
-            //getInitial instance;
-            var extended = extender.define();
-            extended.expose({
-                register: function register(alias, extendWith) {
-                    if (!extendWith) {
-                        extendWith = alias;
-                        alias = null;
-                    }
-                    var type = typeof extendWith;
-                    if (alias) {
-                        extended[alias] = extendWith;
-                    } else if (extendWith && type === "function") {
-                        extended.extend(extendWith);
-                    } else if (type === "object") {
-                        extended.expose(extendWith);
-                    } else {
-                        throw new TypeError("extended.register must be called with an extender function");
-                    }
-                    return extended;
-                },
-
-                define: function () {
-                    return extender.define.apply(extender, arguments);
-                }
-            });
-
-            return extended;
-        }
-
-        function extended() {
-            return getExtended();
-        }
-
-        extended.define = function define() {
-            return extender.define.apply(extender, arguments);
-        };
-
-        return extended;
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineExtended(require("extender"), require);
-
-        }
-    } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return defineExtended(require("extender"), require);
-        });
-    } else {
-        this.extended = defineExtended(this.extender);
-    }
-
-}).call(this);
-
-
-
-
-
-
-
-})()
-},{"extender":41}],37:[function(require,module,exports){
+},{"./extended":2,"__browserify_process":8}],38:[function(require,module,exports){
 "use strict";
 var _ = require("../../extended"),
     EventEmitter = require("events").EventEmitter;
@@ -13166,9 +13194,10 @@ var instance = _.merge({}, EventEmitter.prototype, {
 _.declare({
     instance: instance
 }).as(module);
-},{"events":9,"../../extended":3}],33:[function(require,module,exports){
-(function () {
+},{"events":9,"../../extended":2}],33:[function(require,module,exports){
+(function(){(function () {
     "use strict";
+    /*global define*/
 
     var arraySlice = Array.prototype.slice;
 
@@ -13714,7 +13743,7 @@ _.declare({
                 sets = args[0];
             }
             if (isArray(sets)) {
-                var collect = sets.shift();
+                collect = sets.shift();
                 for (var i = 0, l = sets.length; i < l; i++) {
                     collect = intersection(collect, sets[i]);
                 }
@@ -13847,8 +13876,8 @@ _.declare({
             module.exports = defineArray(require("extended"), require("is-extended"));
         }
     } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return defineArray(require("extended"), require("is-extended"));
+        define(["extended", "is-extended"], function (extended, is) {
+            return defineArray(extended, is);
         });
     } else {
         this.arrayExtended = defineArray(this.extended, this.isExtended);
@@ -13862,15 +13891,16 @@ _.declare({
 
 
 
+})()
 },{"extended":32,"is-extended":34}],34:[function(require,module,exports){
 (function(Buffer){(function () {
     "use strict";
 
     function defineIsa(extended) {
 
-        var undef, pSlice = Array.prototype.slice;
+        var pSlice = Array.prototype.slice;
 
-        var hasOwnProperty = Object.prototype.hasOwnProperty;
+        var hasOwn = Object.prototype.hasOwnProperty;
         var toStr = Object.prototype.toString;
 
         function argsToArray(args, slice) {
@@ -13881,7 +13911,7 @@ _.declare({
         function keys(obj) {
             var ret = [];
             for (var i in obj) {
-                if (obj.hasOwnProperty(i)) {
+                if (hasOwn.call(obj, i)) {
                     ret.push(i);
                 }
             }
@@ -13899,13 +13929,11 @@ _.declare({
                 if (actual.length !== expected.length) {
                     return false;
                 }
-
                 for (var i = 0; i < actual.length; i++) {
                     if (actual[i] !== expected[i]) {
                         return false;
                     }
                 }
-
                 return true;
 
                 // 7.2. If the expected value is a Date object, the actual value is
@@ -14009,7 +14037,7 @@ _.declare({
 
         function isObject(obj) {
             var undef;
-            return obj !== null && obj !== undef && typeof obj === "object";
+            return obj !== null && typeof obj === "object";
         }
 
         function isHash(obj) {
@@ -14029,11 +14057,11 @@ _.declare({
         }
 
         function isBoolean(obj) {
-            return toStr.call(obj) === "[object Boolean]";
+            return obj === true || obj === false || toStr.call(obj) === "[object Boolean]";
         }
 
         function isUndefined(obj) {
-            return obj !== null && obj === undef;
+            return typeof obj === 'undefined';
         }
 
         function isDefined(obj) {
@@ -14045,7 +14073,7 @@ _.declare({
         }
 
         function isNull(obj) {
-            return obj !== undef && obj === null;
+            return obj === null;
         }
 
 
@@ -14055,7 +14083,7 @@ _.declare({
 
         if (!isArguments(arguments)) {
             isArguments = function _isArguments(obj) {
-                return !!(obj && obj.hasOwnProperty("callee"));
+                return !!(obj && hasOwn.call(obj, "callee"));
             };
         }
 
@@ -14119,7 +14147,9 @@ _.declare({
         }
 
         function isIn(obj, arr) {
-            if (isArray(arr)) {
+            if ((isArray(arr) && Array.prototype.indexOf) || isString(arr)) {
+                return arr.indexOf(obj) > -1;
+            } else if (isArray(arr)) {
                 for (var i = 0, l = arr.length; i < l; i++) {
                     if (isEq(obj, arr[i])) {
                         return true;
@@ -14151,10 +14181,9 @@ _.declare({
 
         function isLike(obj, reg) {
             if (isString(reg)) {
-                reg = new RegExp(reg);
-            }
-            if (isRegExp(reg)) {
-                return reg.test("" + obj);
+                return ("" + obj).match(reg) !== null;
+            } else if (isRegExp(reg)) {
+                return reg.test(obj);
             }
             return false;
         }
@@ -14186,7 +14215,7 @@ _.declare({
         }
 
         function has(obj, prop) {
-            return hasOwnProperty.call(obj, prop);
+            return hasOwn.call(obj, prop);
         }
 
         function notHas(obj, prop) {
@@ -14331,7 +14360,7 @@ _.declare({
         }
 
         for (var i in isa) {
-            if (isa.hasOwnProperty(i)) {
+            if (hasOwn.call(isa, i)) {
                 addToSwitcher(i);
                 addToTester(i);
             }
@@ -14361,7 +14390,7 @@ _.declare({
 
 
 })(require("__browserify_buffer").Buffer)
-},{"extended":32,"__browserify_buffer":38}],35:[function(require,module,exports){
+},{"extended":32,"__browserify_buffer":36}],35:[function(require,module,exports){
 (function () {
     "use strict";
 
@@ -14590,8 +14619,8 @@ _.declare({
 
         }
     } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return defineFunction(require("extended"), require("is-extended"));
+        define(["extended", "is-extended"], function (extended, is) {
+            return defineFunction(extended, is);
         });
     } else {
         this.functionExtended = defineFunction(this.extended, this.isExtended);
@@ -14605,7 +14634,7 @@ _.declare({
 
 
 
-},{"is-extended":34,"extended":32}],41:[function(require,module,exports){
+},{"extended":32,"is-extended":34}],41:[function(require,module,exports){
 module.exports = require("./extender.js");
 },{"./extender.js":42}],39:[function(require,module,exports){
 (function () {
@@ -15681,8 +15710,8 @@ module.exports = require("./extender.js");
 
         }
     } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return defineExtender((require("declare.js")));
+        define(["declare"], function (declare) {
+            return defineExtender(declare);
         });
     } else {
         this.extender = defineExtender(this.declare);
