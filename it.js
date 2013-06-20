@@ -80,7 +80,7 @@
     }
 }).call(typeof window !== "undefined" ? window : global);
 })(window)
-},{"../extended":2,"./formatters/html":3,"../formatters/reporter":4,"../formatters/tap":5,"../extension":6,"../interfaces":7}],5:[function(require,module,exports){
+},{"../extended":2,"../formatters/reporter":3,"./formatters/html":4,"../formatters/tap":5,"../extension":6,"../interfaces":7}],5:[function(require,module,exports){
 
 },{}],8:[function(require,module,exports){
 // shim for using process in browser
@@ -701,7 +701,175 @@ assert.instanceOf = function (val, cls, message) {
 };
 
 module.exports = assert;
-},{"assert":10,"./extended":2}],11:[function(require,module,exports){
+},{"assert":10,"./extended":2}],3:[function(require,module,exports){
+"use strict";
+var _ = require("../extended"),
+    style = _.style,
+    format = _.format;
+
+
+var pluralize = function (count, str) {
+    return count !== 1 ? str + "s" : str;
+};
+
+_.declare({
+
+    instance: {
+
+        constructor: function () {
+            this.errors = [];
+            _.bindAll(this, ["startTests", "testError", "printFinalSummary", "listenTest", "listenAction", "testRun",
+                "testEnd", "actionError", "actionSuccess", "actionPending", "testsDone"]);
+            _.bus.on("start", this.startTests);
+            _.bus.on("error", this.testError);
+            _.bus.on("done", this.testsDone);
+            _.bus.on("test", this.listenTest);
+        },
+
+        listenTest: function listenTest(test) {
+            test.on("test", this.listenTest);
+            test.on("action", this.listenAction);
+            test.on("run", this.testRun);
+            test.on("error", this.testError);
+            test.on("done", this.testEnd);
+        },
+
+        listenAction: function listenAction(action) {
+            action.on("error", this.actionError);
+            action.on("success", this.actionSuccess);
+            action.on("pending", this.actionPending);
+
+        },
+
+        formatMs: function formatMs(ms) {
+            return format("% 6ds", ms / 1000);
+        },
+
+        startTests: function () {
+        },
+
+        testRun: function printTitle() {
+
+        },
+
+        actionSuccess: function printSuccess() {
+
+        },
+
+        actionPending: function printPending() {
+
+        },
+
+        actionError: function printError(action) {
+            var error = action.get("summary").error;
+            this.errors.push({error: error, test: action});
+        },
+
+        testError: function printError(test) {
+            this.errors.push({error: test.error, test: test});
+        },
+
+        processSummary: function processSummary(summary) {
+            if (summary.hasOwnProperty("summaries")) {
+                summary = summary.summaries;
+            }
+            var errCount = 0, successCount = 0, pendingCount = 0, errors = {}, duration = 0;
+            _(summary).forEach(function (sum) {
+                duration += sum.duration;
+            });
+            (function total(summary) {
+                _(summary).forEach(function (sum, i) {
+                    if (sum.hasOwnProperty("summaries")) {
+                        total(sum.summaries);
+                    } else if (sum.status === "passed") {
+                        successCount++;
+                    } else if (sum.status === "pending") {
+                        pendingCount++;
+                    } else {
+                        errors[i] = sum.error;
+                        errCount++;
+                    }
+                });
+            })(summary);
+            return {errCount: errCount, successCount: successCount, pendingCount: pendingCount, errors: errors, duration: duration};
+        },
+
+        testEnd: function () {
+
+        },
+
+        testsDone: function (tests) {
+            this.printFinalSummary(tests);
+        },
+
+        printFinalSummary: function (test) {
+            this.testEnd.apply(this, arguments);
+            console.log("\nSummary");
+            var stats = this.processSummary(test.summary || test.get("summary"));
+            var errCount = stats.errCount, successCount = stats.successCount, pendingCount = stats.pendingCount, duration = stats.duration;
+            console.log(format("Finished in %s", this.formatMs(duration)));
+            var out = [
+                successCount + pluralize(successCount, " example"),
+                errCount + pluralize(errCount, " error"),
+                pendingCount + " pending"
+            ];
+            var color = pendingCount > 0 ? 'cyan' : errCount > 0 ? 'red' : 'green';
+            console.log(style(out.join(", "), color));
+            this._static.list(this.errors);
+            return errCount ? 1 : 0;
+        }
+
+
+    },
+
+    "static": {
+
+        reporters: {},
+
+        registerType: function (type) {
+            type = type.toLowerCase();
+            if (!this.reporters.hasOwnProperty(type)) {
+                this.reporters[type] = this;
+            }
+            return this;
+        },
+
+        getInstance: function (type, args) {
+            type = type.toLowerCase();
+            if (this.reporters.hasOwnProperty(type)) {
+                return new this.reporters[type](args || {});
+            } else {
+                throw new Error("Invalid Reporter type");
+            }
+        },
+
+        list: function (errors) {
+            console.error();
+            errors.forEach(function (test, i) {
+                // format
+                var fmt = '  %s.%d) %s:\n' + style('     %s', "red") + style('\n%s\n', ["red", "bold"]);
+                // msg
+                var errs = test.error;
+                _((_.isArray(errs) ? errs : [errs])).forEach(function (err, j) {
+                    if (err) {
+                        var message = err.message || '',
+                            stack = err.stack || message,
+                            index = stack.indexOf(message) + message.length,
+                            msg = stack.slice(0, index);
+
+                        // indent stack trace without msg
+                        stack = stack.slice(index ? index + 1 : index)
+                            .replace(/^/gm, '  ');
+
+                        console.error(fmt, (i + 1), j, test.test.get("fullName"), msg, stack);
+                    }
+                });
+            });
+        }
+    }
+
+}).as(module);
+},{"../extended":2}],11:[function(require,module,exports){
 var events = require('events');
 
 exports.isArray = isArray;
@@ -1056,174 +1224,6 @@ exports.format = function(f) {
 
 },{"events":9}],4:[function(require,module,exports){
 "use strict";
-var _ = require("../extended"),
-    style = _.style,
-    format = _.format;
-
-
-var pluralize = function (count, str) {
-    return count !== 1 ? str + "s" : str;
-};
-
-_.declare({
-
-    instance: {
-
-        constructor: function () {
-            this.errors = [];
-            _.bindAll(this, ["startTests", "testError", "printFinalSummary", "listenTest", "listenAction", "testRun",
-                "testEnd", "actionError", "actionSuccess", "actionPending", "testsDone"]);
-            _.bus.on("start", this.startTests);
-            _.bus.on("error", this.testError);
-            _.bus.on("done", this.testsDone);
-            _.bus.on("test", this.listenTest);
-        },
-
-        listenTest: function listenTest(test) {
-            test.on("test", this.listenTest);
-            test.on("action", this.listenAction);
-            test.on("run", this.testRun);
-            test.on("error", this.testError);
-            test.on("done", this.testEnd);
-        },
-
-        listenAction: function listenAction(action) {
-            action.on("error", this.actionError);
-            action.on("success", this.actionSuccess);
-            action.on("pending", this.actionPending);
-
-        },
-
-        formatMs: function formatMs(ms) {
-            return format("% 6ds", ms / 1000);
-        },
-
-        startTests: function () {
-        },
-
-        testRun: function printTitle() {
-
-        },
-
-        actionSuccess: function printSuccess() {
-
-        },
-
-        actionPending: function printPending() {
-
-        },
-
-        actionError: function printError(action) {
-            var error = action.get("summary").error;
-            this.errors.push({error: error, test: action});
-        },
-
-        testError: function printError(test) {
-            this.errors.push({error: test.error, test: test});
-        },
-
-        processSummary: function processSummary(summary) {
-            if (summary.hasOwnProperty("summaries")) {
-                summary = summary.summaries;
-            }
-            var errCount = 0, successCount = 0, pendingCount = 0, errors = {}, duration = 0;
-            _(summary).forEach(function (sum) {
-                duration += sum.duration;
-            });
-            (function total(summary) {
-                _(summary).forEach(function (sum, i) {
-                    if (sum.hasOwnProperty("summaries")) {
-                        total(sum.summaries);
-                    } else if (sum.status === "passed") {
-                        successCount++;
-                    } else if (sum.status === "pending") {
-                        pendingCount++;
-                    } else {
-                        errors[i] = sum.error;
-                        errCount++;
-                    }
-                });
-            })(summary);
-            return {errCount: errCount, successCount: successCount, pendingCount: pendingCount, errors: errors, duration: duration};
-        },
-
-        testEnd: function () {
-
-        },
-
-        testsDone: function (tests) {
-            this.printFinalSummary(tests);
-        },
-
-        printFinalSummary: function (test) {
-            this.testEnd.apply(this, arguments);
-            console.log("\nSummary");
-            var stats = this.processSummary(test.summary || test.get("summary"));
-            var errCount = stats.errCount, successCount = stats.successCount, pendingCount = stats.pendingCount, duration = stats.duration;
-            console.log(format("Finished in %s", this.formatMs(duration)));
-            var out = [
-                successCount + pluralize(successCount, " example"),
-                errCount + pluralize(errCount, " error"),
-                pendingCount + " pending"
-            ];
-            var color = pendingCount > 0 ? 'cyan' : errCount > 0 ? 'red' : 'green';
-            console.log(style(out.join(", "), color));
-            this._static.list(this.errors);
-            return errCount ? 1 : 0;
-        }
-
-
-    },
-
-    "static": {
-
-        reporters: {},
-
-        registerType: function (type) {
-            type = type.toLowerCase();
-            if (!this.reporters.hasOwnProperty(type)) {
-                this.reporters[type] = this;
-            }
-            return this;
-        },
-
-        getInstance: function (type, args) {
-            type = type.toLowerCase();
-            if (this.reporters.hasOwnProperty(type)) {
-                return new this.reporters[type](args || {});
-            } else {
-                throw new Error("Invalid Reporter type");
-            }
-        },
-
-        list: function (errors) {
-            console.error();
-            errors.forEach(function (test, i) {
-                // format
-                var fmt = '  %s.%d) %s:\n' + style('     %s', "red") + style('\n%s\n', ["red", "bold"]);
-                // msg
-                var errs = test.error;
-                _((_.isArray(errs) ? errs : [errs])).forEach(function (err, j) {
-                    if (err) {
-                        var message = err.message || '',
-                            stack = err.stack || message,
-                            index = stack.indexOf(message) + message.length,
-                            msg = stack.slice(0, index);
-
-                        // indent stack trace without msg
-                        stack = stack.slice(index ? index + 1 : index)
-                            .replace(/^/gm, '  ');
-
-                        console.error(fmt, (i + 1), j, test.test.get("fullName"), msg, stack);
-                    }
-                });
-            });
-        }
-    }
-
-}).as(module);
-},{"../extended":2}],3:[function(require,module,exports){
-"use strict";
 var _ = require("../../extended"),
     AssertionError = require("assert").AssertionError,
     Reporter = require("../../formatters/reporter"),
@@ -1386,7 +1386,7 @@ Reporter.extend({
         }
     }
 }).as(module).registerType("html");
-},{"assert":10,"../../formatters/reporter":4,"../../extended":2}],7:[function(require,module,exports){
+},{"assert":10,"../../extended":2,"../../formatters/reporter":3}],7:[function(require,module,exports){
 "use strict";
 
 var Test = require("./common").Test,
@@ -1415,16 +1415,16 @@ module.exports = {
 };
 },{"./bdd":13,"./tdd":14,"./common":15}],2:[function(require,module,exports){
 module.exports = require("extended")()
-    .register(require("is-extended"))
     .register(require("array-extended"))
     .register(require("date-extended"))
     .register(require("object-extended"))
     .register(require("string-extended"))
     .register(require("promise-extended"))
     .register(require("function-extended"))
+    .register(require("is-extended"))
     .register("declare", require("declare.js"))
     .register("bus", new (require("events").EventEmitter)());
-},{"events":9,"extended":16,"is-extended":17,"array-extended":18,"date-extended":19,"object-extended":20,"string-extended":21,"promise-extended":22,"function-extended":23,"declare.js":24}],25:[function(require,module,exports){
+},{"events":9,"extended":16,"array-extended":17,"date-extended":18,"object-extended":19,"string-extended":20,"promise-extended":21,"function-extended":22,"is-extended":23,"declare.js":24}],25:[function(require,module,exports){
 exports.readIEEE754 = function(buffer, offset, isBE, mLen, nBytes) {
   var e, m,
       eLen = nBytes * 8 - mLen - 1,
@@ -3018,12 +3018,12 @@ Test.extend({
 }).as(module);
 
 
-},{"../extended":2,"./common":15}],24:[function(require,module,exports){
-module.exports = require("./declare.js");
-},{"./declare.js":27}],15:[function(require,module,exports){
+},{"../extended":2,"./common":15}],15:[function(require,module,exports){
 exports.Action = require("./action");
 exports.Test = require("./test.js");
-},{"./test.js":28,"./action":29}],27:[function(require,module,exports){
+},{"./test.js":27,"./action":28}],24:[function(require,module,exports){
+module.exports = require("./declare.js");
+},{"./declare.js":29}],29:[function(require,module,exports){
 (function () {
 
     /**
@@ -4012,21 +4012,13 @@ exports.Test = require("./test.js");
 
 
 })()
-},{"extender":30}],22:[function(require,module,exports){
+},{"extender":30}],21:[function(require,module,exports){
 (function(process){(function () {
     "use strict";
     /*global setImmediate, MessageChannel*/
 
 
-    var arraySlice = Array.prototype.slice;
-
-    function argsToArray(args, slice) {
-        slice = slice || 0;
-        return arraySlice.call(args, slice);
-    }
-
-
-    function definePromise(declare, extended, array, is, fn) {
+    function definePromise(declare, extended, array, is, fn, args) {
 
         var forEach = array.forEach,
             isUndefinedOrNull = is.isUndefinedOrNull,
@@ -4034,7 +4026,8 @@ exports.Test = require("./test.js");
             isFunction = is.isFunction,
             isBoolean = is.isBoolean,
             bind = fn.bind,
-            bindIgnore = fn.bindIgnore;
+            bindIgnore = fn.bindIgnore,
+            argsToArray = args.argsToArray;
 
         function createHandler(fn, promise) {
             return function _handler() {
@@ -4049,12 +4042,18 @@ exports.Test = require("./test.js");
         }
 
         var nextTick;
-        if (typeof process !== "undefined") {
-            // node
-            nextTick = process.nextTick;
-        } else if (typeof setImmediate === "function") {
+        if (typeof setImmediate === "function") {
             // In IE10, or use https://github.com/NobleJS/setImmediate
-            nextTick = setImmediate;
+            if (typeof window !== "undefined") {
+                nextTick = setImmediate.bind(window);
+            } else {
+                nextTick = setImmediate;
+            }
+        } else if (typeof process !== "undefined") {
+            // node
+            nextTick = function (cb) {
+                process.nextTick(cb);
+            };
         } else if (typeof MessageChannel !== "undefined") {
             // modern browsers
             // http://www.nonblocking.io/2011/06/windownexttick.html
@@ -4398,7 +4397,6 @@ exports.Test = require("./test.js");
                         args.addCallback(p.callback);
                         args.addErrback(p.errback);
                     } else {
-                        console.log(args);
                         p = wrapThenPromise(args);
                     }
                 } else if (isArray(args) && array.every(args, isPromiseLike)) {
@@ -4501,14 +4499,14 @@ exports.Test = require("./test.js");
 
     if ("undefined" !== typeof exports) {
         if ("undefined" !== typeof module && module.exports) {
-            module.exports = definePromise(require("declare.js"), require("extended"), require("array-extended"), require("is-extended"), require("function-extended"));
+            module.exports = definePromise(require("declare.js"), require("extended"), require("array-extended"), require("is-extended"), require("function-extended"), require("arguments-extended"));
         }
-    } else if ("function" === typeof define) {
-        define(["declare", "extended", "array-extended", "is-extended", "function-extended"], function (declare, extended, array, is, fn) {
-            return definePromise(declare, extended, array, is, fn);
+    } else if ("function" === typeof define && define.amd) {
+        define(["declare", "extended", "array-extended", "is-extended", "function-extended", "arguments-extended"], function (declare, extended, array, is, fn, args) {
+            return definePromise(declare, extended, array, is, fn, args);
         });
     } else {
-        this.promiseExtended = definePromise(this.declare, this.extended, this.arrayExtended, this.isExtended, this.functionExtended);
+        this.promiseExtended = definePromise(this.declare, this.extended, this.arrayExtended, this.isExtended, this.functionExtended, this.argumentsExtended);
     }
 
 }).call(this);
@@ -4520,7 +4518,2720 @@ exports.Test = require("./test.js");
 
 
 })(require("__browserify_process"))
-},{"declare.js":31,"extended":32,"array-extended":33,"is-extended":34,"function-extended":35,"__browserify_process":8}],36:[function(require,module,exports){
+},{"declare.js":31,"extended":32,"array-extended":33,"is-extended":34,"function-extended":35,"arguments-extended":36,"__browserify_process":8}],17:[function(require,module,exports){
+(function () {
+    "use strict";
+
+    var arraySlice = Array.prototype.slice;
+
+    function argsToArray(args, slice) {
+        slice = slice || 0;
+        return arraySlice.call(args, slice);
+    }
+
+    function defineArray(extended, is) {
+
+        var isString = is.isString,
+            isArray = Array.isArray || is.isArray,
+            isDate = is.isDate,
+            floor = Math.floor,
+            abs = Math.abs,
+            mathMax = Math.max,
+            mathMin = Math.min,
+            arrayProto = Array.prototype,
+            arrayIndexOf = arrayProto.indexOf,
+            arrayForEach = arrayProto.forEach,
+            arrayMap = arrayProto.map,
+            arrayReduce = arrayProto.reduce,
+            arrayReduceRight = arrayProto.reduceRight,
+            arrayFilter = arrayProto.filter,
+            arrayEvery = arrayProto.every,
+            arraySome = arrayProto.some;
+
+
+        function cross(num, cros) {
+            return reduceRight(cros, function (a, b) {
+                if (!isArray(b)) {
+                    b = [b];
+                }
+                b.unshift(num);
+                a.unshift(b);
+                return a;
+            }, []);
+        }
+
+        function permute(num, cross, length) {
+            var ret = [];
+            for (var i = 0; i < cross.length; i++) {
+                ret.push([num].concat(rotate(cross, i)).slice(0, length));
+            }
+            return ret;
+        }
+
+
+        function intersection(a, b) {
+            var ret = [], aOne;
+            if (a && b && a.length && b.length) {
+                for (var i = 0, l = a.length; i < l; i++) {
+                    aOne = a[i];
+                    if (indexOf(b, aOne) !== -1) {
+                        ret.push(aOne);
+                    }
+                }
+            }
+            return ret;
+        }
+
+
+        var _sort = (function () {
+
+            var isAll = function (arr, test) {
+                return every(arr, test);
+            };
+
+            var defaultCmp = function (a, b) {
+                return a - b;
+            };
+
+            var dateSort = function (a, b) {
+                return a.getTime() - b.getTime();
+            };
+
+            return function _sort(arr, property) {
+                var ret = [];
+                if (isArray(arr)) {
+                    ret = arr.slice();
+                    if (property) {
+                        if (typeof property === "function") {
+                            ret.sort(property);
+                        } else {
+                            ret.sort(function (a, b) {
+                                var aProp = a[property], bProp = b[property];
+                                if (isString(aProp) && isString(bProp)) {
+                                    return aProp > bProp ? 1 : aProp < bProp ? -1 : 0;
+                                } else if (isDate(aProp) && isDate(bProp)) {
+                                    return aProp.getTime() - bProp.getTime();
+                                } else {
+                                    return aProp - bProp;
+                                }
+                            });
+                        }
+                    } else {
+                        if (isAll(ret, isString)) {
+                            ret.sort();
+                        } else if (isAll(ret, isDate)) {
+                            ret.sort(dateSort);
+                        } else {
+                            ret.sort(defaultCmp);
+                        }
+                    }
+                }
+                return ret;
+            };
+
+        })();
+
+        function indexOf(arr, searchElement, from) {
+            if (arr && arrayIndexOf && arrayIndexOf === arr.indexOf) {
+                return arr.indexOf(searchElement, from);
+            }
+            if (!isArray(arr)) {
+                throw new TypeError();
+            }
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            if (len === 0) {
+                return -1;
+            }
+            var n = 0;
+            if (arguments.length > 2) {
+                n = Number(arguments[2]);
+                if (n !== n) { // shortcut for verifying if it's NaN
+                    n = 0;
+                } else if (n !== 0 && n !== Infinity && n !== -Infinity) {
+                    n = (n > 0 || -1) * floor(abs(n));
+                }
+            }
+            if (n >= len) {
+                return -1;
+            }
+            var k = n >= 0 ? n : mathMax(len - abs(n), 0);
+            for (; k < len; k++) {
+                if (k in t && t[k] === searchElement) {
+                    return k;
+                }
+            }
+            return -1;
+        }
+
+        function lastIndexOf(arr, searchElement, from) {
+            if (!isArray(arr)) {
+                throw new TypeError();
+            }
+
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            if (len === 0) {
+                return -1;
+            }
+
+            var n = len;
+            if (arguments.length > 2) {
+                n = Number(arguments[2]);
+                if (n !== n) {
+                    n = 0;
+                } else if (n !== 0 && n !== (1 / 0) && n !== -(1 / 0)) {
+                    n = (n > 0 || -1) * floor(abs(n));
+                }
+            }
+
+            var k = n >= 0 ? mathMin(n, len - 1) : len - abs(n);
+
+            for (; k >= 0; k--) {
+                if (k in t && t[k] === searchElement) {
+                    return k;
+                }
+            }
+            return -1;
+        }
+
+        function filter(arr, iterator, scope) {
+            if (arr && arrayFilter && arrayFilter === arr.filter) {
+                return arr.filter(iterator, scope);
+            }
+            if (!isArray(arr) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            var res = [];
+            for (var i = 0; i < len; i++) {
+                if (i in t) {
+                    var val = t[i]; // in case fun mutates this
+                    if (iterator.call(scope, val, i, t)) {
+                        res.push(val);
+                    }
+                }
+            }
+            return res;
+        }
+
+        function forEach(arr, iterator, scope) {
+            if (!isArray(arr) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+            if (arr && arrayForEach && arrayForEach === arr.forEach) {
+                arr.forEach(iterator, scope);
+                return arr;
+            }
+            for (var i = 0, len = arr.length; i < len; ++i) {
+                iterator.call(scope || arr, arr[i], i, arr);
+            }
+
+            return arr;
+        }
+
+        function every(arr, iterator, scope) {
+            if (arr && arrayEvery && arrayEvery === arr.every) {
+                return arr.every(iterator, scope);
+            }
+            if (!isArray(arr) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            for (var i = 0; i < len; i++) {
+                if (i in t && !iterator.call(scope, t[i], i, t)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function some(arr, iterator, scope) {
+            if (arr && arraySome && arraySome === arr.some) {
+                return arr.some(iterator, scope);
+            }
+            if (!isArray(arr) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            for (var i = 0; i < len; i++) {
+                if (i in t && iterator.call(scope, t[i], i, t)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function map(arr, iterator, scope) {
+            if (arr && arrayMap && arrayMap === arr.map) {
+                return arr.map(iterator, scope);
+            }
+            if (!isArray(arr) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            var res = [];
+            for (var i = 0; i < len; i++) {
+                if (i in t) {
+                    res.push(iterator.call(scope, t[i], i, t));
+                }
+            }
+            return res;
+        }
+
+        function reduce(arr, accumulator, curr) {
+            var initial = arguments.length > 2;
+            if (arr && arrayReduce && arrayReduce === arr.reduce) {
+                return initial ? arr.reduce(accumulator, curr) : arr.reduce(accumulator);
+            }
+            if (!isArray(arr) || typeof accumulator !== "function") {
+                throw new TypeError();
+            }
+            var i = 0, l = arr.length >> 0;
+            if (arguments.length < 3) {
+                if (l === 0) {
+                    throw new TypeError("Array length is 0 and no second argument");
+                }
+                curr = arr[0];
+                i = 1; // start accumulating at the second element
+            } else {
+                curr = arguments[2];
+            }
+            while (i < l) {
+                if (i in arr) {
+                    curr = accumulator.call(undefined, curr, arr[i], i, arr);
+                }
+                ++i;
+            }
+            return curr;
+        }
+
+        function reduceRight(arr, accumulator, curr) {
+            var initial = arguments.length > 2;
+            if (arr && arrayReduceRight && arrayReduceRight === arr.reduceRight) {
+                return initial ? arr.reduceRight(accumulator, curr) : arr.reduceRight(accumulator);
+            }
+            if (!isArray(arr) || typeof accumulator !== "function") {
+                throw new TypeError();
+            }
+
+            var t = Object(arr);
+            var len = t.length >>> 0;
+
+            // no value to return if no initial value, empty array
+            if (len === 0 && arguments.length === 2) {
+                throw new TypeError();
+            }
+
+            var k = len - 1;
+            if (arguments.length >= 3) {
+                curr = arguments[2];
+            } else {
+                do {
+                    if (k in arr) {
+                        curr = arr[k--];
+                        break;
+                    }
+                }
+                while (true);
+            }
+            while (k >= 0) {
+                if (k in t) {
+                    curr = accumulator.call(undefined, curr, t[k], k, t);
+                }
+                k--;
+            }
+            return curr;
+        }
+
+
+        function toArray(o) {
+            var ret = [];
+            if (o !== null) {
+                var args = argsToArray(arguments);
+                if (args.length === 1) {
+                    if (isArray(o)) {
+                        ret = o;
+                    } else if (is.isHash(o)) {
+                        for (var i in o) {
+                            if (o.hasOwnProperty(i)) {
+                                ret.push([i, o[i]]);
+                            }
+                        }
+                    } else {
+                        ret.push(o);
+                    }
+                } else {
+                    forEach(args, function (a) {
+                        ret = ret.concat(toArray(a));
+                    });
+                }
+            }
+            return ret;
+        }
+
+        function sum(array) {
+            array = array || [];
+            if (array.length) {
+                return reduce(array, function (a, b) {
+                    return a + b;
+                });
+            } else {
+                return 0;
+            }
+        }
+
+        function avg(arr) {
+            arr = arr || [];
+            if (arr.length) {
+                var total = sum(arr);
+                if (is.isNumber(total)) {
+                    return  total / arr.length;
+                } else {
+                    throw new Error("Cannot average an array of non numbers.");
+                }
+            } else {
+                return 0;
+            }
+        }
+
+        function sort(arr, cmp) {
+            return _sort(arr, cmp);
+        }
+
+        function min(arr, cmp) {
+            return _sort(arr, cmp)[0];
+        }
+
+        function max(arr, cmp) {
+            return _sort(arr, cmp)[arr.length - 1];
+        }
+
+        function difference(arr1) {
+            var ret = arr1, args = flatten(argsToArray(arguments, 1));
+            if (isArray(arr1)) {
+                ret = filter(arr1, function (a) {
+                    return indexOf(args, a) === -1;
+                });
+            }
+            return ret;
+        }
+
+        function removeDuplicates(arr) {
+            var ret = [];
+            if (isArray(arr)) {
+                for (var i = 0, l = arr.length; i < l; i++) {
+                    var item = arr[i];
+                    if (indexOf(ret, item) === -1) {
+                        ret.push(item);
+                    }
+                }
+            }
+            return ret;
+        }
+
+
+        function unique(arr) {
+            return removeDuplicates(arr);
+        }
+
+
+        function rotate(arr, numberOfTimes) {
+            var ret = arr.slice();
+            if (typeof numberOfTimes !== "number") {
+                numberOfTimes = 1;
+            }
+            if (numberOfTimes && isArray(arr)) {
+                if (numberOfTimes > 0) {
+                    ret.push(ret.shift());
+                    numberOfTimes--;
+                } else {
+                    ret.unshift(ret.pop());
+                    numberOfTimes++;
+                }
+                return rotate(ret, numberOfTimes);
+            } else {
+                return ret;
+            }
+        }
+
+        function permutations(arr, length) {
+            var ret = [];
+            if (isArray(arr)) {
+                var copy = arr.slice(0);
+                if (typeof length !== "number") {
+                    length = arr.length;
+                }
+                if (!length) {
+                    ret = [
+                        []
+                    ];
+                } else if (length <= arr.length) {
+                    ret = reduce(arr, function (a, b, i) {
+                        var ret;
+                        if (length > 1) {
+                            ret = permute(b, rotate(copy, i).slice(1), length);
+                        } else {
+                            ret = [
+                                [b]
+                            ];
+                        }
+                        return a.concat(ret);
+                    }, []);
+                }
+            }
+            return ret;
+        }
+
+        function zip() {
+            var ret = [];
+            var arrs = argsToArray(arguments);
+            if (arrs.length > 1) {
+                var arr1 = arrs.shift();
+                if (isArray(arr1)) {
+                    ret = reduce(arr1, function (a, b, i) {
+                        var curr = [b];
+                        for (var j = 0; j < arrs.length; j++) {
+                            var currArr = arrs[j];
+                            if (isArray(currArr) && !is.isUndefined(currArr[i])) {
+                                curr.push(currArr[i]);
+                            } else {
+                                curr.push(null);
+                            }
+                        }
+                        a.push(curr);
+                        return a;
+                    }, []);
+                }
+            }
+            return ret;
+        }
+
+        function transpose(arr) {
+            var ret = [];
+            if (isArray(arr) && arr.length) {
+                var last;
+                forEach(arr, function (a) {
+                    if (isArray(a) && (!last || a.length === last.length)) {
+                        forEach(a, function (b, i) {
+                            if (!ret[i]) {
+                                ret[i] = [];
+                            }
+                            ret[i].push(b);
+                        });
+                        last = a;
+                    }
+                });
+            }
+            return ret;
+        }
+
+        function valuesAt(arr, indexes) {
+            var ret = [];
+            indexes = argsToArray(arguments);
+            arr = indexes.shift();
+            if (isArray(arr) && indexes.length) {
+                for (var i = 0, l = indexes.length; i < l; i++) {
+                    ret.push(arr[indexes[i]] || null);
+                }
+            }
+            return ret;
+        }
+
+        function union() {
+            var ret = [];
+            var arrs = argsToArray(arguments);
+            if (arrs.length > 1) {
+                for (var i = 0, l = arrs.length; i < l; i++) {
+                    ret = ret.concat(arrs[i]);
+                }
+                ret = removeDuplicates(ret);
+            }
+            return ret;
+        }
+
+        function intersect() {
+            var collect = [], sets;
+            var args = argsToArray(arguments);
+            if (args.length > 1) {
+                //assume we are intersections all the lists in the array
+                sets = args;
+            } else {
+                sets = args[0];
+            }
+            if (isArray(sets)) {
+                var collect = sets.shift();
+                for (var i = 0, l = sets.length; i < l; i++) {
+                    collect = intersection(collect, sets[i]);
+                }
+            }
+            return removeDuplicates(collect);
+        }
+
+        function powerSet(arr) {
+            var ret = [];
+            if (isArray(arr) && arr.length) {
+                ret = reduce(arr, function (a, b) {
+                    var ret = map(a, function (c) {
+                        return c.concat(b);
+                    });
+                    return a.concat(ret);
+                }, [
+                    []
+                ]);
+            }
+            return ret;
+        }
+
+        function cartesian(a, b) {
+            var ret = [];
+            if (isArray(a) && isArray(b) && a.length && b.length) {
+                ret = cross(a[0], b).concat(cartesian(a.slice(1), b));
+            }
+            return ret;
+        }
+
+        function compact(arr) {
+            var ret = [];
+            if (isArray(arr) && arr.length) {
+                ret = filter(arr, function (item) {
+                    return !is.isUndefinedOrNull(item);
+                });
+            }
+            return ret;
+        }
+
+        function multiply(arr, times) {
+            times = is.isNumber(times) ? times : 1;
+            if (!times) {
+                //make sure times is greater than zero if it is zero then dont multiply it
+                times = 1;
+            }
+            arr = toArray(arr || []);
+            var ret = [], i = 0;
+            while (++i <= times) {
+                ret = ret.concat(arr);
+            }
+            return ret;
+        }
+
+        function flatten(arr) {
+            var set;
+            var args = argsToArray(arguments);
+            if (args.length > 1) {
+                //assume we are intersections all the lists in the array
+                set = args;
+            } else {
+                set = toArray(arr);
+            }
+            return reduce(set, function (a, b) {
+                return a.concat(b);
+            }, []);
+        }
+
+        function pluck(arr, prop) {
+            prop = prop.split(".");
+            var result = arr.slice(0);
+            forEach(prop, function (prop) {
+                var exec = prop.match(/(\w+)\(\)$/);
+                result = map(result, function (item) {
+                    return exec ? item[exec[1]]() : item[prop];
+                });
+            });
+            return result;
+        }
+
+        function invoke(arr, func, args) {
+            args = argsToArray(arguments, 2);
+            return map(arr, function (item) {
+                var exec = isString(func) ? item[func] : func;
+                return exec.apply(item, args);
+            });
+        }
+
+
+        var array = {
+            toArray: toArray,
+            sum: sum,
+            avg: avg,
+            sort: sort,
+            min: min,
+            max: max,
+            difference: difference,
+            removeDuplicates: removeDuplicates,
+            unique: unique,
+            rotate: rotate,
+            permutations: permutations,
+            zip: zip,
+            transpose: transpose,
+            valuesAt: valuesAt,
+            union: union,
+            intersect: intersect,
+            powerSet: powerSet,
+            cartesian: cartesian,
+            compact: compact,
+            multiply: multiply,
+            flatten: flatten,
+            pluck: pluck,
+            invoke: invoke,
+            forEach: forEach,
+            map: map,
+            filter: filter,
+            reduce: reduce,
+            reduceRight: reduceRight,
+            some: some,
+            every: every,
+            indexOf: indexOf,
+            lastIndexOf: lastIndexOf
+        };
+
+        return extended.define(isArray, array).expose(array);
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineArray(require("extended"), require("is-extended"));
+        }
+    } else if ("function" === typeof define) {
+        define(["require"], function (require) {
+            return defineArray(require("extended"), require("is-extended"));
+        });
+    } else {
+        this.arrayExtended = defineArray(this.extended, this.isExtended);
+    }
+
+}).call(this);
+
+
+
+
+
+
+
+},{"extended":16,"is-extended":23}],18:[function(require,module,exports){
+(function () {
+    "use strict";
+
+    function defineDate(extended, is, array) {
+
+        function _pad(string, length, ch, end) {
+            string = "" + string; //check for numbers
+            ch = ch || " ";
+            var strLen = string.length;
+            while (strLen < length) {
+                if (end) {
+                    string += ch;
+                } else {
+                    string = ch + string;
+                }
+                strLen++;
+            }
+            return string;
+        }
+
+        function _truncate(string, length, end) {
+            var ret = string;
+            if (is.isString(ret)) {
+                if (string.length > length) {
+                    if (end) {
+                        var l = string.length;
+                        ret = string.substring(l - length, l);
+                    } else {
+                        ret = string.substring(0, length);
+                    }
+                }
+            } else {
+                ret = _truncate("" + ret, length);
+            }
+            return ret;
+        }
+
+        function every(arr, iterator, scope) {
+            if (!is.isArray(arr) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            for (var i = 0; i < len; i++) {
+                if (i in t && !iterator.call(scope, t[i], i, t)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+
+        var transforms = (function () {
+                var floor = Math.floor, round = Math.round;
+
+                var addMap = {
+                    day: function addDay(date, amount) {
+                        return [amount, "Date", false];
+                    },
+                    weekday: function addWeekday(date, amount) {
+                        // Divide the increment time span into weekspans plus leftover days
+                        // e.g., 8 days is one 5-day weekspan / and two leftover days
+                        // Can't have zero leftover days, so numbers divisible by 5 get
+                        // a days value of 5, and the remaining days make up the number of weeks
+                        var days, weeks, mod = amount % 5, strt = date.getDay(), adj = 0;
+                        if (!mod) {
+                            days = (amount > 0) ? 5 : -5;
+                            weeks = (amount > 0) ? ((amount - 5) / 5) : ((amount + 5) / 5);
+                        } else {
+                            days = mod;
+                            weeks = parseInt(amount / 5, 10);
+                        }
+                        if (strt === 6 && amount > 0) {
+                            adj = 1;
+                        } else if (strt === 0 && amount < 0) {
+                            // Orig date is Sun / negative increment
+                            // Jump back over Sat
+                            adj = -1;
+                        }
+                        // Get weekday val for the new date
+                        var trgt = strt + days;
+                        // New date is on Sat or Sun
+                        if (trgt === 0 || trgt === 6) {
+                            adj = (amount > 0) ? 2 : -2;
+                        }
+                        // Increment by number of weeks plus leftover days plus
+                        // weekend adjustments
+                        return [(7 * weeks) + days + adj, "Date", false];
+                    },
+                    year: function addYear(date, amount) {
+                        return [amount, "FullYear", true];
+                    },
+                    week: function addWeek(date, amount) {
+                        return [amount * 7, "Date", false];
+                    },
+                    quarter: function addYear(date, amount) {
+                        return [amount * 3, "Month", true];
+                    },
+                    month: function addYear(date, amount) {
+                        return [amount, "Month", true];
+                    }
+                };
+
+                function addTransform(interval, date, amount) {
+                    interval = interval.replace(/s$/, "");
+                    if (addMap.hasOwnProperty(interval)) {
+                        return addMap[interval](date, amount);
+                    }
+                    return [amount, "UTC" + interval.charAt(0).toUpperCase() + interval.substring(1) + "s", false];
+                }
+
+
+                var differenceMap = {
+                    "quarter": function quarterDifference(date1, date2, utc) {
+                        var yearDiff = date2.getFullYear() - date1.getFullYear();
+                        var m1 = date1[utc ? "getUTCMonth" : "getMonth"]();
+                        var m2 = date2[utc ? "getUTCMonth" : "getMonth"]();
+                        // Figure out which quarter the months are in
+                        var q1 = floor(m1 / 3) + 1;
+                        var q2 = floor(m2 / 3) + 1;
+                        // Add quarters for any year difference between the dates
+                        q2 += (yearDiff * 4);
+                        return q2 - q1;
+                    },
+
+                    "weekday": function weekdayDifference(date1, date2, utc) {
+                        var days = differenceTransform("day", date1, date2, utc), weeks;
+                        var mod = days % 7;
+                        // Even number of weeks
+                        if (mod === 0) {
+                            days = differenceTransform("week", date1, date2, utc) * 5;
+                        } else {
+                            // Weeks plus spare change (< 7 days)
+                            var adj = 0, aDay = date1[utc ? "getUTCDay" : "getDay"](), bDay = date2[utc ? "getUTCDay" : "getDay"]();
+                            weeks = parseInt(days / 7, 10);
+                            // Mark the date advanced by the number of
+                            // round weeks (may be zero)
+                            var dtMark = new Date(+date1);
+                            dtMark.setDate(dtMark[utc ? "getUTCDate" : "getDate"]() + (weeks * 7));
+                            var dayMark = dtMark[utc ? "getUTCDay" : "getDay"]();
+
+                            // Spare change days -- 6 or less
+                            if (days > 0) {
+                                if (aDay === 6 || bDay === 6) {
+                                    adj = -1;
+                                } else if (aDay === 0) {
+                                    adj = 0;
+                                } else if (bDay === 0 || (dayMark + mod) > 5) {
+                                    adj = -2;
+                                }
+                            } else if (days < 0) {
+                                if (aDay === 6) {
+                                    adj = 0;
+                                } else if (aDay === 0 || bDay === 0) {
+                                    adj = 1;
+                                } else if (bDay === 6 || (dayMark + mod) < 0) {
+                                    adj = 2;
+                                }
+                            }
+                            days += adj;
+                            days -= (weeks * 2);
+                        }
+                        return days;
+                    },
+                    year: function (date1, date2) {
+                        return date2.getFullYear() - date1.getFullYear();
+                    },
+                    month: function (date1, date2, utc) {
+                        var m1 = date1[utc ? "getUTCMonth" : "getMonth"]();
+                        var m2 = date2[utc ? "getUTCMonth" : "getMonth"]();
+                        return (m2 - m1) + ((date2.getFullYear() - date1.getFullYear()) * 12);
+                    },
+                    week: function (date1, date2, utc) {
+                        return round(differenceTransform("day", date1, date2, utc) / 7);
+                    },
+                    day: function (date1, date2) {
+                        return 1.1574074074074074e-8 * (date2.getTime() - date1.getTime());
+                    },
+                    hour: function (date1, date2) {
+                        return 2.7777777777777776e-7 * (date2.getTime() - date1.getTime());
+                    },
+                    minute: function (date1, date2) {
+                        return 0.000016666666666666667 * (date2.getTime() - date1.getTime());
+                    },
+                    second: function (date1, date2) {
+                        return 0.001 * (date2.getTime() - date1.getTime());
+                    },
+                    millisecond: function (date1, date2) {
+                        return date2.getTime() - date1.getTime();
+                    }
+                };
+
+
+                function differenceTransform(interval, date1, date2, utc) {
+                    interval = interval.replace(/s$/, "");
+                    return round(differenceMap[interval](date1, date2, utc));
+                }
+
+
+                return {
+                    addTransform: addTransform,
+                    differenceTransform: differenceTransform
+                };
+            }()),
+            addTransform = transforms.addTransform,
+            differenceTransform = transforms.differenceTransform;
+
+
+        /**
+         * @ignore
+         * Based on DOJO Date Implementation
+         *
+         * Dojo is available under *either* the terms of the modified BSD license *or* the
+         * Academic Free License version 2.1. As a recipient of Dojo, you may choose which
+         * license to receive this code under (except as noted in per-module LICENSE
+         * files). Some modules may not be the copyright of the Dojo Foundation. These
+         * modules contain explicit declarations of copyright in both the LICENSE files in
+         * the directories in which they reside and in the code itself. No external
+         * contributions are allowed under licenses which are fundamentally incompatible
+         * with the AFL or BSD licenses that Dojo is distributed under.
+         *
+         */
+
+        var floor = Math.floor, round = Math.round, min = Math.min, pow = Math.pow, ceil = Math.ceil, abs = Math.abs;
+        var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        var monthAbbr = ["Jan.", "Feb.", "Mar.", "Apr.", "May.", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."];
+        var dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        var dayAbbr = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        var eraNames = ["Before Christ", "Anno Domini"];
+        var eraAbbr = ["BC", "AD"];
+
+
+        function getDayOfYear(/*Date*/dateObject, utc) {
+            // summary: gets the day of the year as represented by dateObject
+            return date.difference(new Date(dateObject.getFullYear(), 0, 1, dateObject.getHours()), dateObject, null, utc) + 1; // Number
+        }
+
+        function getWeekOfYear(/*Date*/dateObject, /*Number*/firstDayOfWeek, utc) {
+            firstDayOfWeek = firstDayOfWeek || 0;
+            var fullYear = dateObject[utc ? "getUTCFullYear" : "getFullYear"]();
+            var firstDayOfYear = new Date(fullYear, 0, 1).getDay(),
+                adj = (firstDayOfYear - firstDayOfWeek + 7) % 7,
+                week = floor((getDayOfYear(dateObject) + adj - 1) / 7);
+
+            // if year starts on the specified day, start counting weeks at 1
+            if (firstDayOfYear === firstDayOfWeek) {
+                week++;
+            }
+
+            return week; // Number
+        }
+
+        function getTimezoneName(/*Date*/dateObject) {
+            var str = dateObject.toString();
+            var tz = '';
+            var pos = str.indexOf('(');
+            if (pos > -1) {
+                tz = str.substring(++pos, str.indexOf(')'));
+            }
+            return tz; // String
+        }
+
+
+        function buildDateEXP(pattern, tokens) {
+            return pattern.replace(/([a-z])\1*/ig,function (match) {
+                // Build a simple regexp.  Avoid captures, which would ruin the tokens list
+                var s,
+                    c = match.charAt(0),
+                    l = match.length,
+                    p2 = '0?',
+                    p3 = '0{0,2}';
+                if (c === 'y') {
+                    s = '\\d{2,4}';
+                } else if (c === "M") {
+                    s = (l > 2) ? '\\S+?' : '1[0-2]|' + p2 + '[1-9]';
+                } else if (c === "D") {
+                    s = '[12][0-9][0-9]|3[0-5][0-9]|36[0-6]|' + p3 + '[1-9][0-9]|' + p2 + '[1-9]';
+                } else if (c === "d") {
+                    s = '3[01]|[12]\\d|' + p2 + '[1-9]';
+                } else if (c === "w") {
+                    s = '[1-4][0-9]|5[0-3]|' + p2 + '[1-9]';
+                } else if (c === "E") {
+                    s = '\\S+';
+                } else if (c === "h") {
+                    s = '1[0-2]|' + p2 + '[1-9]';
+                } else if (c === "K") {
+                    s = '1[01]|' + p2 + '\\d';
+                } else if (c === "H") {
+                    s = '1\\d|2[0-3]|' + p2 + '\\d';
+                } else if (c === "k") {
+                    s = '1\\d|2[0-4]|' + p2 + '[1-9]';
+                } else if (c === "m" || c === "s") {
+                    s = '[0-5]\\d';
+                } else if (c === "S") {
+                    s = '\\d{' + l + '}';
+                } else if (c === "a") {
+                    var am = 'AM', pm = 'PM';
+                    s = am + '|' + pm;
+                    if (am !== am.toLowerCase()) {
+                        s += '|' + am.toLowerCase();
+                    }
+                    if (pm !== pm.toLowerCase()) {
+                        s += '|' + pm.toLowerCase();
+                    }
+                    s = s.replace(/\./g, "\\.");
+                } else if (c === 'v' || c === 'z' || c === 'Z' || c === 'G' || c === 'q' || c === 'Q') {
+                    s = ".*";
+                } else {
+                    s = c === " " ? "\\s*" : c + "*";
+                }
+                if (tokens) {
+                    tokens.push(match);
+                }
+
+                return "(" + s + ")"; // add capture
+            }).replace(/[\xa0 ]/g, "[\\s\\xa0]"); // normalize whitespace.  Need explicit handling of \xa0 for IE.
+        }
+
+
+        /**
+         * @namespace Utilities for Dates
+         */
+        var date = {
+
+            /**@lends date*/
+
+            /**
+             * Returns the number of days in the month of a date
+             *
+             * @example
+             *
+             *  dateExtender.getDaysInMonth(new Date(2006, 1, 1)); //28
+             *  dateExtender.getDaysInMonth(new Date(2004, 1, 1)); //29
+             *  dateExtender.getDaysInMonth(new Date(2006, 2, 1)); //31
+             *  dateExtender.getDaysInMonth(new Date(2006, 3, 1)); //30
+             *  dateExtender.getDaysInMonth(new Date(2006, 4, 1)); //31
+             *  dateExtender.getDaysInMonth(new Date(2006, 5, 1)); //30
+             *  dateExtender.getDaysInMonth(new Date(2006, 6, 1)); //31
+             * @param {Date} dateObject the date containing the month
+             * @return {Number} the number of days in the month
+             */
+            getDaysInMonth: function (/*Date*/dateObject) {
+                //	summary:
+                //		Returns the number of days in the month used by dateObject
+                var month = dateObject.getMonth();
+                var days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+                if (month === 1 && date.isLeapYear(dateObject)) {
+                    return 29;
+                } // Number
+                return days[month]; // Number
+            },
+
+            /**
+             * Determines if a date is a leap year
+             *
+             * @example
+             *
+             *  dateExtender.isLeapYear(new Date(1600, 0, 1)); //true
+             *  dateExtender.isLeapYear(new Date(2004, 0, 1)); //true
+             *  dateExtender.isLeapYear(new Date(2000, 0, 1)); //true
+             *  dateExtender.isLeapYear(new Date(2006, 0, 1)); //false
+             *  dateExtender.isLeapYear(new Date(1900, 0, 1)); //false
+             *  dateExtender.isLeapYear(new Date(1800, 0, 1)); //false
+             *  dateExtender.isLeapYear(new Date(1700, 0, 1)); //false
+             *
+             * @param {Date} dateObject
+             * @returns {Boolean} true if it is a leap year false otherwise
+             */
+            isLeapYear: function (/*Date*/dateObject, utc) {
+                var year = dateObject[utc ? "getUTCFullYear" : "getFullYear"]();
+                return (year % 400 === 0) || (year % 4 === 0 && year % 100 !== 0);
+
+            },
+
+            /**
+             * Determines if a date is on a weekend
+             *
+             * @example
+             *
+             * var thursday = new Date(2006, 8, 21);
+             * var saturday = new Date(2006, 8, 23);
+             * var sunday = new Date(2006, 8, 24);
+             * var monday = new Date(2006, 8, 25);
+             * dateExtender.isWeekend(thursday)); //false
+             * dateExtender.isWeekend(saturday); //true
+             * dateExtender.isWeekend(sunday); //true
+             * dateExtender.isWeekend(monday)); //false
+             *
+             * @param {Date} dateObject the date to test
+             *
+             * @returns {Boolean} true if the date is a weekend
+             */
+            isWeekend: function (/*Date?*/dateObject, utc) {
+                // summary:
+                //	Determines if the date falls on a weekend, according to local custom.
+                var day = (dateObject || new Date())[utc ? "getUTCDay" : "getDay"]();
+                return day === 0 || day === 6;
+            },
+
+            /**
+             * Get the timezone of a date
+             *
+             * @example
+             *  //just setting the strLocal to simulate the toString() of a date
+             *  dt.str = 'Sun Sep 17 2006 22:25:51 GMT-0500 (CDT)';
+             *  //just setting the strLocal to simulate the locale
+             *  dt.strLocale = 'Sun 17 Sep 2006 10:25:51 PM CDT';
+             *  dateExtender.getTimezoneName(dt); //'CDT'
+             *  dt.str = 'Sun Sep 17 2006 22:57:18 GMT-0500 (CDT)';
+             *  dt.strLocale = 'Sun Sep 17 22:57:18 2006';
+             *  dateExtender.getTimezoneName(dt); //'CDT'
+             * @param dateObject the date to get the timezone from
+             *
+             * @returns {String} the timezone of the date
+             */
+            getTimezoneName: getTimezoneName,
+
+            /**
+             * Compares two dates
+             *
+             * @example
+             *
+             * var d1 = new Date();
+             * d1.setHours(0);
+             * dateExtender.compare(d1, d1); // 0
+             *
+             *  var d1 = new Date();
+             *  d1.setHours(0);
+             *  var d2 = new Date();
+             *  d2.setFullYear(2005);
+             *  d2.setHours(12);
+             *  dateExtender.compare(d1, d2, "date"); // 1
+             *  dateExtender.compare(d1, d2, "datetime"); // 1
+             *
+             *  var d1 = new Date();
+             *  d1.setHours(0);
+             *  var d2 = new Date();
+             *  d2.setFullYear(2005);
+             *  d2.setHours(12);
+             *  dateExtender.compare(d2, d1, "date"); // -1
+             *  dateExtender.compare(d1, d2, "time"); //-1
+             *
+             * @param {Date|String} date1 the date to comapare
+             * @param {Date|String} [date2=new Date()] the date to compare date1 againse
+             * @param {"date"|"time"|"datetime"} portion compares the portion specified
+             *
+             * @returns -1 if date1 is < date2 0 if date1 === date2  1 if date1 > date2
+             */
+            compare: function (/*Date*/date1, /*Date*/date2, /*String*/portion) {
+                date1 = new Date(+date1);
+                date2 = new Date(+(date2 || new Date()));
+
+                if (portion === "date") {
+                    // Ignore times and compare dates.
+                    date1.setHours(0, 0, 0, 0);
+                    date2.setHours(0, 0, 0, 0);
+                } else if (portion === "time") {
+                    // Ignore dates and compare times.
+                    date1.setFullYear(0, 0, 0);
+                    date2.setFullYear(0, 0, 0);
+                }
+                return date1 > date2 ? 1 : date1 < date2 ? -1 : 0;
+            },
+
+
+            /**
+             * Adds a specified interval and amount to a date
+             *
+             * @example
+             *  var dtA = new Date(2005, 11, 27);
+             *  dateExtender.add(dtA, "year", 1); //new Date(2006, 11, 27);
+             *  dateExtender.add(dtA, "years", 1); //new Date(2006, 11, 27);
+             *
+             *  dtA = new Date(2000, 0, 1);
+             *  dateExtender.add(dtA, "quarter", 1); //new Date(2000, 3, 1);
+             *  dateExtender.add(dtA, "quarters", 1); //new Date(2000, 3, 1);
+             *
+             *  dtA = new Date(2000, 0, 1);
+             *  dateExtender.add(dtA, "month", 1); //new Date(2000, 1, 1);
+             *  dateExtender.add(dtA, "months", 1); //new Date(2000, 1, 1);
+             *
+             *  dtA = new Date(2000, 0, 31);
+             *  dateExtender.add(dtA, "month", 1); //new Date(2000, 1, 29);
+             *  dateExtender.add(dtA, "months", 1); //new Date(2000, 1, 29);
+             *
+             *  dtA = new Date(2000, 0, 1);
+             *  dateExtender.add(dtA, "week", 1); //new Date(2000, 0, 8);
+             *  dateExtender.add(dtA, "weeks", 1); //new Date(2000, 0, 8);
+             *
+             *  dtA = new Date(2000, 0, 1);
+             *  dateExtender.add(dtA, "day", 1); //new Date(2000, 0, 2);
+             *
+             *  dtA = new Date(2000, 0, 1);
+             *  dateExtender.add(dtA, "weekday", 1); //new Date(2000, 0, 3);
+             *
+             *  dtA = new Date(2000, 0, 1, 11);
+             *  dateExtender.add(dtA, "hour", 1); //new Date(2000, 0, 1, 12);
+             *
+             *  dtA = new Date(2000, 11, 31, 23, 59);
+             *  dateExtender.add(dtA, "minute", 1); //new Date(2001, 0, 1, 0, 0);
+             *
+             *  dtA = new Date(2000, 11, 31, 23, 59, 59);
+             *  dateExtender.add(dtA, "second", 1); //new Date(2001, 0, 1, 0, 0, 0);
+             *
+             *  dtA = new Date(2000, 11, 31, 23, 59, 59, 999);
+             *  dateExtender.add(dtA, "millisecond", 1); //new Date(2001, 0, 1, 0, 0, 0, 0);
+             *
+             * @param {Date} date
+             * @param {String} interval the interval to add
+             *  <ul>
+             *      <li>day | days</li>
+             *      <li>weekday | weekdays</li>
+             *      <li>year | years</li>
+             *      <li>week | weeks</li>
+             *      <li>quarter | quarters</li>
+             *      <li>months | months</li>
+             *      <li>hour | hours</li>
+             *      <li>minute | minutes</li>
+             *      <li>second | seconds</li>
+             *      <li>millisecond | milliseconds</li>
+             *  </ul>
+             * @param {Number} [amount=0] the amount to add
+             */
+            add: function (/*Date*/date, /*String*/interval, /*int*/amount) {
+                var res = addTransform(interval, date, amount || 0);
+                amount = res[0];
+                var property = res[1];
+                var sum = new Date(+date);
+                var fixOvershoot = res[2];
+                if (property) {
+                    sum["set" + property](sum["get" + property]() + amount);
+                }
+
+                if (fixOvershoot && (sum.getDate() < date.getDate())) {
+                    sum.setDate(0);
+                }
+
+                return sum; // Date
+            },
+
+            /**
+             * Finds the difference between two dates based on the specified interval
+             *
+             * @example
+             *
+             * var dtA, dtB;
+             *
+             * dtA = new Date(2005, 11, 27);
+             * dtB = new Date(2006, 11, 27);
+             * dateExtender.difference(dtA, dtB, "year"); //1
+             *
+             * dtA = new Date(2000, 1, 29);
+             * dtB = new Date(2001, 2, 1);
+             * dateExtender.difference(dtA, dtB, "quarter"); //4
+             * dateExtender.difference(dtA, dtB, "month"); //13
+             *
+             * dtA = new Date(2000, 1, 1);
+             * dtB = new Date(2000, 1, 8);
+             * dateExtender.difference(dtA, dtB, "week"); //1
+             *
+             * dtA = new Date(2000, 1, 29);
+             * dtB = new Date(2000, 2, 1);
+             * dateExtender.difference(dtA, dtB, "day"); //1
+             *
+             * dtA = new Date(2006, 7, 3);
+             * dtB = new Date(2006, 7, 11);
+             * dateExtender.difference(dtA, dtB, "weekday"); //6
+             *
+             * dtA = new Date(2000, 11, 31, 23);
+             * dtB = new Date(2001, 0, 1, 0);
+             * dateExtender.difference(dtA, dtB, "hour"); //1
+             *
+             * dtA = new Date(2000, 11, 31, 23, 59);
+             * dtB = new Date(2001, 0, 1, 0, 0);
+             * dateExtender.difference(dtA, dtB, "minute"); //1
+             *
+             * dtA = new Date(2000, 11, 31, 23, 59, 59);
+             * dtB = new Date(2001, 0, 1, 0, 0, 0);
+             * dateExtender.difference(dtA, dtB, "second"); //1
+             *
+             * dtA = new Date(2000, 11, 31, 23, 59, 59, 999);
+             * dtB = new Date(2001, 0, 1, 0, 0, 0, 0);
+             * dateExtender.difference(dtA, dtB, "millisecond"); //1
+             *
+             *
+             * @param {Date} date1
+             * @param {Date} [date2 = new Date()]
+             * @param {String} [interval = "day"] the intercal to find the difference of.
+             *   <ul>
+             *      <li>day | days</li>
+             *      <li>weekday | weekdays</li>
+             *      <li>year | years</li>
+             *      <li>week | weeks</li>
+             *      <li>quarter | quarters</li>
+             *      <li>months | months</li>
+             *      <li>hour | hours</li>
+             *      <li>minute | minutes</li>
+             *      <li>second | seconds</li>
+             *      <li>millisecond | milliseconds</li>
+             *  </ul>
+             */
+            difference: function (/*Date*/date1, /*Date?*/date2, /*String*/interval, utc) {
+                date2 = date2 || new Date();
+                interval = interval || "day";
+                return differenceTransform(interval, date1, date2, utc);
+            },
+
+            /**
+             * Formats a date to the specidifed format string
+             *
+             * @example
+             *
+             * var date = new Date(2006, 7, 11, 0, 55, 12, 345);
+             * dateExtender.format(date, "EEEE, MMMM dd, yyyy"); //"Friday, August 11, 2006"
+             * dateExtender.format(date, "M/dd/yy"); //"8/11/06"
+             * dateExtender.format(date, "E"); //"6"
+             * dateExtender.format(date, "h:m a"); //"12:55 AM"
+             * dateExtender.format(date, 'h:m:s'); //"12:55:12"
+             * dateExtender.format(date, 'h:m:s.SS'); //"12:55:12.35"
+             * dateExtender.format(date, 'k:m:s.SS'); //"24:55:12.35"
+             * dateExtender.format(date, 'H:m:s.SS'); //"0:55:12.35"
+             * dateExtender.format(date, "ddMMyyyy"); //"11082006"
+             *
+             * @param date the date to format
+             * @param {String} format the format of the date composed of the following options
+             * <ul>
+             *                  <li> G    Era designator    Text    AD</li>
+             *                  <li> y    Year    Year    1996; 96</li>
+             *                  <li> M    Month in year    Month    July; Jul; 07</li>
+             *                  <li> w    Week in year    Number    27</li>
+             *                  <li> W    Week in month    Number    2</li>
+             *                  <li> D    Day in year    Number    189</li>
+             *                  <li> d    Day in month    Number    10</li>
+             *                  <li> E    Day in week    Text    Tuesday; Tue</li>
+             *                  <li> a    Am/pm marker    Text    PM</li>
+             *                  <li> H    Hour in day (0-23)    Number    0</li>
+             *                  <li> k    Hour in day (1-24)    Number    24</li>
+             *                  <li> K    Hour in am/pm (0-11)    Number    0</li>
+             *                  <li> h    Hour in am/pm (1-12)    Number    12</li>
+             *                  <li> m    Minute in hour    Number    30</li>
+             *                  <li> s    Second in minute    Number    55</li>
+             *                  <li> S    Millisecond    Number    978</li>
+             *                  <li> z    Time zone    General time zone    Pacific Standard Time; PST; GMT-08:00</li>
+             *                  <li> Z    Time zone    RFC 822 time zone    -0800 </li>
+             * </ul>
+             */
+            format: function (date, format, utc) {
+                utc = utc || false;
+                var fullYear, month, day, d, hour, minute, second, millisecond;
+                if (utc) {
+                    fullYear = date.getUTCFullYear();
+                    month = date.getUTCMonth();
+                    day = date.getUTCDay();
+                    d = date.getUTCDate();
+                    hour = date.getUTCHours();
+                    minute = date.getUTCMinutes();
+                    second = date.getUTCSeconds();
+                    millisecond = date.getUTCMilliseconds();
+                } else {
+                    fullYear = date.getFullYear();
+                    month = date.getMonth();
+                    d = date.getDate();
+                    day = date.getDay();
+                    hour = date.getHours();
+                    minute = date.getMinutes();
+                    second = date.getSeconds();
+                    millisecond = date.getMilliseconds();
+                }
+                return format.replace(/([A-Za-z])\1*/g, function (match) {
+                    var s, pad,
+                        c = match.charAt(0),
+                        l = match.length;
+                    if (c === 'd') {
+                        s = "" + d;
+                        pad = true;
+                    } else if (c === "H" && !s) {
+                        s = "" + hour;
+                        pad = true;
+                    } else if (c === 'm' && !s) {
+                        s = "" + minute;
+                        pad = true;
+                    } else if (c === 's') {
+                        if (!s) {
+                            s = "" + second;
+                        }
+                        pad = true;
+                    } else if (c === "G") {
+                        s = ((l < 4) ? eraAbbr : eraNames)[fullYear < 0 ? 0 : 1];
+                    } else if (c === "y") {
+                        s = fullYear;
+                        if (l > 1) {
+                            if (l === 2) {
+                                s = _truncate("" + s, 2, true);
+                            } else {
+                                pad = true;
+                            }
+                        }
+                    } else if (c.toUpperCase() === "Q") {
+                        s = ceil((month + 1) / 3);
+                        pad = true;
+                    } else if (c === "M") {
+                        if (l < 3) {
+                            s = month + 1;
+                            pad = true;
+                        } else {
+                            s = (l === 3 ? monthAbbr : monthNames)[month];
+                        }
+                    } else if (c === "w") {
+                        s = getWeekOfYear(date, 0, utc);
+                        pad = true;
+                    } else if (c === "D") {
+                        s = getDayOfYear(date, utc);
+                        pad = true;
+                    } else if (c === "E") {
+                        if (l < 3) {
+                            s = day + 1;
+                            pad = true;
+                        } else {
+                            s = (l === -3 ? dayAbbr : dayNames)[day];
+                        }
+                    } else if (c === 'a') {
+                        s = (hour < 12) ? 'AM' : 'PM';
+                    } else if (c === "h") {
+                        s = (hour % 12) || 12;
+                        pad = true;
+                    } else if (c === "K") {
+                        s = (hour % 12);
+                        pad = true;
+                    } else if (c === "k") {
+                        s = hour || 24;
+                        pad = true;
+                    } else if (c === "S") {
+                        s = round(millisecond * pow(10, l - 3));
+                        pad = true;
+                    } else if (c === "z" || c === "v" || c === "Z") {
+                        s = getTimezoneName(date);
+                        if ((c === "z" || c === "v") && !s) {
+                            l = 4;
+                        }
+                        if (!s || c === "Z") {
+                            var offset = date.getTimezoneOffset();
+                            var tz = [
+                                (offset >= 0 ? "-" : "+"),
+                                _pad(floor(abs(offset) / 60), 2, "0"),
+                                _pad(abs(offset) % 60, 2, "0")
+                            ];
+                            if (l === 4) {
+                                tz.splice(0, 0, "GMT");
+                                tz.splice(3, 0, ":");
+                            }
+                            s = tz.join("");
+                        }
+                    } else {
+                        s = match;
+                    }
+                    if (pad) {
+                        s = _pad(s, l, '0');
+                    }
+                    return s;
+                });
+            }
+
+        };
+
+        var numberDate = {};
+
+        function addInterval(interval) {
+            numberDate[interval + "sFromNow"] = function (val) {
+                return date.add(new Date(), interval, val);
+            };
+            numberDate[interval + "sAgo"] = function (val) {
+                return date.add(new Date(), interval, -val);
+            };
+        }
+
+        var intervals = ["year", "month", "day", "hour", "minute", "second"];
+        for (var i = 0, l = intervals.length; i < l; i++) {
+            addInterval(intervals[i]);
+        }
+
+        var stringDate = {
+
+            parseDate: function (dateStr, format) {
+                if (!format) {
+                    throw new Error('format required when calling dateExtender.parse');
+                }
+                var tokens = [], regexp = buildDateEXP(format, tokens),
+                    re = new RegExp("^" + regexp + "$", "i"),
+                    match = re.exec(dateStr);
+                if (!match) {
+                    return null;
+                } // null
+                var result = [1970, 0, 1, 0, 0, 0, 0], // will get converted to a Date at the end
+                    amPm = "",
+                    valid = every(match, function (v, i) {
+                        if (i) {
+                            var token = tokens[i - 1];
+                            var l = token.length, type = token.charAt(0);
+                            if (type === 'y') {
+                                if (v < 100) {
+                                    v = parseInt(v, 10);
+                                    //choose century to apply, according to a sliding window
+                                    //of 80 years before and 20 years after present year
+                                    var year = '' + new Date().getFullYear(),
+                                        century = year.substring(0, 2) * 100,
+                                        cutoff = min(year.substring(2, 4) + 20, 99);
+                                    result[0] = (v < cutoff) ? century + v : century - 100 + v;
+                                } else {
+                                    result[0] = v;
+                                }
+                            } else if (type === "M") {
+                                if (l > 2) {
+                                    var months = monthNames, j, k;
+                                    if (l === 3) {
+                                        months = monthAbbr;
+                                    }
+                                    //Tolerate abbreviating period in month part
+                                    //Case-insensitive comparison
+                                    v = v.replace(".", "").toLowerCase();
+                                    var contains = false;
+                                    for (j = 0, k = months.length; j < k && !contains; j++) {
+                                        var s = months[j].replace(".", "").toLocaleLowerCase();
+                                        if (s === v) {
+                                            v = j;
+                                            contains = true;
+                                        }
+                                    }
+                                    if (!contains) {
+                                        return false;
+                                    }
+                                } else {
+                                    v--;
+                                }
+                                result[1] = v;
+                            } else if (type === "E" || type === "e") {
+                                var days = dayNames;
+                                if (l === 3) {
+                                    days = dayAbbr;
+                                }
+                                //Case-insensitive comparison
+                                v = v.toLowerCase();
+                                days = array.map(days, function (d) {
+                                    return d.toLowerCase();
+                                });
+                                var d = array.indexOf(days, v);
+                                if (d === -1) {
+                                    v = parseInt(v, 10);
+                                    if (isNaN(v) || v > days.length) {
+                                        return false;
+                                    }
+                                } else {
+                                    v = d;
+                                }
+                            } else if (type === 'D' || type === "d") {
+                                if (type === "D") {
+                                    result[1] = 0;
+                                }
+                                result[2] = v;
+                            } else if (type === "a") {
+                                var am = "am";
+                                var pm = "pm";
+                                var period = /\./g;
+                                v = v.replace(period, '').toLowerCase();
+                                // we might not have seen the hours field yet, so store the state and apply hour change later
+                                amPm = (v === pm) ? 'p' : (v === am) ? 'a' : '';
+                            } else if (type === "k" || type === "h" || type === "H" || type === "K") {
+                                if (type === "k" && (+v) === 24) {
+                                    v = 0;
+                                }
+                                result[3] = v;
+                            } else if (type === "m") {
+                                result[4] = v;
+                            } else if (type === "s") {
+                                result[5] = v;
+                            } else if (type === "S") {
+                                result[6] = v;
+                            }
+                        }
+                        return true;
+                    });
+                if (valid) {
+                    var hours = +result[3];
+                    //account for am/pm
+                    if (amPm === 'p' && hours < 12) {
+                        result[3] = hours + 12; //e.g., 3pm -> 15
+                    } else if (amPm === 'a' && hours === 12) {
+                        result[3] = 0; //12am -> 0
+                    }
+                    var dateObject = new Date(result[0], result[1], result[2], result[3], result[4], result[5], result[6]); // Date
+                    var dateToken = (array.indexOf(tokens, 'd') !== -1),
+                        monthToken = (array.indexOf(tokens, 'M') !== -1),
+                        month = result[1],
+                        day = result[2],
+                        dateMonth = dateObject.getMonth(),
+                        dateDay = dateObject.getDate();
+                    if ((monthToken && dateMonth > month) || (dateToken && dateDay > day)) {
+                        return null;
+                    }
+                    return dateObject; // Date
+                } else {
+                    return null;
+                }
+            }
+        };
+
+
+        var ret = extended.define(is.isDate, date).define(is.isString, stringDate).define(is.isNumber, numberDate);
+        for (i in date) {
+            if (date.hasOwnProperty(i)) {
+                ret[i] = date[i];
+            }
+        }
+
+        for (i in stringDate) {
+            if (stringDate.hasOwnProperty(i)) {
+                ret[i] = stringDate[i];
+            }
+        }
+        for (i in numberDate) {
+            if (numberDate.hasOwnProperty(i)) {
+                ret[i] = numberDate[i];
+            }
+        }
+        return ret;
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineDate(require("extended"), require("is-extended"), require("array-extended"));
+
+        }
+    } else if ("function" === typeof define) {
+        define(["require"], function (require) {
+            return defineDate(require("extended"), require("is-extended"), require("array-extended"));
+        });
+    } else {
+        this.dateExtended = defineDate(this.extended, this.isExtended, this.arrayExtended);
+    }
+
+}).call(this);
+
+
+
+
+
+
+
+},{"extended":16,"is-extended":23,"array-extended":17}],19:[function(require,module,exports){
+(function(){(function () {
+    "use strict";
+    /*global extended isExtended*/
+
+    function defineObject(extended, is) {
+
+        var deepEqual = is.deepEqual,
+            isHash = is.isHash;
+
+        function _merge(target, source) {
+            var name, s;
+            for (name in source) {
+                if (source.hasOwnProperty(name)) {
+                    s = source[name];
+                    if (!(name in target) || (target[name] !== s)) {
+                        target[name] = s;
+                    }
+                }
+            }
+            return target;
+        }
+
+        function _deepMerge(target, source) {
+            var name, s, t;
+            for (name in source) {
+                if (source.hasOwnProperty(name)) {
+                    s = source[name], t = target[name];
+                    if (!deepEqual(t, s)) {
+                        if (isHash(t) && isHash(s)) {
+                            target[name] = _deepMerge(t, s);
+                        } else if (isHash(s)) {
+                            target[name] = _deepMerge({}, s);
+                        } else {
+                            target[name] = s;
+                        }
+                    }
+                }
+            }
+            return target;
+        }
+
+
+        function merge(obj) {
+            if (!obj) {
+                obj = {};
+            }
+            for (var i = 1, l = arguments.length; i < l; i++) {
+                _merge(obj, arguments[i]);
+            }
+            return obj; // Object
+        }
+
+        function deepMerge(obj) {
+            if (!obj) {
+                obj = {};
+            }
+            for (var i = 1, l = arguments.length; i < l; i++) {
+                _deepMerge(obj, arguments[i]);
+            }
+            return obj; // Object
+        }
+
+
+        function extend(parent, child) {
+            var proto = parent.prototype || parent;
+            merge(proto, child);
+            return parent;
+        }
+
+        function forEach(hash, iterator, scope) {
+            if (!isHash(hash) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key;
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                iterator.call(scope || hash, hash[key], key, hash);
+            }
+            return hash;
+        }
+
+        function filter(hash, iterator, scope) {
+            if (!isHash(hash) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, value, ret = {};
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                value = hash[key];
+                if (iterator.call(scope || hash, value, key, hash)) {
+                    ret[key] = value;
+                }
+            }
+            return ret;
+        }
+
+        function values(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), ret = [];
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                ret.push(hash[objKeys[i]]);
+            }
+            return ret;
+        }
+
+
+        function keys(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var ret = [];
+            for (var i in hash) {
+                if (hash.hasOwnProperty(i)) {
+                    ret.push(i);
+                }
+            }
+            return ret;
+        }
+
+        function invert(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, ret = {};
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                ret[hash[key]] = key;
+            }
+            return ret;
+        }
+
+        function toArray(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, ret = [];
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                ret.push([key, hash[key]]);
+            }
+            return ret;
+        }
+
+        var hash = {
+            forEach: forEach,
+            filter: filter,
+            invert: invert,
+            values: values,
+            toArray: toArray,
+            keys: keys
+        };
+
+
+        var obj = {
+            extend: extend,
+            merge: merge,
+            deepMerge: deepMerge
+
+        };
+
+        var ret = extended.define(is.isObject, obj).define(isHash, hash).define(is.isFunction, {extend: extend}).expose({hash: hash}).expose(obj);
+        var orig = ret.extend;
+        ret.extend = function __extend() {
+            if (arguments.length === 1) {
+                return orig.extend.apply(ret, arguments);
+            } else {
+                extend.apply(null, arguments);
+            }
+        };
+        return ret;
+
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineObject(require("extended"), require("is-extended"));
+
+        }
+    } else if ("function" === typeof define) {
+        define(["require"], function (require) {
+            return defineObject(require("extended"), require("is-extended"));
+        });
+    } else {
+        this.objectExtended = defineObject(extended, isExtended);
+    }
+
+}).call(this);
+
+
+
+
+
+
+
+})()
+},{"extended":16,"is-extended":23}],20:[function(require,module,exports){
+(function () {
+    "use strict";
+
+    function defineString(extended, is, date) {
+
+        var stringify;
+        if (typeof JSON === "undefined") {
+            /*
+             json2.js
+             2012-10-08
+
+             Public Domain.
+
+             NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+             */
+
+            (function () {
+                function f(n) {
+                    // Format integers to have at least two digits.
+                    return n < 10 ? '0' + n : n;
+                }
+
+                var isPrimitive = is.tester().isString().isNumber().isBoolean().tester();
+
+                function toJSON(obj) {
+                    if (is.isDate(obj)) {
+                        return isFinite(obj.valueOf())
+                            ? obj.getUTCFullYear() + '-' +
+                            f(obj.getUTCMonth() + 1) + '-' +
+                            f(obj.getUTCDate()) + 'T' +
+                            f(obj.getUTCHours()) + ':' +
+                            f(obj.getUTCMinutes()) + ':' +
+                            f(obj.getUTCSeconds()) + 'Z'
+                            : null;
+                    } else if (isPrimitive(obj)) {
+                        return obj.valueOf();
+                    }
+                    return obj;
+                }
+
+                var cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+                    escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+                    gap,
+                    indent,
+                    meta = {    // table of character substitutions
+                        '\b': '\\b',
+                        '\t': '\\t',
+                        '\n': '\\n',
+                        '\f': '\\f',
+                        '\r': '\\r',
+                        '"': '\\"',
+                        '\\': '\\\\'
+                    },
+                    rep;
+
+
+                function quote(string) {
+                    escapable.lastIndex = 0;
+                    return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
+                        var c = meta[a];
+                        return typeof c === 'string' ? c : '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+                    }) + '"' : '"' + string + '"';
+                }
+
+
+                function str(key, holder) {
+
+                    var i, k, v, length, mind = gap, partial, value = holder[key];
+                    if (value) {
+                        value = toJSON(value);
+                    }
+                    if (typeof rep === 'function') {
+                        value = rep.call(holder, key, value);
+                    }
+                    switch (typeof value) {
+                        case 'string':
+                            return quote(value);
+                        case 'number':
+                            return isFinite(value) ? String(value) : 'null';
+                        case 'boolean':
+                        case 'null':
+                            return String(value);
+                        case 'object':
+                            if (!value) {
+                                return 'null';
+                            }
+                            gap += indent;
+                            partial = [];
+                            if (Object.prototype.toString.apply(value) === '[object Array]') {
+                                length = value.length;
+                                for (i = 0; i < length; i += 1) {
+                                    partial[i] = str(i, value) || 'null';
+                                }
+                                v = partial.length === 0 ? '[]' : gap ? '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']' : '[' + partial.join(',') + ']';
+                                gap = mind;
+                                return v;
+                            }
+                            if (rep && typeof rep === 'object') {
+                                length = rep.length;
+                                for (i = 0; i < length; i += 1) {
+                                    if (typeof rep[i] === 'string') {
+                                        k = rep[i];
+                                        v = str(k, value);
+                                        if (v) {
+                                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                                        }
+                                    }
+                                }
+                            } else {
+                                for (k in value) {
+                                    if (Object.prototype.hasOwnProperty.call(value, k)) {
+                                        v = str(k, value);
+                                        if (v) {
+                                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                                        }
+                                    }
+                                }
+                            }
+                            v = partial.length === 0 ? '{}' : gap ? '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}' : '{' + partial.join(',') + '}';
+                            gap = mind;
+                            return v;
+                    }
+                }
+
+                stringify = function (value, replacer, space) {
+                    var i;
+                    gap = '';
+                    indent = '';
+                    if (typeof space === 'number') {
+                        for (i = 0; i < space; i += 1) {
+                            indent += ' ';
+                        }
+                    } else if (typeof space === 'string') {
+                        indent = space;
+                    }
+                    rep = replacer;
+                    if (replacer && typeof replacer !== 'function' &&
+                        (typeof replacer !== 'object' ||
+                            typeof replacer.length !== 'number')) {
+                        throw new Error('JSON.stringify');
+                    }
+                    return str('', {'': value});
+                };
+            }());
+        }else{
+            stringify = JSON.stringify;
+        }
+
+
+        var isHash = is.isHash, aSlice = Array.prototype.slice;
+
+        var FORMAT_REGEX = /%((?:-?\+?.?\d*)?|(?:\[[^\[|\]]*\]))?([sjdDZ])/g;
+        var INTERP_REGEX = /\{(?:\[([^\[|\]]*)\])?(\w+)\}/g;
+        var STR_FORMAT = /(-?)(\+?)([A-Z|a-z|\W]?)([1-9][0-9]*)?$/;
+        var OBJECT_FORMAT = /([1-9][0-9]*)$/g;
+
+        function formatString(string, format) {
+            var ret = string;
+            if (STR_FORMAT.test(format)) {
+                var match = format.match(STR_FORMAT);
+                var isLeftJustified = match[1], padChar = match[3], width = match[4];
+                if (width) {
+                    width = parseInt(width, 10);
+                    if (ret.length < width) {
+                        ret = pad(ret, width, padChar, isLeftJustified);
+                    } else {
+                        ret = truncate(ret, width);
+                    }
+                }
+            }
+            return ret;
+        }
+
+        function formatNumber(number, format) {
+            var ret;
+            if (is.isNumber(number)) {
+                ret = "" + number;
+                if (STR_FORMAT.test(format)) {
+                    var match = format.match(STR_FORMAT);
+                    var isLeftJustified = match[1], signed = match[2], padChar = match[3], width = match[4];
+                    if (signed) {
+                        ret = (number > 0 ? "+" : "") + ret;
+                    }
+                    if (width) {
+                        width = parseInt(width, 10);
+                        if (ret.length < width) {
+                            ret = pad(ret, width, padChar || "0", isLeftJustified);
+                        } else {
+                            ret = truncate(ret, width);
+                        }
+                    }
+
+                }
+            } else {
+                throw new Error("stringExtended.format : when using %d the parameter must be a number!");
+            }
+            return ret;
+        }
+
+        function formatObject(object, format) {
+            var ret, match = format.match(OBJECT_FORMAT), spacing = 0;
+            if (match) {
+                spacing = parseInt(match[0], 10);
+                if (isNaN(spacing)) {
+                    spacing = 0;
+                }
+            }
+            try {
+                ret = stringify(object, null, spacing);
+            } catch (e) {
+                throw new Error("stringExtended.format : Unable to parse json from ", object);
+            }
+            return ret;
+        }
+
+
+        var styles = {
+            //styles
+            bold: 1,
+            bright: 1,
+            italic: 3,
+            underline: 4,
+            blink: 5,
+            inverse: 7,
+            crossedOut: 9,
+
+            red: 31,
+            green: 32,
+            yellow: 33,
+            blue: 34,
+            magenta: 35,
+            cyan: 36,
+            white: 37,
+
+            redBackground: 41,
+            greenBackground: 42,
+            yellowBackground: 43,
+            blueBackground: 44,
+            magentaBackground: 45,
+            cyanBackground: 46,
+            whiteBackground: 47,
+
+            encircled: 52,
+            overlined: 53,
+            grey: 90,
+            black: 90
+        };
+
+        var characters = {
+            SMILEY: "☺",
+            SOLID_SMILEY: "☻",
+            HEART: "♥",
+            DIAMOND: "♦",
+            CLOVE: "♣",
+            SPADE: "♠",
+            DOT: "•",
+            SQUARE_CIRCLE: "◘",
+            CIRCLE: "○",
+            FILLED_SQUARE_CIRCLE: "◙",
+            MALE: "♂",
+            FEMALE: "♀",
+            EIGHT_NOTE: "♪",
+            DOUBLE_EIGHTH_NOTE: "♫",
+            SUN: "☼",
+            PLAY: "►",
+            REWIND: "◄",
+            UP_DOWN: "↕",
+            PILCROW: "¶",
+            SECTION: "§",
+            THICK_MINUS: "▬",
+            SMALL_UP_DOWN: "↨",
+            UP_ARROW: "↑",
+            DOWN_ARROW: "↓",
+            RIGHT_ARROW: "→",
+            LEFT_ARROW: "←",
+            RIGHT_ANGLE: "∟",
+            LEFT_RIGHT_ARROW: "↔",
+            TRIANGLE: "▲",
+            DOWN_TRIANGLE: "▼",
+            HOUSE: "⌂",
+            C_CEDILLA: "Ç",
+            U_UMLAUT: "ü",
+            E_ACCENT: "é",
+            A_LOWER_CIRCUMFLEX: "â",
+            A_LOWER_UMLAUT: "ä",
+            A_LOWER_GRAVE_ACCENT: "à",
+            A_LOWER_CIRCLE_OVER: "å",
+            C_LOWER_CIRCUMFLEX: "ç",
+            E_LOWER_CIRCUMFLEX: "ê",
+            E_LOWER_UMLAUT: "ë",
+            E_LOWER_GRAVE_ACCENT: "è",
+            I_LOWER_UMLAUT: "ï",
+            I_LOWER_CIRCUMFLEX: "î",
+            I_LOWER_GRAVE_ACCENT: "ì",
+            A_UPPER_UMLAUT: "Ä",
+            A_UPPER_CIRCLE: "Å",
+            E_UPPER_ACCENT: "É",
+            A_E_LOWER: "æ",
+            A_E_UPPER: "Æ",
+            O_LOWER_CIRCUMFLEX: "ô",
+            O_LOWER_UMLAUT: "ö",
+            O_LOWER_GRAVE_ACCENT: "ò",
+            U_LOWER_CIRCUMFLEX: "û",
+            U_LOWER_GRAVE_ACCENT: "ù",
+            Y_LOWER_UMLAUT: "ÿ",
+            O_UPPER_UMLAUT: "Ö",
+            U_UPPER_UMLAUT: "Ü",
+            CENTS: "¢",
+            POUND: "£",
+            YEN: "¥",
+            CURRENCY: "¤",
+            PTS: "₧",
+            FUNCTION: "ƒ",
+            A_LOWER_ACCENT: "á",
+            I_LOWER_ACCENT: "í",
+            O_LOWER_ACCENT: "ó",
+            U_LOWER_ACCENT: "ú",
+            N_LOWER_TILDE: "ñ",
+            N_UPPER_TILDE: "Ñ",
+            A_SUPER: "ª",
+            O_SUPER: "º",
+            UPSIDEDOWN_QUESTION: "¿",
+            SIDEWAYS_L: "⌐",
+            NEGATION: "¬",
+            ONE_HALF: "½",
+            ONE_FOURTH: "¼",
+            UPSIDEDOWN_EXCLAMATION: "¡",
+            DOUBLE_LEFT: "«",
+            DOUBLE_RIGHT: "»",
+            LIGHT_SHADED_BOX: "░",
+            MEDIUM_SHADED_BOX: "▒",
+            DARK_SHADED_BOX: "▓",
+            VERTICAL_LINE: "│",
+            MAZE__SINGLE_RIGHT_T: "┤",
+            MAZE_SINGLE_RIGHT_TOP: "┐",
+            MAZE_SINGLE_RIGHT_BOTTOM_SMALL: "┘",
+            MAZE_SINGLE_LEFT_TOP_SMALL: "┌",
+            MAZE_SINGLE_LEFT_BOTTOM_SMALL: "└",
+            MAZE_SINGLE_LEFT_T: "├",
+            MAZE_SINGLE_BOTTOM_T: "┴",
+            MAZE_SINGLE_TOP_T: "┬",
+            MAZE_SINGLE_CENTER: "┼",
+            MAZE_SINGLE_HORIZONTAL_LINE: "─",
+            MAZE_SINGLE_RIGHT_DOUBLECENTER_T: "╡",
+            MAZE_SINGLE_RIGHT_DOUBLE_BL: "╛",
+            MAZE_SINGLE_RIGHT_DOUBLE_T: "╢",
+            MAZE_SINGLE_RIGHT_DOUBLEBOTTOM_TOP: "╖",
+            MAZE_SINGLE_RIGHT_DOUBLELEFT_TOP: "╕",
+            MAZE_SINGLE_LEFT_DOUBLE_T: "╞",
+            MAZE_SINGLE_BOTTOM_DOUBLE_T: "╧",
+            MAZE_SINGLE_TOP_DOUBLE_T: "╤",
+            MAZE_SINGLE_TOP_DOUBLECENTER_T: "╥",
+            MAZE_SINGLE_BOTTOM_DOUBLECENTER_T: "╨",
+            MAZE_SINGLE_LEFT_DOUBLERIGHT_BOTTOM: "╘",
+            MAZE_SINGLE_LEFT_DOUBLERIGHT_TOP: "╒",
+            MAZE_SINGLE_LEFT_DOUBLEBOTTOM_TOP: "╓",
+            MAZE_SINGLE_LEFT_DOUBLETOP_BOTTOM: "╙",
+            MAZE_SINGLE_LEFT_TOP: "Γ",
+            MAZE_SINGLE_RIGHT_BOTTOM: "╜",
+            MAZE_SINGLE_LEFT_CENTER: "╟",
+            MAZE_SINGLE_DOUBLECENTER_CENTER: "╫",
+            MAZE_SINGLE_DOUBLECROSS_CENTER: "╪",
+            MAZE_DOUBLE_LEFT_CENTER: "╣",
+            MAZE_DOUBLE_VERTICAL: "║",
+            MAZE_DOUBLE_RIGHT_TOP: "╗",
+            MAZE_DOUBLE_RIGHT_BOTTOM: "╝",
+            MAZE_DOUBLE_LEFT_BOTTOM: "╚",
+            MAZE_DOUBLE_LEFT_TOP: "╔",
+            MAZE_DOUBLE_BOTTOM_T: "╩",
+            MAZE_DOUBLE_TOP_T: "╦",
+            MAZE_DOUBLE_LEFT_T: "╠",
+            MAZE_DOUBLE_HORIZONTAL: "═",
+            MAZE_DOUBLE_CROSS: "╬",
+            SOLID_RECTANGLE: "█",
+            THICK_LEFT_VERTICAL: "▌",
+            THICK_RIGHT_VERTICAL: "▐",
+            SOLID_SMALL_RECTANGLE_BOTTOM: "▄",
+            SOLID_SMALL_RECTANGLE_TOP: "▀",
+            PHI_UPPER: "Φ",
+            INFINITY: "∞",
+            INTERSECTION: "∩",
+            DEFINITION: "≡",
+            PLUS_MINUS: "±",
+            GT_EQ: "≥",
+            LT_EQ: "≤",
+            THEREFORE: "⌠",
+            SINCE: "∵",
+            DOESNOT_EXIST: "∄",
+            EXISTS: "∃",
+            FOR_ALL: "∀",
+            EXCLUSIVE_OR: "⊕",
+            BECAUSE: "⌡",
+            DIVIDE: "÷",
+            APPROX: "≈",
+            DEGREE: "°",
+            BOLD_DOT: "∙",
+            DOT_SMALL: "·",
+            CHECK: "√",
+            ITALIC_X: "✗",
+            SUPER_N: "ⁿ",
+            SQUARED: "²",
+            CUBED: "³",
+            SOLID_BOX: "■",
+            PERMILE: "‰",
+            REGISTERED_TM: "®",
+            COPYRIGHT: "©",
+            TRADEMARK: "™",
+            BETA: "β",
+            GAMMA: "γ",
+            ZETA: "ζ",
+            ETA: "η",
+            IOTA: "ι",
+            KAPPA: "κ",
+            LAMBDA: "λ",
+            NU: "ν",
+            XI: "ξ",
+            OMICRON: "ο",
+            RHO: "ρ",
+            UPSILON: "υ",
+            CHI_LOWER: "φ",
+            CHI_UPPER: "χ",
+            PSI: "ψ",
+            ALPHA: "α",
+            ESZETT: "ß",
+            PI: "π",
+            SIGMA_UPPER: "Σ",
+            SIGMA_LOWER: "σ",
+            MU: "µ",
+            TAU: "τ",
+            THETA: "Θ",
+            OMEGA: "Ω",
+            DELTA: "δ",
+            PHI_LOWER: "φ",
+            EPSILON: "ε"
+        };
+
+        function pad(string, length, ch, end) {
+            string = "" + string; //check for numbers
+            ch = ch || " ";
+            var strLen = string.length;
+            while (strLen < length) {
+                if (end) {
+                    string += ch;
+                } else {
+                    string = ch + string;
+                }
+                strLen++;
+            }
+            return string;
+        }
+
+        function truncate(string, length, end) {
+            var ret = string;
+            if (is.isString(ret)) {
+                if (string.length > length) {
+                    if (end) {
+                        var l = string.length;
+                        ret = string.substring(l - length, l);
+                    } else {
+                        ret = string.substring(0, length);
+                    }
+                }
+            } else {
+                ret = truncate("" + ret, length);
+            }
+            return ret;
+        }
+
+        function format(str, obj) {
+            if (obj instanceof Array) {
+                var i = 0, len = obj.length;
+                //find the matches
+                return str.replace(FORMAT_REGEX, function (m, format, type) {
+                    var replacer, ret;
+                    if (i < len) {
+                        replacer = obj[i++];
+                    } else {
+                        //we are out of things to replace with so
+                        //just return the match?
+                        return m;
+                    }
+                    if (m === "%s" || m === "%d" || m === "%D") {
+                        //fast path!
+                        ret = replacer + "";
+                    } else if (m === "%Z") {
+                        ret = replacer.toUTCString();
+                    } else if (m === "%j") {
+                        try {
+                            ret = stringify(replacer);
+                        } catch (e) {
+                            throw new Error("stringExtended.format : Unable to parse json from ", replacer);
+                        }
+                    } else {
+                        format = format.replace(/^\[|\]$/g, "");
+                        switch (type) {
+                            case "s":
+                                ret = formatString(replacer, format);
+                                break;
+                            case "d":
+                                ret = formatNumber(replacer, format);
+                                break;
+                            case "j":
+                                ret = formatObject(replacer, format);
+                                break;
+                            case "D":
+                                ret = date.format(replacer, format);
+                                break;
+                            case "Z":
+                                ret = date.format(replacer, format, true);
+                                break;
+                        }
+                    }
+                    return ret;
+                });
+            } else if (isHash(obj)) {
+                return str.replace(INTERP_REGEX, function (m, format, value) {
+                    value = obj[value];
+                    if (!is.isUndefined(value)) {
+                        if (format) {
+                            if (is.isString(value)) {
+                                return formatString(value, format);
+                            } else if (is.isNumber(value)) {
+                                return formatNumber(value, format);
+                            } else if (is.isDate(value)) {
+                                return date.format(value, format);
+                            } else if (is.isObject(value)) {
+                                return formatObject(value, format);
+                            }
+                        } else {
+                            return "" + value;
+                        }
+                    }
+                    return m;
+                });
+            } else {
+                var args = aSlice.call(arguments).slice(1);
+                return format(str, args);
+            }
+        }
+
+        function toArray(testStr, delim) {
+            var ret = [];
+            if (testStr) {
+                if (testStr.indexOf(delim) > 0) {
+                    ret = testStr.replace(/\s+/g, "").split(delim);
+                }
+                else {
+                    ret.push(testStr);
+                }
+            }
+            return ret;
+        }
+
+        function multiply(str, times) {
+            var ret = [];
+            if (times) {
+                for (var i = 0; i < times; i++) {
+                    ret.push(str);
+                }
+            }
+            return ret.join("");
+        }
+
+
+        function style(str, options) {
+            var ret, i, l;
+            if (options) {
+                if (is.isArray(str)) {
+                    ret = [];
+                    for (i = 0, l = str.length; i < l; i++) {
+                        ret.push(style(str[i], options));
+                    }
+                } else if (options instanceof Array) {
+                    ret = str;
+                    for (i = 0, l = options.length; i < l; i++) {
+                        ret = style(ret, options[i]);
+                    }
+                } else if (options in styles) {
+                    ret = '\x1B[' + styles[options] + 'm' + str + '\x1B[0m';
+                }
+            }
+            return ret;
+        }
+
+
+        var string = {
+            toArray: toArray,
+            pad: pad,
+            truncate: truncate,
+            multiply: multiply,
+            format: format,
+            style: style
+        };
+
+
+        var i, ret = extended.define(is.isString, string).define(is.isArray, {style: style});
+        for (i in string) {
+            if (string.hasOwnProperty(i)) {
+                ret[i] = string[i];
+            }
+        }
+        ret.characters = characters;
+        return ret;
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineString(require("extended"), require("is-extended"), require("date-extended"));
+
+        }
+    } else if ("function" === typeof define) {
+        define(["require"], function (require) {
+            return defineString(require("extended"), require("is-extended"), require("date-extended"));
+        });
+    } else {
+        this.stringExtended = defineString(this.extended, this.isExtended, this.dateExtended);
+    }
+
+}).call(this);
+
+
+
+
+
+
+
+},{"extended":16,"is-extended":23,"date-extended":18}],22:[function(require,module,exports){
+(function () {
+    "use strict";
+
+    function defineFunction(extended, is) {
+
+        var isArray = is.isArray,
+            isObject = is.isObject,
+            isString = is.isString,
+            isFunction = is.isFunction,
+            arraySlice = Array.prototype.slice;
+
+        function argsToArray(args, slice) {
+            slice = slice || 0;
+            return arraySlice.call(args, slice);
+        }
+
+        function hitch(scope, method, args) {
+            args = argsToArray(arguments, 2);
+            if ((isString(method) && !(method in scope))) {
+                throw new Error(method + " property not defined in scope");
+            } else if (!isString(method) && !isFunction(method)) {
+                throw new Error(method + " is not a function");
+            }
+            if (isString(method)) {
+                return function () {
+                    var func = scope[method];
+                    if (isFunction(func)) {
+                        var scopeArgs = args.concat(argsToArray(arguments));
+                        return func.apply(scope, scopeArgs);
+                    } else {
+                        return func;
+                    }
+                };
+            } else {
+                if (args.length) {
+                    return function () {
+                        var scopeArgs = args.concat(argsToArray(arguments));
+                        return method.apply(scope, scopeArgs);
+                    };
+                } else {
+
+                    return function () {
+                        return method.apply(scope, arguments);
+                    };
+                }
+            }
+        }
+
+
+        function applyFirst(method, args) {
+            args = argsToArray(arguments, 1);
+            if (!isString(method) && !isFunction(method)) {
+                throw new Error(method + " must be the name of a property or function to execute");
+            }
+            if (isString(method)) {
+                return function () {
+                    var scopeArgs = argsToArray(arguments), scope = scopeArgs.shift();
+                    var func = scope[method];
+                    if (isFunction(func)) {
+                        scopeArgs = args.concat(scopeArgs);
+                        return func.apply(scope, scopeArgs);
+                    } else {
+                        return func;
+                    }
+                };
+            } else {
+                return function () {
+                    var scopeArgs = argsToArray(arguments), scope = scopeArgs.shift();
+                    scopeArgs = args.concat(scopeArgs);
+                    return method.apply(scope, scopeArgs);
+                };
+            }
+        }
+
+
+        function hitchIgnore(scope, method, args) {
+            args = argsToArray(arguments, 2);
+            if ((isString(method) && !(method in scope))) {
+                throw new Error(method + " property not defined in scope");
+            } else if (!isString(method) && !isFunction(method)) {
+                throw new Error(method + " is not a function");
+            }
+            if (isString(method)) {
+                return function () {
+                    var func = scope[method];
+                    if (isFunction(func)) {
+                        return func.apply(scope, args);
+                    } else {
+                        return func;
+                    }
+                };
+            } else {
+                return function () {
+                    return method.apply(scope, args);
+                };
+            }
+        }
+
+
+        function hitchAll(scope) {
+            var funcs = argsToArray(arguments, 1);
+            if (!isObject(scope) && !isFunction(scope)) {
+                throw new TypeError("scope must be an object");
+            }
+            if (funcs.length === 1 && isArray(funcs[0])) {
+                funcs = funcs[0];
+            }
+            if (!funcs.length) {
+                funcs = [];
+                for (var k in scope) {
+                    if (scope.hasOwnProperty(k) && isFunction(scope[k])) {
+                        funcs.push(k);
+                    }
+                }
+            }
+            for (var i = 0, l = funcs.length; i < l; i++) {
+                scope[funcs[i]] = hitch(scope, scope[funcs[i]]);
+            }
+            return scope;
+        }
+
+
+        function partial(method, args) {
+            args = argsToArray(arguments, 1);
+            if (!isString(method) && !isFunction(method)) {
+                throw new Error(method + " must be the name of a property or function to execute");
+            }
+            if (isString(method)) {
+                return function () {
+                    var func = this[method];
+                    if (isFunction(func)) {
+                        var scopeArgs = args.concat(argsToArray(arguments));
+                        return func.apply(this, scopeArgs);
+                    } else {
+                        return func;
+                    }
+                };
+            } else {
+                return function () {
+                    var scopeArgs = args.concat(argsToArray(arguments));
+                    return method.apply(this, scopeArgs);
+                };
+            }
+        }
+
+        function curryFunc(f, execute) {
+            return function () {
+                var args = argsToArray(arguments);
+                return execute ? f.apply(this, arguments) : function () {
+                    return f.apply(this, args.concat(argsToArray(arguments)));
+                };
+            };
+        }
+
+
+        function curry(depth, cb, scope) {
+            var f;
+            if (scope) {
+                f = hitch(scope, cb);
+            } else {
+                f = cb;
+            }
+            if (depth) {
+                var len = depth - 1;
+                for (var i = len; i >= 0; i--) {
+                    f = curryFunc(f, i === len);
+                }
+            }
+            return f;
+        }
+
+        return extended
+            .define(isObject, {
+                bind: hitch,
+                bindAll: hitchAll,
+                bindIgnore: hitchIgnore,
+                curry: function (scope, depth, fn) {
+                    return curry(depth, fn, scope);
+                }
+            })
+            .define(isFunction, {
+                bind: function (fn, obj) {
+                    return hitch.apply(this, [obj, fn].concat(argsToArray(arguments, 2)));
+                },
+                bindIgnore: function (fn, obj) {
+                    return hitchIgnore.apply(this, [obj, fn].concat(argsToArray(arguments, 2)));
+                },
+                partial: partial,
+                applyFirst: applyFirst,
+                curry: function (fn, num, scope) {
+                    return curry(num, fn, scope);
+                },
+                noWrap: {
+                    f: function () {
+                        return this.value();
+                    }
+                }
+            })
+            .define(isString, {
+                bind: function (str, scope) {
+                    return hitch(scope, str);
+                },
+                bindIgnore: function (str, scope) {
+                    return hitchIgnore(scope, str);
+                },
+                partial: partial,
+                applyFirst: applyFirst,
+                curry: function (fn, depth, scope) {
+                    return curry(depth, fn, scope);
+                }
+            })
+            .expose({
+                bind: hitch,
+                bindAll: hitchAll,
+                bindIgnore: hitchIgnore,
+                partial: partial,
+                applyFirst: applyFirst,
+                curry: curry
+            });
+
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineFunction(require("extended"), require("is-extended"));
+
+        }
+    } else if ("function" === typeof define) {
+        define(["require"], function (require) {
+            return defineFunction(require("extended"), require("is-extended"));
+        });
+    } else {
+        this.functionExtended = defineFunction(this.extended, this.isExtended);
+    }
+
+}).call(this);
+
+
+
+
+
+
+
+},{"extended":16,"is-extended":23}],37:[function(require,module,exports){
 require=(function(e,t,n,r){function i(r){if(!n[r]){if(!t[r]){if(e)return e(r);throw new Error("Cannot find module '"+r+"'")}var s=n[r]={exports:{}};t[r][0](function(e){var n=t[r][1][e];return i(n?n:e)},s,s.exports)}return n[r].exports}for(var s=0;s<r.length;s++)i(r[s]);return i})(typeof require!=="undefined"&&require,{1:[function(require,module,exports){
 exports.readIEEE754 = function(buffer, offset, isBE, mLen, nBytes) {
   var e, m,
@@ -8385,7 +11096,7 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 },{}]},{},[])
 ;;module.exports=require("buffer-browserify")
 
-},{}],17:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 (function(Buffer){(function () {
     "use strict";
 
@@ -8884,2720 +11595,7 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
 
 })(require("__browserify_buffer").Buffer)
-},{"extended":16,"__browserify_buffer":36}],18:[function(require,module,exports){
-(function () {
-    "use strict";
-
-    var arraySlice = Array.prototype.slice;
-
-    function argsToArray(args, slice) {
-        slice = slice || 0;
-        return arraySlice.call(args, slice);
-    }
-
-    function defineArray(extended, is) {
-
-        var isString = is.isString,
-            isArray = Array.isArray || is.isArray,
-            isDate = is.isDate,
-            floor = Math.floor,
-            abs = Math.abs,
-            mathMax = Math.max,
-            mathMin = Math.min,
-            arrayProto = Array.prototype,
-            arrayIndexOf = arrayProto.indexOf,
-            arrayForEach = arrayProto.forEach,
-            arrayMap = arrayProto.map,
-            arrayReduce = arrayProto.reduce,
-            arrayReduceRight = arrayProto.reduceRight,
-            arrayFilter = arrayProto.filter,
-            arrayEvery = arrayProto.every,
-            arraySome = arrayProto.some;
-
-
-        function cross(num, cros) {
-            return reduceRight(cros, function (a, b) {
-                if (!isArray(b)) {
-                    b = [b];
-                }
-                b.unshift(num);
-                a.unshift(b);
-                return a;
-            }, []);
-        }
-
-        function permute(num, cross, length) {
-            var ret = [];
-            for (var i = 0; i < cross.length; i++) {
-                ret.push([num].concat(rotate(cross, i)).slice(0, length));
-            }
-            return ret;
-        }
-
-
-        function intersection(a, b) {
-            var ret = [], aOne;
-            if (a && b && a.length && b.length) {
-                for (var i = 0, l = a.length; i < l; i++) {
-                    aOne = a[i];
-                    if (indexOf(b, aOne) !== -1) {
-                        ret.push(aOne);
-                    }
-                }
-            }
-            return ret;
-        }
-
-
-        var _sort = (function () {
-
-            var isAll = function (arr, test) {
-                return every(arr, test);
-            };
-
-            var defaultCmp = function (a, b) {
-                return a - b;
-            };
-
-            var dateSort = function (a, b) {
-                return a.getTime() - b.getTime();
-            };
-
-            return function _sort(arr, property) {
-                var ret = [];
-                if (isArray(arr)) {
-                    ret = arr.slice();
-                    if (property) {
-                        if (typeof property === "function") {
-                            ret.sort(property);
-                        } else {
-                            ret.sort(function (a, b) {
-                                var aProp = a[property], bProp = b[property];
-                                if (isString(aProp) && isString(bProp)) {
-                                    return aProp > bProp ? 1 : aProp < bProp ? -1 : 0;
-                                } else if (isDate(aProp) && isDate(bProp)) {
-                                    return aProp.getTime() - bProp.getTime();
-                                } else {
-                                    return aProp - bProp;
-                                }
-                            });
-                        }
-                    } else {
-                        if (isAll(ret, isString)) {
-                            ret.sort();
-                        } else if (isAll(ret, isDate)) {
-                            ret.sort(dateSort);
-                        } else {
-                            ret.sort(defaultCmp);
-                        }
-                    }
-                }
-                return ret;
-            };
-
-        })();
-
-        function indexOf(arr, searchElement, from) {
-            if (arr && arrayIndexOf && arrayIndexOf === arr.indexOf) {
-                return arr.indexOf(searchElement, from);
-            }
-            if (!isArray(arr)) {
-                throw new TypeError();
-            }
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            if (len === 0) {
-                return -1;
-            }
-            var n = 0;
-            if (arguments.length > 2) {
-                n = Number(arguments[2]);
-                if (n !== n) { // shortcut for verifying if it's NaN
-                    n = 0;
-                } else if (n !== 0 && n !== Infinity && n !== -Infinity) {
-                    n = (n > 0 || -1) * floor(abs(n));
-                }
-            }
-            if (n >= len) {
-                return -1;
-            }
-            var k = n >= 0 ? n : mathMax(len - abs(n), 0);
-            for (; k < len; k++) {
-                if (k in t && t[k] === searchElement) {
-                    return k;
-                }
-            }
-            return -1;
-        }
-
-        function lastIndexOf(arr, searchElement, from) {
-            if (!isArray(arr)) {
-                throw new TypeError();
-            }
-
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            if (len === 0) {
-                return -1;
-            }
-
-            var n = len;
-            if (arguments.length > 2) {
-                n = Number(arguments[2]);
-                if (n !== n) {
-                    n = 0;
-                } else if (n !== 0 && n !== (1 / 0) && n !== -(1 / 0)) {
-                    n = (n > 0 || -1) * floor(abs(n));
-                }
-            }
-
-            var k = n >= 0 ? mathMin(n, len - 1) : len - abs(n);
-
-            for (; k >= 0; k--) {
-                if (k in t && t[k] === searchElement) {
-                    return k;
-                }
-            }
-            return -1;
-        }
-
-        function filter(arr, iterator, scope) {
-            if (arr && arrayFilter && arrayFilter === arr.filter) {
-                return arr.filter(iterator, scope);
-            }
-            if (!isArray(arr) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            var res = [];
-            for (var i = 0; i < len; i++) {
-                if (i in t) {
-                    var val = t[i]; // in case fun mutates this
-                    if (iterator.call(scope, val, i, t)) {
-                        res.push(val);
-                    }
-                }
-            }
-            return res;
-        }
-
-        function forEach(arr, iterator, scope) {
-            if (!isArray(arr) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-            if (arr && arrayForEach && arrayForEach === arr.forEach) {
-                arr.forEach(iterator, scope);
-                return arr;
-            }
-            for (var i = 0, len = arr.length; i < len; ++i) {
-                iterator.call(scope || arr, arr[i], i, arr);
-            }
-
-            return arr;
-        }
-
-        function every(arr, iterator, scope) {
-            if (arr && arrayEvery && arrayEvery === arr.every) {
-                return arr.every(iterator, scope);
-            }
-            if (!isArray(arr) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            for (var i = 0; i < len; i++) {
-                if (i in t && !iterator.call(scope, t[i], i, t)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        function some(arr, iterator, scope) {
-            if (arr && arraySome && arraySome === arr.some) {
-                return arr.some(iterator, scope);
-            }
-            if (!isArray(arr) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            for (var i = 0; i < len; i++) {
-                if (i in t && iterator.call(scope, t[i], i, t)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        function map(arr, iterator, scope) {
-            if (arr && arrayMap && arrayMap === arr.map) {
-                return arr.map(iterator, scope);
-            }
-            if (!isArray(arr) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            var res = [];
-            for (var i = 0; i < len; i++) {
-                if (i in t) {
-                    res.push(iterator.call(scope, t[i], i, t));
-                }
-            }
-            return res;
-        }
-
-        function reduce(arr, accumulator, curr) {
-            var initial = arguments.length > 2;
-            if (arr && arrayReduce && arrayReduce === arr.reduce) {
-                return initial ? arr.reduce(accumulator, curr) : arr.reduce(accumulator);
-            }
-            if (!isArray(arr) || typeof accumulator !== "function") {
-                throw new TypeError();
-            }
-            var i = 0, l = arr.length >> 0;
-            if (arguments.length < 3) {
-                if (l === 0) {
-                    throw new TypeError("Array length is 0 and no second argument");
-                }
-                curr = arr[0];
-                i = 1; // start accumulating at the second element
-            } else {
-                curr = arguments[2];
-            }
-            while (i < l) {
-                if (i in arr) {
-                    curr = accumulator.call(undefined, curr, arr[i], i, arr);
-                }
-                ++i;
-            }
-            return curr;
-        }
-
-        function reduceRight(arr, accumulator, curr) {
-            var initial = arguments.length > 2;
-            if (arr && arrayReduceRight && arrayReduceRight === arr.reduceRight) {
-                return initial ? arr.reduceRight(accumulator, curr) : arr.reduceRight(accumulator);
-            }
-            if (!isArray(arr) || typeof accumulator !== "function") {
-                throw new TypeError();
-            }
-
-            var t = Object(arr);
-            var len = t.length >>> 0;
-
-            // no value to return if no initial value, empty array
-            if (len === 0 && arguments.length === 2) {
-                throw new TypeError();
-            }
-
-            var k = len - 1;
-            if (arguments.length >= 3) {
-                curr = arguments[2];
-            } else {
-                do {
-                    if (k in arr) {
-                        curr = arr[k--];
-                        break;
-                    }
-                }
-                while (true);
-            }
-            while (k >= 0) {
-                if (k in t) {
-                    curr = accumulator.call(undefined, curr, t[k], k, t);
-                }
-                k--;
-            }
-            return curr;
-        }
-
-
-        function toArray(o) {
-            var ret = [];
-            if (o !== null) {
-                var args = argsToArray(arguments);
-                if (args.length === 1) {
-                    if (isArray(o)) {
-                        ret = o;
-                    } else if (is.isHash(o)) {
-                        for (var i in o) {
-                            if (o.hasOwnProperty(i)) {
-                                ret.push([i, o[i]]);
-                            }
-                        }
-                    } else {
-                        ret.push(o);
-                    }
-                } else {
-                    forEach(args, function (a) {
-                        ret = ret.concat(toArray(a));
-                    });
-                }
-            }
-            return ret;
-        }
-
-        function sum(array) {
-            array = array || [];
-            if (array.length) {
-                return reduce(array, function (a, b) {
-                    return a + b;
-                });
-            } else {
-                return 0;
-            }
-        }
-
-        function avg(arr) {
-            arr = arr || [];
-            if (arr.length) {
-                var total = sum(arr);
-                if (is.isNumber(total)) {
-                    return  total / arr.length;
-                } else {
-                    throw new Error("Cannot average an array of non numbers.");
-                }
-            } else {
-                return 0;
-            }
-        }
-
-        function sort(arr, cmp) {
-            return _sort(arr, cmp);
-        }
-
-        function min(arr, cmp) {
-            return _sort(arr, cmp)[0];
-        }
-
-        function max(arr, cmp) {
-            return _sort(arr, cmp)[arr.length - 1];
-        }
-
-        function difference(arr1) {
-            var ret = arr1, args = flatten(argsToArray(arguments, 1));
-            if (isArray(arr1)) {
-                ret = filter(arr1, function (a) {
-                    return indexOf(args, a) === -1;
-                });
-            }
-            return ret;
-        }
-
-        function removeDuplicates(arr) {
-            var ret = [];
-            if (isArray(arr)) {
-                for (var i = 0, l = arr.length; i < l; i++) {
-                    var item = arr[i];
-                    if (indexOf(ret, item) === -1) {
-                        ret.push(item);
-                    }
-                }
-            }
-            return ret;
-        }
-
-
-        function unique(arr) {
-            return removeDuplicates(arr);
-        }
-
-
-        function rotate(arr, numberOfTimes) {
-            var ret = arr.slice();
-            if (typeof numberOfTimes !== "number") {
-                numberOfTimes = 1;
-            }
-            if (numberOfTimes && isArray(arr)) {
-                if (numberOfTimes > 0) {
-                    ret.push(ret.shift());
-                    numberOfTimes--;
-                } else {
-                    ret.unshift(ret.pop());
-                    numberOfTimes++;
-                }
-                return rotate(ret, numberOfTimes);
-            } else {
-                return ret;
-            }
-        }
-
-        function permutations(arr, length) {
-            var ret = [];
-            if (isArray(arr)) {
-                var copy = arr.slice(0);
-                if (typeof length !== "number") {
-                    length = arr.length;
-                }
-                if (!length) {
-                    ret = [
-                        []
-                    ];
-                } else if (length <= arr.length) {
-                    ret = reduce(arr, function (a, b, i) {
-                        var ret;
-                        if (length > 1) {
-                            ret = permute(b, rotate(copy, i).slice(1), length);
-                        } else {
-                            ret = [
-                                [b]
-                            ];
-                        }
-                        return a.concat(ret);
-                    }, []);
-                }
-            }
-            return ret;
-        }
-
-        function zip() {
-            var ret = [];
-            var arrs = argsToArray(arguments);
-            if (arrs.length > 1) {
-                var arr1 = arrs.shift();
-                if (isArray(arr1)) {
-                    ret = reduce(arr1, function (a, b, i) {
-                        var curr = [b];
-                        for (var j = 0; j < arrs.length; j++) {
-                            var currArr = arrs[j];
-                            if (isArray(currArr) && !is.isUndefined(currArr[i])) {
-                                curr.push(currArr[i]);
-                            } else {
-                                curr.push(null);
-                            }
-                        }
-                        a.push(curr);
-                        return a;
-                    }, []);
-                }
-            }
-            return ret;
-        }
-
-        function transpose(arr) {
-            var ret = [];
-            if (isArray(arr) && arr.length) {
-                var last;
-                forEach(arr, function (a) {
-                    if (isArray(a) && (!last || a.length === last.length)) {
-                        forEach(a, function (b, i) {
-                            if (!ret[i]) {
-                                ret[i] = [];
-                            }
-                            ret[i].push(b);
-                        });
-                        last = a;
-                    }
-                });
-            }
-            return ret;
-        }
-
-        function valuesAt(arr, indexes) {
-            var ret = [];
-            indexes = argsToArray(arguments);
-            arr = indexes.shift();
-            if (isArray(arr) && indexes.length) {
-                for (var i = 0, l = indexes.length; i < l; i++) {
-                    ret.push(arr[indexes[i]] || null);
-                }
-            }
-            return ret;
-        }
-
-        function union() {
-            var ret = [];
-            var arrs = argsToArray(arguments);
-            if (arrs.length > 1) {
-                for (var i = 0, l = arrs.length; i < l; i++) {
-                    ret = ret.concat(arrs[i]);
-                }
-                ret = removeDuplicates(ret);
-            }
-            return ret;
-        }
-
-        function intersect() {
-            var collect = [], sets;
-            var args = argsToArray(arguments);
-            if (args.length > 1) {
-                //assume we are intersections all the lists in the array
-                sets = args;
-            } else {
-                sets = args[0];
-            }
-            if (isArray(sets)) {
-                var collect = sets.shift();
-                for (var i = 0, l = sets.length; i < l; i++) {
-                    collect = intersection(collect, sets[i]);
-                }
-            }
-            return removeDuplicates(collect);
-        }
-
-        function powerSet(arr) {
-            var ret = [];
-            if (isArray(arr) && arr.length) {
-                ret = reduce(arr, function (a, b) {
-                    var ret = map(a, function (c) {
-                        return c.concat(b);
-                    });
-                    return a.concat(ret);
-                }, [
-                    []
-                ]);
-            }
-            return ret;
-        }
-
-        function cartesian(a, b) {
-            var ret = [];
-            if (isArray(a) && isArray(b) && a.length && b.length) {
-                ret = cross(a[0], b).concat(cartesian(a.slice(1), b));
-            }
-            return ret;
-        }
-
-        function compact(arr) {
-            var ret = [];
-            if (isArray(arr) && arr.length) {
-                ret = filter(arr, function (item) {
-                    return !is.isUndefinedOrNull(item);
-                });
-            }
-            return ret;
-        }
-
-        function multiply(arr, times) {
-            times = is.isNumber(times) ? times : 1;
-            if (!times) {
-                //make sure times is greater than zero if it is zero then dont multiply it
-                times = 1;
-            }
-            arr = toArray(arr || []);
-            var ret = [], i = 0;
-            while (++i <= times) {
-                ret = ret.concat(arr);
-            }
-            return ret;
-        }
-
-        function flatten(arr) {
-            var set;
-            var args = argsToArray(arguments);
-            if (args.length > 1) {
-                //assume we are intersections all the lists in the array
-                set = args;
-            } else {
-                set = toArray(arr);
-            }
-            return reduce(set, function (a, b) {
-                return a.concat(b);
-            }, []);
-        }
-
-        function pluck(arr, prop) {
-            prop = prop.split(".");
-            var result = arr.slice(0);
-            forEach(prop, function (prop) {
-                var exec = prop.match(/(\w+)\(\)$/);
-                result = map(result, function (item) {
-                    return exec ? item[exec[1]]() : item[prop];
-                });
-            });
-            return result;
-        }
-
-        function invoke(arr, func, args) {
-            args = argsToArray(arguments, 2);
-            return map(arr, function (item) {
-                var exec = isString(func) ? item[func] : func;
-                return exec.apply(item, args);
-            });
-        }
-
-
-        var array = {
-            toArray: toArray,
-            sum: sum,
-            avg: avg,
-            sort: sort,
-            min: min,
-            max: max,
-            difference: difference,
-            removeDuplicates: removeDuplicates,
-            unique: unique,
-            rotate: rotate,
-            permutations: permutations,
-            zip: zip,
-            transpose: transpose,
-            valuesAt: valuesAt,
-            union: union,
-            intersect: intersect,
-            powerSet: powerSet,
-            cartesian: cartesian,
-            compact: compact,
-            multiply: multiply,
-            flatten: flatten,
-            pluck: pluck,
-            invoke: invoke,
-            forEach: forEach,
-            map: map,
-            filter: filter,
-            reduce: reduce,
-            reduceRight: reduceRight,
-            some: some,
-            every: every,
-            indexOf: indexOf,
-            lastIndexOf: lastIndexOf
-        };
-
-        return extended.define(isArray, array).expose(array);
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineArray(require("extended"), require("is-extended"));
-        }
-    } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return defineArray(require("extended"), require("is-extended"));
-        });
-    } else {
-        this.arrayExtended = defineArray(this.extended, this.isExtended);
-    }
-
-}).call(this);
-
-
-
-
-
-
-
-},{"extended":16,"is-extended":17}],19:[function(require,module,exports){
-(function () {
-    "use strict";
-
-    function defineDate(extended, is, array) {
-
-        function _pad(string, length, ch, end) {
-            string = "" + string; //check for numbers
-            ch = ch || " ";
-            var strLen = string.length;
-            while (strLen < length) {
-                if (end) {
-                    string += ch;
-                } else {
-                    string = ch + string;
-                }
-                strLen++;
-            }
-            return string;
-        }
-
-        function _truncate(string, length, end) {
-            var ret = string;
-            if (is.isString(ret)) {
-                if (string.length > length) {
-                    if (end) {
-                        var l = string.length;
-                        ret = string.substring(l - length, l);
-                    } else {
-                        ret = string.substring(0, length);
-                    }
-                }
-            } else {
-                ret = _truncate("" + ret, length);
-            }
-            return ret;
-        }
-
-        function every(arr, iterator, scope) {
-            if (!is.isArray(arr) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            for (var i = 0; i < len; i++) {
-                if (i in t && !iterator.call(scope, t[i], i, t)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-
-        var transforms = (function () {
-                var floor = Math.floor, round = Math.round;
-
-                var addMap = {
-                    day: function addDay(date, amount) {
-                        return [amount, "Date", false];
-                    },
-                    weekday: function addWeekday(date, amount) {
-                        // Divide the increment time span into weekspans plus leftover days
-                        // e.g., 8 days is one 5-day weekspan / and two leftover days
-                        // Can't have zero leftover days, so numbers divisible by 5 get
-                        // a days value of 5, and the remaining days make up the number of weeks
-                        var days, weeks, mod = amount % 5, strt = date.getDay(), adj = 0;
-                        if (!mod) {
-                            days = (amount > 0) ? 5 : -5;
-                            weeks = (amount > 0) ? ((amount - 5) / 5) : ((amount + 5) / 5);
-                        } else {
-                            days = mod;
-                            weeks = parseInt(amount / 5, 10);
-                        }
-                        if (strt === 6 && amount > 0) {
-                            adj = 1;
-                        } else if (strt === 0 && amount < 0) {
-                            // Orig date is Sun / negative increment
-                            // Jump back over Sat
-                            adj = -1;
-                        }
-                        // Get weekday val for the new date
-                        var trgt = strt + days;
-                        // New date is on Sat or Sun
-                        if (trgt === 0 || trgt === 6) {
-                            adj = (amount > 0) ? 2 : -2;
-                        }
-                        // Increment by number of weeks plus leftover days plus
-                        // weekend adjustments
-                        return [(7 * weeks) + days + adj, "Date", false];
-                    },
-                    year: function addYear(date, amount) {
-                        return [amount, "FullYear", true];
-                    },
-                    week: function addWeek(date, amount) {
-                        return [amount * 7, "Date", false];
-                    },
-                    quarter: function addYear(date, amount) {
-                        return [amount * 3, "Month", true];
-                    },
-                    month: function addYear(date, amount) {
-                        return [amount, "Month", true];
-                    }
-                };
-
-                function addTransform(interval, date, amount) {
-                    interval = interval.replace(/s$/, "");
-                    if (addMap.hasOwnProperty(interval)) {
-                        return addMap[interval](date, amount);
-                    }
-                    return [amount, "UTC" + interval.charAt(0).toUpperCase() + interval.substring(1) + "s", false];
-                }
-
-
-                var differenceMap = {
-                    "quarter": function quarterDifference(date1, date2, utc) {
-                        var yearDiff = date2.getFullYear() - date1.getFullYear();
-                        var m1 = date1[utc ? "getUTCMonth" : "getMonth"]();
-                        var m2 = date2[utc ? "getUTCMonth" : "getMonth"]();
-                        // Figure out which quarter the months are in
-                        var q1 = floor(m1 / 3) + 1;
-                        var q2 = floor(m2 / 3) + 1;
-                        // Add quarters for any year difference between the dates
-                        q2 += (yearDiff * 4);
-                        return q2 - q1;
-                    },
-
-                    "weekday": function weekdayDifference(date1, date2, utc) {
-                        var days = differenceTransform("day", date1, date2, utc), weeks;
-                        var mod = days % 7;
-                        // Even number of weeks
-                        if (mod === 0) {
-                            days = differenceTransform("week", date1, date2, utc) * 5;
-                        } else {
-                            // Weeks plus spare change (< 7 days)
-                            var adj = 0, aDay = date1[utc ? "getUTCDay" : "getDay"](), bDay = date2[utc ? "getUTCDay" : "getDay"]();
-                            weeks = parseInt(days / 7, 10);
-                            // Mark the date advanced by the number of
-                            // round weeks (may be zero)
-                            var dtMark = new Date(+date1);
-                            dtMark.setDate(dtMark[utc ? "getUTCDate" : "getDate"]() + (weeks * 7));
-                            var dayMark = dtMark[utc ? "getUTCDay" : "getDay"]();
-
-                            // Spare change days -- 6 or less
-                            if (days > 0) {
-                                if (aDay === 6 || bDay === 6) {
-                                    adj = -1;
-                                } else if (aDay === 0) {
-                                    adj = 0;
-                                } else if (bDay === 0 || (dayMark + mod) > 5) {
-                                    adj = -2;
-                                }
-                            } else if (days < 0) {
-                                if (aDay === 6) {
-                                    adj = 0;
-                                } else if (aDay === 0 || bDay === 0) {
-                                    adj = 1;
-                                } else if (bDay === 6 || (dayMark + mod) < 0) {
-                                    adj = 2;
-                                }
-                            }
-                            days += adj;
-                            days -= (weeks * 2);
-                        }
-                        return days;
-                    },
-                    year: function (date1, date2) {
-                        return date2.getFullYear() - date1.getFullYear();
-                    },
-                    month: function (date1, date2, utc) {
-                        var m1 = date1[utc ? "getUTCMonth" : "getMonth"]();
-                        var m2 = date2[utc ? "getUTCMonth" : "getMonth"]();
-                        return (m2 - m1) + ((date2.getFullYear() - date1.getFullYear()) * 12);
-                    },
-                    week: function (date1, date2, utc) {
-                        return round(differenceTransform("day", date1, date2, utc) / 7);
-                    },
-                    day: function (date1, date2) {
-                        return 1.1574074074074074e-8 * (date2.getTime() - date1.getTime());
-                    },
-                    hour: function (date1, date2) {
-                        return 2.7777777777777776e-7 * (date2.getTime() - date1.getTime());
-                    },
-                    minute: function (date1, date2) {
-                        return 0.000016666666666666667 * (date2.getTime() - date1.getTime());
-                    },
-                    second: function (date1, date2) {
-                        return 0.001 * (date2.getTime() - date1.getTime());
-                    },
-                    millisecond: function (date1, date2) {
-                        return date2.getTime() - date1.getTime();
-                    }
-                };
-
-
-                function differenceTransform(interval, date1, date2, utc) {
-                    interval = interval.replace(/s$/, "");
-                    return round(differenceMap[interval](date1, date2, utc));
-                }
-
-
-                return {
-                    addTransform: addTransform,
-                    differenceTransform: differenceTransform
-                };
-            }()),
-            addTransform = transforms.addTransform,
-            differenceTransform = transforms.differenceTransform;
-
-
-        /**
-         * @ignore
-         * Based on DOJO Date Implementation
-         *
-         * Dojo is available under *either* the terms of the modified BSD license *or* the
-         * Academic Free License version 2.1. As a recipient of Dojo, you may choose which
-         * license to receive this code under (except as noted in per-module LICENSE
-         * files). Some modules may not be the copyright of the Dojo Foundation. These
-         * modules contain explicit declarations of copyright in both the LICENSE files in
-         * the directories in which they reside and in the code itself. No external
-         * contributions are allowed under licenses which are fundamentally incompatible
-         * with the AFL or BSD licenses that Dojo is distributed under.
-         *
-         */
-
-        var floor = Math.floor, round = Math.round, min = Math.min, pow = Math.pow, ceil = Math.ceil, abs = Math.abs;
-        var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        var monthAbbr = ["Jan.", "Feb.", "Mar.", "Apr.", "May.", "Jun.", "Jul.", "Aug.", "Sep.", "Oct.", "Nov.", "Dec."];
-        var dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-        var dayAbbr = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        var eraNames = ["Before Christ", "Anno Domini"];
-        var eraAbbr = ["BC", "AD"];
-
-
-        function getDayOfYear(/*Date*/dateObject, utc) {
-            // summary: gets the day of the year as represented by dateObject
-            return date.difference(new Date(dateObject.getFullYear(), 0, 1, dateObject.getHours()), dateObject, null, utc) + 1; // Number
-        }
-
-        function getWeekOfYear(/*Date*/dateObject, /*Number*/firstDayOfWeek, utc) {
-            firstDayOfWeek = firstDayOfWeek || 0;
-            var fullYear = dateObject[utc ? "getUTCFullYear" : "getFullYear"]();
-            var firstDayOfYear = new Date(fullYear, 0, 1).getDay(),
-                adj = (firstDayOfYear - firstDayOfWeek + 7) % 7,
-                week = floor((getDayOfYear(dateObject) + adj - 1) / 7);
-
-            // if year starts on the specified day, start counting weeks at 1
-            if (firstDayOfYear === firstDayOfWeek) {
-                week++;
-            }
-
-            return week; // Number
-        }
-
-        function getTimezoneName(/*Date*/dateObject) {
-            var str = dateObject.toString();
-            var tz = '';
-            var pos = str.indexOf('(');
-            if (pos > -1) {
-                tz = str.substring(++pos, str.indexOf(')'));
-            }
-            return tz; // String
-        }
-
-
-        function buildDateEXP(pattern, tokens) {
-            return pattern.replace(/([a-z])\1*/ig,function (match) {
-                // Build a simple regexp.  Avoid captures, which would ruin the tokens list
-                var s,
-                    c = match.charAt(0),
-                    l = match.length,
-                    p2 = '0?',
-                    p3 = '0{0,2}';
-                if (c === 'y') {
-                    s = '\\d{2,4}';
-                } else if (c === "M") {
-                    s = (l > 2) ? '\\S+?' : '1[0-2]|' + p2 + '[1-9]';
-                } else if (c === "D") {
-                    s = '[12][0-9][0-9]|3[0-5][0-9]|36[0-6]|' + p3 + '[1-9][0-9]|' + p2 + '[1-9]';
-                } else if (c === "d") {
-                    s = '3[01]|[12]\\d|' + p2 + '[1-9]';
-                } else if (c === "w") {
-                    s = '[1-4][0-9]|5[0-3]|' + p2 + '[1-9]';
-                } else if (c === "E") {
-                    s = '\\S+';
-                } else if (c === "h") {
-                    s = '1[0-2]|' + p2 + '[1-9]';
-                } else if (c === "K") {
-                    s = '1[01]|' + p2 + '\\d';
-                } else if (c === "H") {
-                    s = '1\\d|2[0-3]|' + p2 + '\\d';
-                } else if (c === "k") {
-                    s = '1\\d|2[0-4]|' + p2 + '[1-9]';
-                } else if (c === "m" || c === "s") {
-                    s = '[0-5]\\d';
-                } else if (c === "S") {
-                    s = '\\d{' + l + '}';
-                } else if (c === "a") {
-                    var am = 'AM', pm = 'PM';
-                    s = am + '|' + pm;
-                    if (am !== am.toLowerCase()) {
-                        s += '|' + am.toLowerCase();
-                    }
-                    if (pm !== pm.toLowerCase()) {
-                        s += '|' + pm.toLowerCase();
-                    }
-                    s = s.replace(/\./g, "\\.");
-                } else if (c === 'v' || c === 'z' || c === 'Z' || c === 'G' || c === 'q' || c === 'Q') {
-                    s = ".*";
-                } else {
-                    s = c === " " ? "\\s*" : c + "*";
-                }
-                if (tokens) {
-                    tokens.push(match);
-                }
-
-                return "(" + s + ")"; // add capture
-            }).replace(/[\xa0 ]/g, "[\\s\\xa0]"); // normalize whitespace.  Need explicit handling of \xa0 for IE.
-        }
-
-
-        /**
-         * @namespace Utilities for Dates
-         */
-        var date = {
-
-            /**@lends date*/
-
-            /**
-             * Returns the number of days in the month of a date
-             *
-             * @example
-             *
-             *  dateExtender.getDaysInMonth(new Date(2006, 1, 1)); //28
-             *  dateExtender.getDaysInMonth(new Date(2004, 1, 1)); //29
-             *  dateExtender.getDaysInMonth(new Date(2006, 2, 1)); //31
-             *  dateExtender.getDaysInMonth(new Date(2006, 3, 1)); //30
-             *  dateExtender.getDaysInMonth(new Date(2006, 4, 1)); //31
-             *  dateExtender.getDaysInMonth(new Date(2006, 5, 1)); //30
-             *  dateExtender.getDaysInMonth(new Date(2006, 6, 1)); //31
-             * @param {Date} dateObject the date containing the month
-             * @return {Number} the number of days in the month
-             */
-            getDaysInMonth: function (/*Date*/dateObject) {
-                //	summary:
-                //		Returns the number of days in the month used by dateObject
-                var month = dateObject.getMonth();
-                var days = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-                if (month === 1 && date.isLeapYear(dateObject)) {
-                    return 29;
-                } // Number
-                return days[month]; // Number
-            },
-
-            /**
-             * Determines if a date is a leap year
-             *
-             * @example
-             *
-             *  dateExtender.isLeapYear(new Date(1600, 0, 1)); //true
-             *  dateExtender.isLeapYear(new Date(2004, 0, 1)); //true
-             *  dateExtender.isLeapYear(new Date(2000, 0, 1)); //true
-             *  dateExtender.isLeapYear(new Date(2006, 0, 1)); //false
-             *  dateExtender.isLeapYear(new Date(1900, 0, 1)); //false
-             *  dateExtender.isLeapYear(new Date(1800, 0, 1)); //false
-             *  dateExtender.isLeapYear(new Date(1700, 0, 1)); //false
-             *
-             * @param {Date} dateObject
-             * @returns {Boolean} true if it is a leap year false otherwise
-             */
-            isLeapYear: function (/*Date*/dateObject, utc) {
-                var year = dateObject[utc ? "getUTCFullYear" : "getFullYear"]();
-                return (year % 400 === 0) || (year % 4 === 0 && year % 100 !== 0);
-
-            },
-
-            /**
-             * Determines if a date is on a weekend
-             *
-             * @example
-             *
-             * var thursday = new Date(2006, 8, 21);
-             * var saturday = new Date(2006, 8, 23);
-             * var sunday = new Date(2006, 8, 24);
-             * var monday = new Date(2006, 8, 25);
-             * dateExtender.isWeekend(thursday)); //false
-             * dateExtender.isWeekend(saturday); //true
-             * dateExtender.isWeekend(sunday); //true
-             * dateExtender.isWeekend(monday)); //false
-             *
-             * @param {Date} dateObject the date to test
-             *
-             * @returns {Boolean} true if the date is a weekend
-             */
-            isWeekend: function (/*Date?*/dateObject, utc) {
-                // summary:
-                //	Determines if the date falls on a weekend, according to local custom.
-                var day = (dateObject || new Date())[utc ? "getUTCDay" : "getDay"]();
-                return day === 0 || day === 6;
-            },
-
-            /**
-             * Get the timezone of a date
-             *
-             * @example
-             *  //just setting the strLocal to simulate the toString() of a date
-             *  dt.str = 'Sun Sep 17 2006 22:25:51 GMT-0500 (CDT)';
-             *  //just setting the strLocal to simulate the locale
-             *  dt.strLocale = 'Sun 17 Sep 2006 10:25:51 PM CDT';
-             *  dateExtender.getTimezoneName(dt); //'CDT'
-             *  dt.str = 'Sun Sep 17 2006 22:57:18 GMT-0500 (CDT)';
-             *  dt.strLocale = 'Sun Sep 17 22:57:18 2006';
-             *  dateExtender.getTimezoneName(dt); //'CDT'
-             * @param dateObject the date to get the timezone from
-             *
-             * @returns {String} the timezone of the date
-             */
-            getTimezoneName: getTimezoneName,
-
-            /**
-             * Compares two dates
-             *
-             * @example
-             *
-             * var d1 = new Date();
-             * d1.setHours(0);
-             * dateExtender.compare(d1, d1); // 0
-             *
-             *  var d1 = new Date();
-             *  d1.setHours(0);
-             *  var d2 = new Date();
-             *  d2.setFullYear(2005);
-             *  d2.setHours(12);
-             *  dateExtender.compare(d1, d2, "date"); // 1
-             *  dateExtender.compare(d1, d2, "datetime"); // 1
-             *
-             *  var d1 = new Date();
-             *  d1.setHours(0);
-             *  var d2 = new Date();
-             *  d2.setFullYear(2005);
-             *  d2.setHours(12);
-             *  dateExtender.compare(d2, d1, "date"); // -1
-             *  dateExtender.compare(d1, d2, "time"); //-1
-             *
-             * @param {Date|String} date1 the date to comapare
-             * @param {Date|String} [date2=new Date()] the date to compare date1 againse
-             * @param {"date"|"time"|"datetime"} portion compares the portion specified
-             *
-             * @returns -1 if date1 is < date2 0 if date1 === date2  1 if date1 > date2
-             */
-            compare: function (/*Date*/date1, /*Date*/date2, /*String*/portion) {
-                date1 = new Date(+date1);
-                date2 = new Date(+(date2 || new Date()));
-
-                if (portion === "date") {
-                    // Ignore times and compare dates.
-                    date1.setHours(0, 0, 0, 0);
-                    date2.setHours(0, 0, 0, 0);
-                } else if (portion === "time") {
-                    // Ignore dates and compare times.
-                    date1.setFullYear(0, 0, 0);
-                    date2.setFullYear(0, 0, 0);
-                }
-                return date1 > date2 ? 1 : date1 < date2 ? -1 : 0;
-            },
-
-
-            /**
-             * Adds a specified interval and amount to a date
-             *
-             * @example
-             *  var dtA = new Date(2005, 11, 27);
-             *  dateExtender.add(dtA, "year", 1); //new Date(2006, 11, 27);
-             *  dateExtender.add(dtA, "years", 1); //new Date(2006, 11, 27);
-             *
-             *  dtA = new Date(2000, 0, 1);
-             *  dateExtender.add(dtA, "quarter", 1); //new Date(2000, 3, 1);
-             *  dateExtender.add(dtA, "quarters", 1); //new Date(2000, 3, 1);
-             *
-             *  dtA = new Date(2000, 0, 1);
-             *  dateExtender.add(dtA, "month", 1); //new Date(2000, 1, 1);
-             *  dateExtender.add(dtA, "months", 1); //new Date(2000, 1, 1);
-             *
-             *  dtA = new Date(2000, 0, 31);
-             *  dateExtender.add(dtA, "month", 1); //new Date(2000, 1, 29);
-             *  dateExtender.add(dtA, "months", 1); //new Date(2000, 1, 29);
-             *
-             *  dtA = new Date(2000, 0, 1);
-             *  dateExtender.add(dtA, "week", 1); //new Date(2000, 0, 8);
-             *  dateExtender.add(dtA, "weeks", 1); //new Date(2000, 0, 8);
-             *
-             *  dtA = new Date(2000, 0, 1);
-             *  dateExtender.add(dtA, "day", 1); //new Date(2000, 0, 2);
-             *
-             *  dtA = new Date(2000, 0, 1);
-             *  dateExtender.add(dtA, "weekday", 1); //new Date(2000, 0, 3);
-             *
-             *  dtA = new Date(2000, 0, 1, 11);
-             *  dateExtender.add(dtA, "hour", 1); //new Date(2000, 0, 1, 12);
-             *
-             *  dtA = new Date(2000, 11, 31, 23, 59);
-             *  dateExtender.add(dtA, "minute", 1); //new Date(2001, 0, 1, 0, 0);
-             *
-             *  dtA = new Date(2000, 11, 31, 23, 59, 59);
-             *  dateExtender.add(dtA, "second", 1); //new Date(2001, 0, 1, 0, 0, 0);
-             *
-             *  dtA = new Date(2000, 11, 31, 23, 59, 59, 999);
-             *  dateExtender.add(dtA, "millisecond", 1); //new Date(2001, 0, 1, 0, 0, 0, 0);
-             *
-             * @param {Date} date
-             * @param {String} interval the interval to add
-             *  <ul>
-             *      <li>day | days</li>
-             *      <li>weekday | weekdays</li>
-             *      <li>year | years</li>
-             *      <li>week | weeks</li>
-             *      <li>quarter | quarters</li>
-             *      <li>months | months</li>
-             *      <li>hour | hours</li>
-             *      <li>minute | minutes</li>
-             *      <li>second | seconds</li>
-             *      <li>millisecond | milliseconds</li>
-             *  </ul>
-             * @param {Number} [amount=0] the amount to add
-             */
-            add: function (/*Date*/date, /*String*/interval, /*int*/amount) {
-                var res = addTransform(interval, date, amount || 0);
-                amount = res[0];
-                var property = res[1];
-                var sum = new Date(+date);
-                var fixOvershoot = res[2];
-                if (property) {
-                    sum["set" + property](sum["get" + property]() + amount);
-                }
-
-                if (fixOvershoot && (sum.getDate() < date.getDate())) {
-                    sum.setDate(0);
-                }
-
-                return sum; // Date
-            },
-
-            /**
-             * Finds the difference between two dates based on the specified interval
-             *
-             * @example
-             *
-             * var dtA, dtB;
-             *
-             * dtA = new Date(2005, 11, 27);
-             * dtB = new Date(2006, 11, 27);
-             * dateExtender.difference(dtA, dtB, "year"); //1
-             *
-             * dtA = new Date(2000, 1, 29);
-             * dtB = new Date(2001, 2, 1);
-             * dateExtender.difference(dtA, dtB, "quarter"); //4
-             * dateExtender.difference(dtA, dtB, "month"); //13
-             *
-             * dtA = new Date(2000, 1, 1);
-             * dtB = new Date(2000, 1, 8);
-             * dateExtender.difference(dtA, dtB, "week"); //1
-             *
-             * dtA = new Date(2000, 1, 29);
-             * dtB = new Date(2000, 2, 1);
-             * dateExtender.difference(dtA, dtB, "day"); //1
-             *
-             * dtA = new Date(2006, 7, 3);
-             * dtB = new Date(2006, 7, 11);
-             * dateExtender.difference(dtA, dtB, "weekday"); //6
-             *
-             * dtA = new Date(2000, 11, 31, 23);
-             * dtB = new Date(2001, 0, 1, 0);
-             * dateExtender.difference(dtA, dtB, "hour"); //1
-             *
-             * dtA = new Date(2000, 11, 31, 23, 59);
-             * dtB = new Date(2001, 0, 1, 0, 0);
-             * dateExtender.difference(dtA, dtB, "minute"); //1
-             *
-             * dtA = new Date(2000, 11, 31, 23, 59, 59);
-             * dtB = new Date(2001, 0, 1, 0, 0, 0);
-             * dateExtender.difference(dtA, dtB, "second"); //1
-             *
-             * dtA = new Date(2000, 11, 31, 23, 59, 59, 999);
-             * dtB = new Date(2001, 0, 1, 0, 0, 0, 0);
-             * dateExtender.difference(dtA, dtB, "millisecond"); //1
-             *
-             *
-             * @param {Date} date1
-             * @param {Date} [date2 = new Date()]
-             * @param {String} [interval = "day"] the intercal to find the difference of.
-             *   <ul>
-             *      <li>day | days</li>
-             *      <li>weekday | weekdays</li>
-             *      <li>year | years</li>
-             *      <li>week | weeks</li>
-             *      <li>quarter | quarters</li>
-             *      <li>months | months</li>
-             *      <li>hour | hours</li>
-             *      <li>minute | minutes</li>
-             *      <li>second | seconds</li>
-             *      <li>millisecond | milliseconds</li>
-             *  </ul>
-             */
-            difference: function (/*Date*/date1, /*Date?*/date2, /*String*/interval, utc) {
-                date2 = date2 || new Date();
-                interval = interval || "day";
-                return differenceTransform(interval, date1, date2, utc);
-            },
-
-            /**
-             * Formats a date to the specidifed format string
-             *
-             * @example
-             *
-             * var date = new Date(2006, 7, 11, 0, 55, 12, 345);
-             * dateExtender.format(date, "EEEE, MMMM dd, yyyy"); //"Friday, August 11, 2006"
-             * dateExtender.format(date, "M/dd/yy"); //"8/11/06"
-             * dateExtender.format(date, "E"); //"6"
-             * dateExtender.format(date, "h:m a"); //"12:55 AM"
-             * dateExtender.format(date, 'h:m:s'); //"12:55:12"
-             * dateExtender.format(date, 'h:m:s.SS'); //"12:55:12.35"
-             * dateExtender.format(date, 'k:m:s.SS'); //"24:55:12.35"
-             * dateExtender.format(date, 'H:m:s.SS'); //"0:55:12.35"
-             * dateExtender.format(date, "ddMMyyyy"); //"11082006"
-             *
-             * @param date the date to format
-             * @param {String} format the format of the date composed of the following options
-             * <ul>
-             *                  <li> G    Era designator    Text    AD</li>
-             *                  <li> y    Year    Year    1996; 96</li>
-             *                  <li> M    Month in year    Month    July; Jul; 07</li>
-             *                  <li> w    Week in year    Number    27</li>
-             *                  <li> W    Week in month    Number    2</li>
-             *                  <li> D    Day in year    Number    189</li>
-             *                  <li> d    Day in month    Number    10</li>
-             *                  <li> E    Day in week    Text    Tuesday; Tue</li>
-             *                  <li> a    Am/pm marker    Text    PM</li>
-             *                  <li> H    Hour in day (0-23)    Number    0</li>
-             *                  <li> k    Hour in day (1-24)    Number    24</li>
-             *                  <li> K    Hour in am/pm (0-11)    Number    0</li>
-             *                  <li> h    Hour in am/pm (1-12)    Number    12</li>
-             *                  <li> m    Minute in hour    Number    30</li>
-             *                  <li> s    Second in minute    Number    55</li>
-             *                  <li> S    Millisecond    Number    978</li>
-             *                  <li> z    Time zone    General time zone    Pacific Standard Time; PST; GMT-08:00</li>
-             *                  <li> Z    Time zone    RFC 822 time zone    -0800 </li>
-             * </ul>
-             */
-            format: function (date, format, utc) {
-                utc = utc || false;
-                var fullYear, month, day, d, hour, minute, second, millisecond;
-                if (utc) {
-                    fullYear = date.getUTCFullYear();
-                    month = date.getUTCMonth();
-                    day = date.getUTCDay();
-                    d = date.getUTCDate();
-                    hour = date.getUTCHours();
-                    minute = date.getUTCMinutes();
-                    second = date.getUTCSeconds();
-                    millisecond = date.getUTCMilliseconds();
-                } else {
-                    fullYear = date.getFullYear();
-                    month = date.getMonth();
-                    d = date.getDate();
-                    day = date.getDay();
-                    hour = date.getHours();
-                    minute = date.getMinutes();
-                    second = date.getSeconds();
-                    millisecond = date.getMilliseconds();
-                }
-                return format.replace(/([A-Za-z])\1*/g, function (match) {
-                    var s, pad,
-                        c = match.charAt(0),
-                        l = match.length;
-                    if (c === 'd') {
-                        s = "" + d;
-                        pad = true;
-                    } else if (c === "H" && !s) {
-                        s = "" + hour;
-                        pad = true;
-                    } else if (c === 'm' && !s) {
-                        s = "" + minute;
-                        pad = true;
-                    } else if (c === 's') {
-                        if (!s) {
-                            s = "" + second;
-                        }
-                        pad = true;
-                    } else if (c === "G") {
-                        s = ((l < 4) ? eraAbbr : eraNames)[fullYear < 0 ? 0 : 1];
-                    } else if (c === "y") {
-                        s = fullYear;
-                        if (l > 1) {
-                            if (l === 2) {
-                                s = _truncate("" + s, 2, true);
-                            } else {
-                                pad = true;
-                            }
-                        }
-                    } else if (c.toUpperCase() === "Q") {
-                        s = ceil((month + 1) / 3);
-                        pad = true;
-                    } else if (c === "M") {
-                        if (l < 3) {
-                            s = month + 1;
-                            pad = true;
-                        } else {
-                            s = (l === 3 ? monthAbbr : monthNames)[month];
-                        }
-                    } else if (c === "w") {
-                        s = getWeekOfYear(date, 0, utc);
-                        pad = true;
-                    } else if (c === "D") {
-                        s = getDayOfYear(date, utc);
-                        pad = true;
-                    } else if (c === "E") {
-                        if (l < 3) {
-                            s = day + 1;
-                            pad = true;
-                        } else {
-                            s = (l === -3 ? dayAbbr : dayNames)[day];
-                        }
-                    } else if (c === 'a') {
-                        s = (hour < 12) ? 'AM' : 'PM';
-                    } else if (c === "h") {
-                        s = (hour % 12) || 12;
-                        pad = true;
-                    } else if (c === "K") {
-                        s = (hour % 12);
-                        pad = true;
-                    } else if (c === "k") {
-                        s = hour || 24;
-                        pad = true;
-                    } else if (c === "S") {
-                        s = round(millisecond * pow(10, l - 3));
-                        pad = true;
-                    } else if (c === "z" || c === "v" || c === "Z") {
-                        s = getTimezoneName(date);
-                        if ((c === "z" || c === "v") && !s) {
-                            l = 4;
-                        }
-                        if (!s || c === "Z") {
-                            var offset = date.getTimezoneOffset();
-                            var tz = [
-                                (offset >= 0 ? "-" : "+"),
-                                _pad(floor(abs(offset) / 60), 2, "0"),
-                                _pad(abs(offset) % 60, 2, "0")
-                            ];
-                            if (l === 4) {
-                                tz.splice(0, 0, "GMT");
-                                tz.splice(3, 0, ":");
-                            }
-                            s = tz.join("");
-                        }
-                    } else {
-                        s = match;
-                    }
-                    if (pad) {
-                        s = _pad(s, l, '0');
-                    }
-                    return s;
-                });
-            }
-
-        };
-
-        var numberDate = {};
-
-        function addInterval(interval) {
-            numberDate[interval + "sFromNow"] = function (val) {
-                return date.add(new Date(), interval, val);
-            };
-            numberDate[interval + "sAgo"] = function (val) {
-                return date.add(new Date(), interval, -val);
-            };
-        }
-
-        var intervals = ["year", "month", "day", "hour", "minute", "second"];
-        for (var i = 0, l = intervals.length; i < l; i++) {
-            addInterval(intervals[i]);
-        }
-
-        var stringDate = {
-
-            parseDate: function (dateStr, format) {
-                if (!format) {
-                    throw new Error('format required when calling dateExtender.parse');
-                }
-                var tokens = [], regexp = buildDateEXP(format, tokens),
-                    re = new RegExp("^" + regexp + "$", "i"),
-                    match = re.exec(dateStr);
-                if (!match) {
-                    return null;
-                } // null
-                var result = [1970, 0, 1, 0, 0, 0, 0], // will get converted to a Date at the end
-                    amPm = "",
-                    valid = every(match, function (v, i) {
-                        if (i) {
-                            var token = tokens[i - 1];
-                            var l = token.length, type = token.charAt(0);
-                            if (type === 'y') {
-                                if (v < 100) {
-                                    v = parseInt(v, 10);
-                                    //choose century to apply, according to a sliding window
-                                    //of 80 years before and 20 years after present year
-                                    var year = '' + new Date().getFullYear(),
-                                        century = year.substring(0, 2) * 100,
-                                        cutoff = min(year.substring(2, 4) + 20, 99);
-                                    result[0] = (v < cutoff) ? century + v : century - 100 + v;
-                                } else {
-                                    result[0] = v;
-                                }
-                            } else if (type === "M") {
-                                if (l > 2) {
-                                    var months = monthNames, j, k;
-                                    if (l === 3) {
-                                        months = monthAbbr;
-                                    }
-                                    //Tolerate abbreviating period in month part
-                                    //Case-insensitive comparison
-                                    v = v.replace(".", "").toLowerCase();
-                                    var contains = false;
-                                    for (j = 0, k = months.length; j < k && !contains; j++) {
-                                        var s = months[j].replace(".", "").toLocaleLowerCase();
-                                        if (s === v) {
-                                            v = j;
-                                            contains = true;
-                                        }
-                                    }
-                                    if (!contains) {
-                                        return false;
-                                    }
-                                } else {
-                                    v--;
-                                }
-                                result[1] = v;
-                            } else if (type === "E" || type === "e") {
-                                var days = dayNames;
-                                if (l === 3) {
-                                    days = dayAbbr;
-                                }
-                                //Case-insensitive comparison
-                                v = v.toLowerCase();
-                                days = array.map(days, function (d) {
-                                    return d.toLowerCase();
-                                });
-                                var d = array.indexOf(days, v);
-                                if (d === -1) {
-                                    v = parseInt(v, 10);
-                                    if (isNaN(v) || v > days.length) {
-                                        return false;
-                                    }
-                                } else {
-                                    v = d;
-                                }
-                            } else if (type === 'D' || type === "d") {
-                                if (type === "D") {
-                                    result[1] = 0;
-                                }
-                                result[2] = v;
-                            } else if (type === "a") {
-                                var am = "am";
-                                var pm = "pm";
-                                var period = /\./g;
-                                v = v.replace(period, '').toLowerCase();
-                                // we might not have seen the hours field yet, so store the state and apply hour change later
-                                amPm = (v === pm) ? 'p' : (v === am) ? 'a' : '';
-                            } else if (type === "k" || type === "h" || type === "H" || type === "K") {
-                                if (type === "k" && (+v) === 24) {
-                                    v = 0;
-                                }
-                                result[3] = v;
-                            } else if (type === "m") {
-                                result[4] = v;
-                            } else if (type === "s") {
-                                result[5] = v;
-                            } else if (type === "S") {
-                                result[6] = v;
-                            }
-                        }
-                        return true;
-                    });
-                if (valid) {
-                    var hours = +result[3];
-                    //account for am/pm
-                    if (amPm === 'p' && hours < 12) {
-                        result[3] = hours + 12; //e.g., 3pm -> 15
-                    } else if (amPm === 'a' && hours === 12) {
-                        result[3] = 0; //12am -> 0
-                    }
-                    var dateObject = new Date(result[0], result[1], result[2], result[3], result[4], result[5], result[6]); // Date
-                    var dateToken = (array.indexOf(tokens, 'd') !== -1),
-                        monthToken = (array.indexOf(tokens, 'M') !== -1),
-                        month = result[1],
-                        day = result[2],
-                        dateMonth = dateObject.getMonth(),
-                        dateDay = dateObject.getDate();
-                    if ((monthToken && dateMonth > month) || (dateToken && dateDay > day)) {
-                        return null;
-                    }
-                    return dateObject; // Date
-                } else {
-                    return null;
-                }
-            }
-        };
-
-
-        var ret = extended.define(is.isDate, date).define(is.isString, stringDate).define(is.isNumber, numberDate);
-        for (i in date) {
-            if (date.hasOwnProperty(i)) {
-                ret[i] = date[i];
-            }
-        }
-
-        for (i in stringDate) {
-            if (stringDate.hasOwnProperty(i)) {
-                ret[i] = stringDate[i];
-            }
-        }
-        for (i in numberDate) {
-            if (numberDate.hasOwnProperty(i)) {
-                ret[i] = numberDate[i];
-            }
-        }
-        return ret;
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineDate(require("extended"), require("is-extended"), require("array-extended"));
-
-        }
-    } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return defineDate(require("extended"), require("is-extended"), require("array-extended"));
-        });
-    } else {
-        this.dateExtended = defineDate(this.extended, this.isExtended, this.arrayExtended);
-    }
-
-}).call(this);
-
-
-
-
-
-
-
-},{"extended":16,"is-extended":17,"array-extended":18}],20:[function(require,module,exports){
-(function(){(function () {
-    "use strict";
-    /*global extended isExtended*/
-
-    function defineObject(extended, is) {
-
-        var deepEqual = is.deepEqual,
-            isHash = is.isHash;
-
-        function _merge(target, source) {
-            var name, s;
-            for (name in source) {
-                if (source.hasOwnProperty(name)) {
-                    s = source[name];
-                    if (!(name in target) || (target[name] !== s)) {
-                        target[name] = s;
-                    }
-                }
-            }
-            return target;
-        }
-
-        function _deepMerge(target, source) {
-            var name, s, t;
-            for (name in source) {
-                if (source.hasOwnProperty(name)) {
-                    s = source[name], t = target[name];
-                    if (!deepEqual(t, s)) {
-                        if (isHash(t) && isHash(s)) {
-                            target[name] = _deepMerge(t, s);
-                        } else if (isHash(s)) {
-                            target[name] = _deepMerge({}, s);
-                        } else {
-                            target[name] = s;
-                        }
-                    }
-                }
-            }
-            return target;
-        }
-
-
-        function merge(obj) {
-            if (!obj) {
-                obj = {};
-            }
-            for (var i = 1, l = arguments.length; i < l; i++) {
-                _merge(obj, arguments[i]);
-            }
-            return obj; // Object
-        }
-
-        function deepMerge(obj) {
-            if (!obj) {
-                obj = {};
-            }
-            for (var i = 1, l = arguments.length; i < l; i++) {
-                _deepMerge(obj, arguments[i]);
-            }
-            return obj; // Object
-        }
-
-
-        function extend(parent, child) {
-            var proto = parent.prototype || parent;
-            merge(proto, child);
-            return parent;
-        }
-
-        function forEach(hash, iterator, scope) {
-            if (!isHash(hash) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key;
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                iterator.call(scope || hash, hash[key], key, hash);
-            }
-            return hash;
-        }
-
-        function filter(hash, iterator, scope) {
-            if (!isHash(hash) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, value, ret = {};
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                value = hash[key];
-                if (iterator.call(scope || hash, value, key, hash)) {
-                    ret[key] = value;
-                }
-            }
-            return ret;
-        }
-
-        function values(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), ret = [];
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                ret.push(hash[objKeys[i]]);
-            }
-            return ret;
-        }
-
-
-        function keys(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var ret = [];
-            for (var i in hash) {
-                if (hash.hasOwnProperty(i)) {
-                    ret.push(i);
-                }
-            }
-            return ret;
-        }
-
-        function invert(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, ret = {};
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                ret[hash[key]] = key;
-            }
-            return ret;
-        }
-
-        function toArray(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, ret = [];
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                ret.push([key, hash[key]]);
-            }
-            return ret;
-        }
-
-        var hash = {
-            forEach: forEach,
-            filter: filter,
-            invert: invert,
-            values: values,
-            toArray: toArray,
-            keys: keys
-        };
-
-
-        var obj = {
-            extend: extend,
-            merge: merge,
-            deepMerge: deepMerge
-
-        };
-
-        var ret = extended.define(is.isObject, obj).define(isHash, hash).define(is.isFunction, {extend: extend}).expose({hash: hash}).expose(obj);
-        var orig = ret.extend;
-        ret.extend = function __extend() {
-            if (arguments.length === 1) {
-                return orig.extend.apply(ret, arguments);
-            } else {
-                extend.apply(null, arguments);
-            }
-        };
-        return ret;
-
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineObject(require("extended"), require("is-extended"));
-
-        }
-    } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return defineObject(require("extended"), require("is-extended"));
-        });
-    } else {
-        this.objectExtended = defineObject(extended, isExtended);
-    }
-
-}).call(this);
-
-
-
-
-
-
-
-})()
-},{"extended":16,"is-extended":17}],21:[function(require,module,exports){
-(function () {
-    "use strict";
-
-    function defineString(extended, is, date) {
-
-        var stringify;
-        if (typeof JSON === "undefined") {
-            /*
-             json2.js
-             2012-10-08
-
-             Public Domain.
-
-             NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
-             */
-
-            (function () {
-                function f(n) {
-                    // Format integers to have at least two digits.
-                    return n < 10 ? '0' + n : n;
-                }
-
-                var isPrimitive = is.tester().isString().isNumber().isBoolean().tester();
-
-                function toJSON(obj) {
-                    if (is.isDate(obj)) {
-                        return isFinite(obj.valueOf())
-                            ? obj.getUTCFullYear() + '-' +
-                            f(obj.getUTCMonth() + 1) + '-' +
-                            f(obj.getUTCDate()) + 'T' +
-                            f(obj.getUTCHours()) + ':' +
-                            f(obj.getUTCMinutes()) + ':' +
-                            f(obj.getUTCSeconds()) + 'Z'
-                            : null;
-                    } else if (isPrimitive(obj)) {
-                        return obj.valueOf();
-                    }
-                    return obj;
-                }
-
-                var cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
-                    escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
-                    gap,
-                    indent,
-                    meta = {    // table of character substitutions
-                        '\b': '\\b',
-                        '\t': '\\t',
-                        '\n': '\\n',
-                        '\f': '\\f',
-                        '\r': '\\r',
-                        '"': '\\"',
-                        '\\': '\\\\'
-                    },
-                    rep;
-
-
-                function quote(string) {
-                    escapable.lastIndex = 0;
-                    return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
-                        var c = meta[a];
-                        return typeof c === 'string' ? c : '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
-                    }) + '"' : '"' + string + '"';
-                }
-
-
-                function str(key, holder) {
-
-                    var i, k, v, length, mind = gap, partial, value = holder[key];
-                    if (value) {
-                        value = toJSON(value);
-                    }
-                    if (typeof rep === 'function') {
-                        value = rep.call(holder, key, value);
-                    }
-                    switch (typeof value) {
-                        case 'string':
-                            return quote(value);
-                        case 'number':
-                            return isFinite(value) ? String(value) : 'null';
-                        case 'boolean':
-                        case 'null':
-                            return String(value);
-                        case 'object':
-                            if (!value) {
-                                return 'null';
-                            }
-                            gap += indent;
-                            partial = [];
-                            if (Object.prototype.toString.apply(value) === '[object Array]') {
-                                length = value.length;
-                                for (i = 0; i < length; i += 1) {
-                                    partial[i] = str(i, value) || 'null';
-                                }
-                                v = partial.length === 0 ? '[]' : gap ? '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']' : '[' + partial.join(',') + ']';
-                                gap = mind;
-                                return v;
-                            }
-                            if (rep && typeof rep === 'object') {
-                                length = rep.length;
-                                for (i = 0; i < length; i += 1) {
-                                    if (typeof rep[i] === 'string') {
-                                        k = rep[i];
-                                        v = str(k, value);
-                                        if (v) {
-                                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
-                                        }
-                                    }
-                                }
-                            } else {
-                                for (k in value) {
-                                    if (Object.prototype.hasOwnProperty.call(value, k)) {
-                                        v = str(k, value);
-                                        if (v) {
-                                            partial.push(quote(k) + (gap ? ': ' : ':') + v);
-                                        }
-                                    }
-                                }
-                            }
-                            v = partial.length === 0 ? '{}' : gap ? '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}' : '{' + partial.join(',') + '}';
-                            gap = mind;
-                            return v;
-                    }
-                }
-
-                stringify = function (value, replacer, space) {
-                    var i;
-                    gap = '';
-                    indent = '';
-                    if (typeof space === 'number') {
-                        for (i = 0; i < space; i += 1) {
-                            indent += ' ';
-                        }
-                    } else if (typeof space === 'string') {
-                        indent = space;
-                    }
-                    rep = replacer;
-                    if (replacer && typeof replacer !== 'function' &&
-                        (typeof replacer !== 'object' ||
-                            typeof replacer.length !== 'number')) {
-                        throw new Error('JSON.stringify');
-                    }
-                    return str('', {'': value});
-                };
-            }());
-        }else{
-            stringify = JSON.stringify;
-        }
-
-
-        var isHash = is.isHash, aSlice = Array.prototype.slice;
-
-        var FORMAT_REGEX = /%((?:-?\+?.?\d*)?|(?:\[[^\[|\]]*\]))?([sjdDZ])/g;
-        var INTERP_REGEX = /\{(?:\[([^\[|\]]*)\])?(\w+)\}/g;
-        var STR_FORMAT = /(-?)(\+?)([A-Z|a-z|\W]?)([1-9][0-9]*)?$/;
-        var OBJECT_FORMAT = /([1-9][0-9]*)$/g;
-
-        function formatString(string, format) {
-            var ret = string;
-            if (STR_FORMAT.test(format)) {
-                var match = format.match(STR_FORMAT);
-                var isLeftJustified = match[1], padChar = match[3], width = match[4];
-                if (width) {
-                    width = parseInt(width, 10);
-                    if (ret.length < width) {
-                        ret = pad(ret, width, padChar, isLeftJustified);
-                    } else {
-                        ret = truncate(ret, width);
-                    }
-                }
-            }
-            return ret;
-        }
-
-        function formatNumber(number, format) {
-            var ret;
-            if (is.isNumber(number)) {
-                ret = "" + number;
-                if (STR_FORMAT.test(format)) {
-                    var match = format.match(STR_FORMAT);
-                    var isLeftJustified = match[1], signed = match[2], padChar = match[3], width = match[4];
-                    if (signed) {
-                        ret = (number > 0 ? "+" : "") + ret;
-                    }
-                    if (width) {
-                        width = parseInt(width, 10);
-                        if (ret.length < width) {
-                            ret = pad(ret, width, padChar || "0", isLeftJustified);
-                        } else {
-                            ret = truncate(ret, width);
-                        }
-                    }
-
-                }
-            } else {
-                throw new Error("stringExtended.format : when using %d the parameter must be a number!");
-            }
-            return ret;
-        }
-
-        function formatObject(object, format) {
-            var ret, match = format.match(OBJECT_FORMAT), spacing = 0;
-            if (match) {
-                spacing = parseInt(match[0], 10);
-                if (isNaN(spacing)) {
-                    spacing = 0;
-                }
-            }
-            try {
-                ret = stringify(object, null, spacing);
-            } catch (e) {
-                throw new Error("stringExtended.format : Unable to parse json from ", object);
-            }
-            return ret;
-        }
-
-
-        var styles = {
-            //styles
-            bold: 1,
-            bright: 1,
-            italic: 3,
-            underline: 4,
-            blink: 5,
-            inverse: 7,
-            crossedOut: 9,
-
-            red: 31,
-            green: 32,
-            yellow: 33,
-            blue: 34,
-            magenta: 35,
-            cyan: 36,
-            white: 37,
-
-            redBackground: 41,
-            greenBackground: 42,
-            yellowBackground: 43,
-            blueBackground: 44,
-            magentaBackground: 45,
-            cyanBackground: 46,
-            whiteBackground: 47,
-
-            encircled: 52,
-            overlined: 53,
-            grey: 90,
-            black: 90
-        };
-
-        var characters = {
-            SMILEY: "☺",
-            SOLID_SMILEY: "☻",
-            HEART: "♥",
-            DIAMOND: "♦",
-            CLOVE: "♣",
-            SPADE: "♠",
-            DOT: "•",
-            SQUARE_CIRCLE: "◘",
-            CIRCLE: "○",
-            FILLED_SQUARE_CIRCLE: "◙",
-            MALE: "♂",
-            FEMALE: "♀",
-            EIGHT_NOTE: "♪",
-            DOUBLE_EIGHTH_NOTE: "♫",
-            SUN: "☼",
-            PLAY: "►",
-            REWIND: "◄",
-            UP_DOWN: "↕",
-            PILCROW: "¶",
-            SECTION: "§",
-            THICK_MINUS: "▬",
-            SMALL_UP_DOWN: "↨",
-            UP_ARROW: "↑",
-            DOWN_ARROW: "↓",
-            RIGHT_ARROW: "→",
-            LEFT_ARROW: "←",
-            RIGHT_ANGLE: "∟",
-            LEFT_RIGHT_ARROW: "↔",
-            TRIANGLE: "▲",
-            DOWN_TRIANGLE: "▼",
-            HOUSE: "⌂",
-            C_CEDILLA: "Ç",
-            U_UMLAUT: "ü",
-            E_ACCENT: "é",
-            A_LOWER_CIRCUMFLEX: "â",
-            A_LOWER_UMLAUT: "ä",
-            A_LOWER_GRAVE_ACCENT: "à",
-            A_LOWER_CIRCLE_OVER: "å",
-            C_LOWER_CIRCUMFLEX: "ç",
-            E_LOWER_CIRCUMFLEX: "ê",
-            E_LOWER_UMLAUT: "ë",
-            E_LOWER_GRAVE_ACCENT: "è",
-            I_LOWER_UMLAUT: "ï",
-            I_LOWER_CIRCUMFLEX: "î",
-            I_LOWER_GRAVE_ACCENT: "ì",
-            A_UPPER_UMLAUT: "Ä",
-            A_UPPER_CIRCLE: "Å",
-            E_UPPER_ACCENT: "É",
-            A_E_LOWER: "æ",
-            A_E_UPPER: "Æ",
-            O_LOWER_CIRCUMFLEX: "ô",
-            O_LOWER_UMLAUT: "ö",
-            O_LOWER_GRAVE_ACCENT: "ò",
-            U_LOWER_CIRCUMFLEX: "û",
-            U_LOWER_GRAVE_ACCENT: "ù",
-            Y_LOWER_UMLAUT: "ÿ",
-            O_UPPER_UMLAUT: "Ö",
-            U_UPPER_UMLAUT: "Ü",
-            CENTS: "¢",
-            POUND: "£",
-            YEN: "¥",
-            CURRENCY: "¤",
-            PTS: "₧",
-            FUNCTION: "ƒ",
-            A_LOWER_ACCENT: "á",
-            I_LOWER_ACCENT: "í",
-            O_LOWER_ACCENT: "ó",
-            U_LOWER_ACCENT: "ú",
-            N_LOWER_TILDE: "ñ",
-            N_UPPER_TILDE: "Ñ",
-            A_SUPER: "ª",
-            O_SUPER: "º",
-            UPSIDEDOWN_QUESTION: "¿",
-            SIDEWAYS_L: "⌐",
-            NEGATION: "¬",
-            ONE_HALF: "½",
-            ONE_FOURTH: "¼",
-            UPSIDEDOWN_EXCLAMATION: "¡",
-            DOUBLE_LEFT: "«",
-            DOUBLE_RIGHT: "»",
-            LIGHT_SHADED_BOX: "░",
-            MEDIUM_SHADED_BOX: "▒",
-            DARK_SHADED_BOX: "▓",
-            VERTICAL_LINE: "│",
-            MAZE__SINGLE_RIGHT_T: "┤",
-            MAZE_SINGLE_RIGHT_TOP: "┐",
-            MAZE_SINGLE_RIGHT_BOTTOM_SMALL: "┘",
-            MAZE_SINGLE_LEFT_TOP_SMALL: "┌",
-            MAZE_SINGLE_LEFT_BOTTOM_SMALL: "└",
-            MAZE_SINGLE_LEFT_T: "├",
-            MAZE_SINGLE_BOTTOM_T: "┴",
-            MAZE_SINGLE_TOP_T: "┬",
-            MAZE_SINGLE_CENTER: "┼",
-            MAZE_SINGLE_HORIZONTAL_LINE: "─",
-            MAZE_SINGLE_RIGHT_DOUBLECENTER_T: "╡",
-            MAZE_SINGLE_RIGHT_DOUBLE_BL: "╛",
-            MAZE_SINGLE_RIGHT_DOUBLE_T: "╢",
-            MAZE_SINGLE_RIGHT_DOUBLEBOTTOM_TOP: "╖",
-            MAZE_SINGLE_RIGHT_DOUBLELEFT_TOP: "╕",
-            MAZE_SINGLE_LEFT_DOUBLE_T: "╞",
-            MAZE_SINGLE_BOTTOM_DOUBLE_T: "╧",
-            MAZE_SINGLE_TOP_DOUBLE_T: "╤",
-            MAZE_SINGLE_TOP_DOUBLECENTER_T: "╥",
-            MAZE_SINGLE_BOTTOM_DOUBLECENTER_T: "╨",
-            MAZE_SINGLE_LEFT_DOUBLERIGHT_BOTTOM: "╘",
-            MAZE_SINGLE_LEFT_DOUBLERIGHT_TOP: "╒",
-            MAZE_SINGLE_LEFT_DOUBLEBOTTOM_TOP: "╓",
-            MAZE_SINGLE_LEFT_DOUBLETOP_BOTTOM: "╙",
-            MAZE_SINGLE_LEFT_TOP: "Γ",
-            MAZE_SINGLE_RIGHT_BOTTOM: "╜",
-            MAZE_SINGLE_LEFT_CENTER: "╟",
-            MAZE_SINGLE_DOUBLECENTER_CENTER: "╫",
-            MAZE_SINGLE_DOUBLECROSS_CENTER: "╪",
-            MAZE_DOUBLE_LEFT_CENTER: "╣",
-            MAZE_DOUBLE_VERTICAL: "║",
-            MAZE_DOUBLE_RIGHT_TOP: "╗",
-            MAZE_DOUBLE_RIGHT_BOTTOM: "╝",
-            MAZE_DOUBLE_LEFT_BOTTOM: "╚",
-            MAZE_DOUBLE_LEFT_TOP: "╔",
-            MAZE_DOUBLE_BOTTOM_T: "╩",
-            MAZE_DOUBLE_TOP_T: "╦",
-            MAZE_DOUBLE_LEFT_T: "╠",
-            MAZE_DOUBLE_HORIZONTAL: "═",
-            MAZE_DOUBLE_CROSS: "╬",
-            SOLID_RECTANGLE: "█",
-            THICK_LEFT_VERTICAL: "▌",
-            THICK_RIGHT_VERTICAL: "▐",
-            SOLID_SMALL_RECTANGLE_BOTTOM: "▄",
-            SOLID_SMALL_RECTANGLE_TOP: "▀",
-            PHI_UPPER: "Φ",
-            INFINITY: "∞",
-            INTERSECTION: "∩",
-            DEFINITION: "≡",
-            PLUS_MINUS: "±",
-            GT_EQ: "≥",
-            LT_EQ: "≤",
-            THEREFORE: "⌠",
-            SINCE: "∵",
-            DOESNOT_EXIST: "∄",
-            EXISTS: "∃",
-            FOR_ALL: "∀",
-            EXCLUSIVE_OR: "⊕",
-            BECAUSE: "⌡",
-            DIVIDE: "÷",
-            APPROX: "≈",
-            DEGREE: "°",
-            BOLD_DOT: "∙",
-            DOT_SMALL: "·",
-            CHECK: "√",
-            ITALIC_X: "✗",
-            SUPER_N: "ⁿ",
-            SQUARED: "²",
-            CUBED: "³",
-            SOLID_BOX: "■",
-            PERMILE: "‰",
-            REGISTERED_TM: "®",
-            COPYRIGHT: "©",
-            TRADEMARK: "™",
-            BETA: "β",
-            GAMMA: "γ",
-            ZETA: "ζ",
-            ETA: "η",
-            IOTA: "ι",
-            KAPPA: "κ",
-            LAMBDA: "λ",
-            NU: "ν",
-            XI: "ξ",
-            OMICRON: "ο",
-            RHO: "ρ",
-            UPSILON: "υ",
-            CHI_LOWER: "φ",
-            CHI_UPPER: "χ",
-            PSI: "ψ",
-            ALPHA: "α",
-            ESZETT: "ß",
-            PI: "π",
-            SIGMA_UPPER: "Σ",
-            SIGMA_LOWER: "σ",
-            MU: "µ",
-            TAU: "τ",
-            THETA: "Θ",
-            OMEGA: "Ω",
-            DELTA: "δ",
-            PHI_LOWER: "φ",
-            EPSILON: "ε"
-        };
-
-        function pad(string, length, ch, end) {
-            string = "" + string; //check for numbers
-            ch = ch || " ";
-            var strLen = string.length;
-            while (strLen < length) {
-                if (end) {
-                    string += ch;
-                } else {
-                    string = ch + string;
-                }
-                strLen++;
-            }
-            return string;
-        }
-
-        function truncate(string, length, end) {
-            var ret = string;
-            if (is.isString(ret)) {
-                if (string.length > length) {
-                    if (end) {
-                        var l = string.length;
-                        ret = string.substring(l - length, l);
-                    } else {
-                        ret = string.substring(0, length);
-                    }
-                }
-            } else {
-                ret = truncate("" + ret, length);
-            }
-            return ret;
-        }
-
-        function format(str, obj) {
-            if (obj instanceof Array) {
-                var i = 0, len = obj.length;
-                //find the matches
-                return str.replace(FORMAT_REGEX, function (m, format, type) {
-                    var replacer, ret;
-                    if (i < len) {
-                        replacer = obj[i++];
-                    } else {
-                        //we are out of things to replace with so
-                        //just return the match?
-                        return m;
-                    }
-                    if (m === "%s" || m === "%d" || m === "%D") {
-                        //fast path!
-                        ret = replacer + "";
-                    } else if (m === "%Z") {
-                        ret = replacer.toUTCString();
-                    } else if (m === "%j") {
-                        try {
-                            ret = stringify(replacer);
-                        } catch (e) {
-                            throw new Error("stringExtended.format : Unable to parse json from ", replacer);
-                        }
-                    } else {
-                        format = format.replace(/^\[|\]$/g, "");
-                        switch (type) {
-                            case "s":
-                                ret = formatString(replacer, format);
-                                break;
-                            case "d":
-                                ret = formatNumber(replacer, format);
-                                break;
-                            case "j":
-                                ret = formatObject(replacer, format);
-                                break;
-                            case "D":
-                                ret = date.format(replacer, format);
-                                break;
-                            case "Z":
-                                ret = date.format(replacer, format, true);
-                                break;
-                        }
-                    }
-                    return ret;
-                });
-            } else if (isHash(obj)) {
-                return str.replace(INTERP_REGEX, function (m, format, value) {
-                    value = obj[value];
-                    if (!is.isUndefined(value)) {
-                        if (format) {
-                            if (is.isString(value)) {
-                                return formatString(value, format);
-                            } else if (is.isNumber(value)) {
-                                return formatNumber(value, format);
-                            } else if (is.isDate(value)) {
-                                return date.format(value, format);
-                            } else if (is.isObject(value)) {
-                                return formatObject(value, format);
-                            }
-                        } else {
-                            return "" + value;
-                        }
-                    }
-                    return m;
-                });
-            } else {
-                var args = aSlice.call(arguments).slice(1);
-                return format(str, args);
-            }
-        }
-
-        function toArray(testStr, delim) {
-            var ret = [];
-            if (testStr) {
-                if (testStr.indexOf(delim) > 0) {
-                    ret = testStr.replace(/\s+/g, "").split(delim);
-                }
-                else {
-                    ret.push(testStr);
-                }
-            }
-            return ret;
-        }
-
-        function multiply(str, times) {
-            var ret = [];
-            if (times) {
-                for (var i = 0; i < times; i++) {
-                    ret.push(str);
-                }
-            }
-            return ret.join("");
-        }
-
-
-        function style(str, options) {
-            var ret, i, l;
-            if (options) {
-                if (is.isArray(str)) {
-                    ret = [];
-                    for (i = 0, l = str.length; i < l; i++) {
-                        ret.push(style(str[i], options));
-                    }
-                } else if (options instanceof Array) {
-                    ret = str;
-                    for (i = 0, l = options.length; i < l; i++) {
-                        ret = style(ret, options[i]);
-                    }
-                } else if (options in styles) {
-                    ret = '\x1B[' + styles[options] + 'm' + str + '\x1B[0m';
-                }
-            }
-            return ret;
-        }
-
-
-        var string = {
-            toArray: toArray,
-            pad: pad,
-            truncate: truncate,
-            multiply: multiply,
-            format: format,
-            style: style
-        };
-
-
-        var i, ret = extended.define(is.isString, string).define(is.isArray, {style: style});
-        for (i in string) {
-            if (string.hasOwnProperty(i)) {
-                ret[i] = string[i];
-            }
-        }
-        ret.characters = characters;
-        return ret;
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineString(require("extended"), require("is-extended"), require("date-extended"));
-
-        }
-    } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return defineString(require("extended"), require("is-extended"), require("date-extended"));
-        });
-    } else {
-        this.stringExtended = defineString(this.extended, this.isExtended, this.dateExtended);
-    }
-
-}).call(this);
-
-
-
-
-
-
-
-},{"extended":16,"is-extended":17,"date-extended":19}],23:[function(require,module,exports){
-(function () {
-    "use strict";
-
-    function defineFunction(extended, is) {
-
-        var isArray = is.isArray,
-            isObject = is.isObject,
-            isString = is.isString,
-            isFunction = is.isFunction,
-            arraySlice = Array.prototype.slice;
-
-        function argsToArray(args, slice) {
-            slice = slice || 0;
-            return arraySlice.call(args, slice);
-        }
-
-        function hitch(scope, method, args) {
-            args = argsToArray(arguments, 2);
-            if ((isString(method) && !(method in scope))) {
-                throw new Error(method + " property not defined in scope");
-            } else if (!isString(method) && !isFunction(method)) {
-                throw new Error(method + " is not a function");
-            }
-            if (isString(method)) {
-                return function () {
-                    var func = scope[method];
-                    if (isFunction(func)) {
-                        var scopeArgs = args.concat(argsToArray(arguments));
-                        return func.apply(scope, scopeArgs);
-                    } else {
-                        return func;
-                    }
-                };
-            } else {
-                if (args.length) {
-                    return function () {
-                        var scopeArgs = args.concat(argsToArray(arguments));
-                        return method.apply(scope, scopeArgs);
-                    };
-                } else {
-
-                    return function () {
-                        return method.apply(scope, arguments);
-                    };
-                }
-            }
-        }
-
-
-        function applyFirst(method, args) {
-            args = argsToArray(arguments, 1);
-            if (!isString(method) && !isFunction(method)) {
-                throw new Error(method + " must be the name of a property or function to execute");
-            }
-            if (isString(method)) {
-                return function () {
-                    var scopeArgs = argsToArray(arguments), scope = scopeArgs.shift();
-                    var func = scope[method];
-                    if (isFunction(func)) {
-                        scopeArgs = args.concat(scopeArgs);
-                        return func.apply(scope, scopeArgs);
-                    } else {
-                        return func;
-                    }
-                };
-            } else {
-                return function () {
-                    var scopeArgs = argsToArray(arguments), scope = scopeArgs.shift();
-                    scopeArgs = args.concat(scopeArgs);
-                    return method.apply(scope, scopeArgs);
-                };
-            }
-        }
-
-
-        function hitchIgnore(scope, method, args) {
-            args = argsToArray(arguments, 2);
-            if ((isString(method) && !(method in scope))) {
-                throw new Error(method + " property not defined in scope");
-            } else if (!isString(method) && !isFunction(method)) {
-                throw new Error(method + " is not a function");
-            }
-            if (isString(method)) {
-                return function () {
-                    var func = scope[method];
-                    if (isFunction(func)) {
-                        return func.apply(scope, args);
-                    } else {
-                        return func;
-                    }
-                };
-            } else {
-                return function () {
-                    return method.apply(scope, args);
-                };
-            }
-        }
-
-
-        function hitchAll(scope) {
-            var funcs = argsToArray(arguments, 1);
-            if (!isObject(scope) && !isFunction(scope)) {
-                throw new TypeError("scope must be an object");
-            }
-            if (funcs.length === 1 && isArray(funcs[0])) {
-                funcs = funcs[0];
-            }
-            if (!funcs.length) {
-                funcs = [];
-                for (var k in scope) {
-                    if (scope.hasOwnProperty(k) && isFunction(scope[k])) {
-                        funcs.push(k);
-                    }
-                }
-            }
-            for (var i = 0, l = funcs.length; i < l; i++) {
-                scope[funcs[i]] = hitch(scope, scope[funcs[i]]);
-            }
-            return scope;
-        }
-
-
-        function partial(method, args) {
-            args = argsToArray(arguments, 1);
-            if (!isString(method) && !isFunction(method)) {
-                throw new Error(method + " must be the name of a property or function to execute");
-            }
-            if (isString(method)) {
-                return function () {
-                    var func = this[method];
-                    if (isFunction(func)) {
-                        var scopeArgs = args.concat(argsToArray(arguments));
-                        return func.apply(this, scopeArgs);
-                    } else {
-                        return func;
-                    }
-                };
-            } else {
-                return function () {
-                    var scopeArgs = args.concat(argsToArray(arguments));
-                    return method.apply(this, scopeArgs);
-                };
-            }
-        }
-
-        function curryFunc(f, execute) {
-            return function () {
-                var args = argsToArray(arguments);
-                return execute ? f.apply(this, arguments) : function () {
-                    return f.apply(this, args.concat(argsToArray(arguments)));
-                };
-            };
-        }
-
-
-        function curry(depth, cb, scope) {
-            var f;
-            if (scope) {
-                f = hitch(scope, cb);
-            } else {
-                f = cb;
-            }
-            if (depth) {
-                var len = depth - 1;
-                for (var i = len; i >= 0; i--) {
-                    f = curryFunc(f, i === len);
-                }
-            }
-            return f;
-        }
-
-        return extended
-            .define(isObject, {
-                bind: hitch,
-                bindAll: hitchAll,
-                bindIgnore: hitchIgnore,
-                curry: function (scope, depth, fn) {
-                    return curry(depth, fn, scope);
-                }
-            })
-            .define(isFunction, {
-                bind: function (fn, obj) {
-                    return hitch.apply(this, [obj, fn].concat(argsToArray(arguments, 2)));
-                },
-                bindIgnore: function (fn, obj) {
-                    return hitchIgnore.apply(this, [obj, fn].concat(argsToArray(arguments, 2)));
-                },
-                partial: partial,
-                applyFirst: applyFirst,
-                curry: function (fn, num, scope) {
-                    return curry(num, fn, scope);
-                },
-                noWrap: {
-                    f: function () {
-                        return this.value();
-                    }
-                }
-            })
-            .define(isString, {
-                bind: function (str, scope) {
-                    return hitch(scope, str);
-                },
-                bindIgnore: function (str, scope) {
-                    return hitchIgnore(scope, str);
-                },
-                partial: partial,
-                applyFirst: applyFirst,
-                curry: function (fn, depth, scope) {
-                    return curry(depth, fn, scope);
-                }
-            })
-            .expose({
-                bind: hitch,
-                bindAll: hitchAll,
-                bindIgnore: hitchIgnore,
-                partial: partial,
-                applyFirst: applyFirst,
-                curry: curry
-            });
-
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineFunction(require("extended"), require("is-extended"));
-
-        }
-    } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return defineFunction(require("extended"), require("is-extended"));
-        });
-    } else {
-        this.functionExtended = defineFunction(this.extended, this.isExtended);
-    }
-
-}).call(this);
-
-
-
-
-
-
-
-},{"extended":16,"is-extended":17}],28:[function(require,module,exports){
+},{"extended":16,"__browserify_buffer":37}],27:[function(require,module,exports){
 "use strict";
 
 var utils = require("../../utils"),
@@ -11970,7 +11968,7 @@ EventEmitter.extend({
         }
     }
 }).as(module);
-},{"../../utils":37,"./emitter":38,"../../extended":2,"./action":29}],29:[function(require,module,exports){
+},{"../../utils":38,"../../extended":2,"./emitter":39,"./action":28}],28:[function(require,module,exports){
 "use strict";
 var _ = require("../../extended"),
     isFunction = _.isFunction,
@@ -12061,11 +12059,11 @@ EventEmitter.extend({
     }
 
 }).as(module);
-},{"../../extended":2,"./emitter":38,"../../utils":37}],30:[function(require,module,exports){
+},{"../../extended":2,"./emitter":39,"../../utils":38}],30:[function(require,module,exports){
 module.exports = require("./extender.js");
-},{"./extender.js":39}],31:[function(require,module,exports){
+},{"./extender.js":40}],31:[function(require,module,exports){
 module.exports = require("./declare.js");
-},{"./declare.js":40}],40:[function(require,module,exports){
+},{"./declare.js":41}],41:[function(require,module,exports){
 (function () {
 
     /**
@@ -12544,6 +12542,8 @@ module.exports = require("./declare.js");
     function createDeclared() {
         var arraySlice = Array.prototype.slice, classCounter = 0, Base, forceNew = new Function();
 
+        var SUPER_REGEXP = /(super)/g;
+
         function argsToArray(args, slice) {
             slice = slice || 0;
             return arraySlice.call(args, slice);
@@ -12682,16 +12682,37 @@ module.exports = require("./declare.js");
 
 
         function functionWrapper(f, name) {
-            var wrapper = function wrapper() {
-                var ret, meta = this.__meta || {};
-                var orig = meta.superMeta;
-                meta.superMeta = {f: f, pos: 0, name: name};
-                ret = f.apply(this, arguments);
-                meta.superMeta = orig;
-                return ret;
-            };
-            wrapper._f = f;
-            return wrapper;
+            if (f.toString().match(SUPER_REGEXP)) {
+                var wrapper = function wrapper() {
+                    var ret, meta = this.__meta || {};
+                    var orig = meta.superMeta;
+                    meta.superMeta = {f: f, pos: 0, name: name};
+                    switch (arguments.length) {
+                    case 0:
+                        ret = f.call(this);
+                        break;
+                    case 1:
+                        ret = f.call(this, arguments[0]);
+                        break;
+                    case 2:
+                        ret = f.call(this, arguments[0], arguments[1]);
+                        break;
+
+                    case 3:
+                        ret = f.call(this, arguments[0], arguments[1], arguments[2]);
+                        break;
+                    default:
+                        ret = f.apply(this, arguments);
+                    }
+                    meta.superMeta = orig;
+                    return ret;
+                };
+                wrapper._f = f;
+                return wrapper;
+            } else {
+                f._f = f;
+                return f;
+            }
         }
 
         function defineMixinProps(child, proto) {
@@ -12944,7 +12965,7 @@ module.exports = require("./declare.js");
         if ("undefined" !== typeof module && module.exports) {
             module.exports = createDeclared();
         }
-    } else if ("function" === typeof define) {
+    } else if ("function" === typeof define && define.amd) {
         define(createDeclared);
     } else {
         this.declare = createDeclared();
@@ -13037,7 +13058,7 @@ module.exports = require("./declare.js");
             module.exports = defineExtended(require("extender"));
 
         }
-    } else if ("function" === typeof define) {
+    } else if ("function" === typeof define && define.amd) {
         define(["extender"], function (extender) {
             return defineExtended(extender);
         });
@@ -13054,7 +13075,7 @@ module.exports = require("./declare.js");
 
 
 })()
-},{"extender":41}],37:[function(require,module,exports){
+},{"extender":42}],38:[function(require,module,exports){
 (function(process){"use strict";
 var _ = require("./extended"),
     isPromiseLike = _.isPromiseLike,
@@ -13179,7 +13200,7 @@ function setUpCb(cb, timeout) {
 
 exports.setUpCb = setUpCb;
 })(require("__browserify_process"))
-},{"./extended":2,"__browserify_process":8}],38:[function(require,module,exports){
+},{"./extended":2,"__browserify_process":8}],39:[function(require,module,exports){
 "use strict";
 var _ = require("../../extended"),
     EventEmitter = require("events").EventEmitter;
@@ -13199,14 +13220,7 @@ _.declare({
     "use strict";
     /*global define*/
 
-    var arraySlice = Array.prototype.slice;
-
-    function argsToArray(args, slice) {
-        slice = slice || 0;
-        return arraySlice.call(args, slice);
-    }
-
-    function defineArray(extended, is) {
+    function defineArray(extended, is, args) {
 
         var isString = is.isString,
             isArray = Array.isArray || is.isArray,
@@ -13223,7 +13237,8 @@ _.declare({
             arrayReduceRight = arrayProto.reduceRight,
             arrayFilter = arrayProto.filter,
             arrayEvery = arrayProto.every,
-            arraySome = arrayProto.some;
+            arraySome = arrayProto.some,
+            argsToArray = args.argsToArray;
 
 
         function cross(num, cros) {
@@ -13309,33 +13324,11 @@ _.declare({
         })();
 
         function indexOf(arr, searchElement, from) {
-            if (arr && arrayIndexOf && arrayIndexOf === arr.indexOf) {
-                return arr.indexOf(searchElement, from);
-            }
-            if (!isArray(arr)) {
-                throw new TypeError();
-            }
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            if (len === 0) {
-                return -1;
-            }
-            var n = 0;
-            if (arguments.length > 2) {
-                n = Number(arguments[2]);
-                if (n !== n) { // shortcut for verifying if it's NaN
-                    n = 0;
-                } else if (n !== 0 && n !== Infinity && n !== -Infinity) {
-                    n = (n > 0 || -1) * floor(abs(n));
-                }
-            }
-            if (n >= len) {
-                return -1;
-            }
-            var k = n >= 0 ? n : mathMax(len - abs(n), 0);
-            for (; k < len; k++) {
-                if (k in t && t[k] === searchElement) {
-                    return k;
+            var index = (from || 0) - 1,
+                length = arr.length;
+            while (++index < length) {
+                if (arr[index] === searchElement) {
+                    return index;
                 }
             }
             return -1;
@@ -13873,14 +13866,14 @@ _.declare({
 
     if ("undefined" !== typeof exports) {
         if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineArray(require("extended"), require("is-extended"));
+            module.exports = defineArray(require("extended"), require("is-extended"), require("arguments-extended"));
         }
-    } else if ("function" === typeof define) {
-        define(["extended", "is-extended"], function (extended, is) {
-            return defineArray(extended, is);
+    } else if ("function" === typeof define && define.amd) {
+        define(["extended", "is-extended", "arguments-extended"], function (extended, is, args) {
+            return defineArray(extended, is, args);
         });
     } else {
-        this.arrayExtended = defineArray(this.extended, this.isExtended);
+        this.arrayExtended = defineArray(this.extended, this.isExtended, this.argumentsExtended);
     }
 
 }).call(this);
@@ -13892,7 +13885,7 @@ _.declare({
 
 
 })()
-},{"extended":32,"is-extended":34}],34:[function(require,module,exports){
+},{"extended":32,"is-extended":34,"arguments-extended":36}],34:[function(require,module,exports){
 (function(Buffer){(function () {
     "use strict";
 
@@ -13904,8 +13897,13 @@ _.declare({
         var toStr = Object.prototype.toString;
 
         function argsToArray(args, slice) {
+            var i = -1, j = 0, l = args.length, ret = [];
             slice = slice || 0;
-            return pSlice.call(args, slice);
+            i += slice;
+            while (++i < l) {
+                ret[j++] = args[i];
+            }
+            return ret;
         }
 
         function keys(obj) {
@@ -14378,9 +14376,9 @@ _.declare({
             module.exports = defineIsa(require("extended"));
 
         }
-    } else if ("function" === typeof define) {
-        define(["require"], function (require) {
-            return defineIsa((require("extended")));
+    } else if ("function" === typeof define && define.amd) {
+        define(["extended"], function (extended) {
+            return defineIsa(extended);
         });
     } else {
         this.isExtended = defineIsa(this.extended);
@@ -14390,22 +14388,17 @@ _.declare({
 
 
 })(require("__browserify_buffer").Buffer)
-},{"extended":32,"__browserify_buffer":36}],35:[function(require,module,exports){
+},{"extended":32,"__browserify_buffer":37}],35:[function(require,module,exports){
 (function () {
     "use strict";
 
-    function defineFunction(extended, is) {
+    function defineFunction(extended, is, args) {
 
         var isArray = is.isArray,
             isObject = is.isObject,
             isString = is.isString,
             isFunction = is.isFunction,
-            arraySlice = Array.prototype.slice;
-
-        function argsToArray(args, slice) {
-            slice = slice || 0;
-            return arraySlice.call(args, slice);
-        }
+            argsToArray = args.argsToArray;
 
         function hitch(scope, method, args) {
             args = argsToArray(arguments, 2);
@@ -14615,15 +14608,15 @@ _.declare({
 
     if ("undefined" !== typeof exports) {
         if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineFunction(require("extended"), require("is-extended"));
+            module.exports = defineFunction(require("extended"), require("is-extended"), require("arguments-extended"));
 
         }
-    } else if ("function" === typeof define) {
-        define(["extended", "is-extended"], function (extended, is) {
-            return defineFunction(extended, is);
+    } else if ("function" === typeof define && define.amd) {
+        define(["extended", "is-extended", "arguments-extended"], function (extended, is, args) {
+            return defineFunction(extended, is, args);
         });
     } else {
-        this.functionExtended = defineFunction(this.extended, this.isExtended);
+        this.functionExtended = defineFunction(this.extended, this.isExtended, this.argumentsExtended);
     }
 
 }).call(this);
@@ -14634,9 +14627,54 @@ _.declare({
 
 
 
-},{"extended":32,"is-extended":34}],41:[function(require,module,exports){
+},{"extended":32,"is-extended":34,"arguments-extended":36}],36:[function(require,module,exports){
+(function () {
+    "use strict";
+
+    function defineArgumentsExtended(extended, is) {
+
+        var pSlice = Array.prototype.slice,
+            isArguments = is.isArguments;
+
+        function argsToArray(args, slice) {
+            var i = -1, j = 0, l = args.length, ret = [];
+            slice = slice || 0;
+            i += slice;
+            while (++i < l) {
+                ret[j++] = args[i];
+            }
+            return ret;
+        }
+
+
+        return extended
+            .define(isArguments, {
+                toArray: argsToArray
+            })
+            .expose({
+                argsToArray: argsToArray
+            });
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineArgumentsExtended(require("extended"), require("is-extended"));
+
+        }
+    } else if ("function" === typeof define && define.amd) {
+        define(["extended", "is-extended"], function (extended, is) {
+            return defineArgumentsExtended(extended, is);
+        });
+    } else {
+        this.argumentsExtended = defineArgumentsExtended(this.extended, this.isExtended);
+    }
+
+}).call(this);
+
+
+},{"extended":32,"is-extended":34}],42:[function(require,module,exports){
 module.exports = require("./extender.js");
-},{"./extender.js":42}],39:[function(require,module,exports){
+},{"./extender.js":43}],40:[function(require,module,exports){
 (function () {
     /*jshint strict:false*/
 
@@ -15177,7 +15215,7 @@ module.exports = require("./extender.js");
     }
 
 }).call(this);
-},{"declare.js":24}],42:[function(require,module,exports){
+},{"declare.js":24}],43:[function(require,module,exports){
 (function () {
     /*jshint strict:false*/
 
@@ -15709,7 +15747,7 @@ module.exports = require("./extender.js");
             module.exports = defineExtender(require("declare.js"));
 
         }
-    } else if ("function" === typeof define) {
+    } else if ("function" === typeof define && define.amd) {
         define(["declare"], function (declare) {
             return defineExtender(declare);
         });
