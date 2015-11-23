@@ -1,5 +1,8 @@
 "use strict";
-var it = require("../index"), assert = require("assert");
+var it = require("../index"),
+    assert = require("assert"),
+    testUtil = require("./test-util");
+
 
 it.describe("it bdd",function (it) {
 
@@ -228,6 +231,47 @@ it.describe("it bdd",function (it) {
             assert.equal(called, 1);
             assert.equal(called2, 1);
         });
+    });
+
+    it.describe("#beforeAll error", function (it) {
+
+        var errorMessage1, errorMessage2 = null;
+        it.describe("error suite", function (it) {
+            it.beforeAll(function () {
+                throw new Error("BeforeAll Error");
+            });
+
+            it.should("not call action if beforeAll fails", function () {
+                throw new Error("Action called when beforeAll failed");
+            });
+
+            var beforeAllAction1 = it.getAction("should not call action if beforeAll fails");
+            beforeAllAction1.failed = function (start, end, err) {
+                errorMessage1 = err.message;
+                return beforeAllAction1.success(start, end);
+            };
+
+            it.describe("nested error suite", function (it) {
+                it.should("not call action if beforeAll fails in parent", function () {
+                    throw new Error("Action called when beforeAll failed in parent");
+                });
+
+                var beforeAllAction2 = it.getAction("should not call action if beforeAll fails in parent");
+                beforeAllAction2.failed = function (start, end, err) {
+                    errorMessage2 = err.message;
+                    return beforeAllAction2.success(start, end);
+                };
+            });
+        });
+
+        it.should("use the error message from beforeAll for tests if it fails", function () {
+            assert.equal(errorMessage1, "BeforeAll Error");
+        });
+
+        it.should("use the error message from beforeAll in parent for tests if it fails", function () {
+            assert.equal(errorMessage2, "BeforeAll Error");
+        });
+
     });
 
     it.describe("#beforeEach", function (it) {
@@ -535,6 +579,39 @@ it.describe("it bdd",function (it) {
                 ]
             ],
             [
+                "#beforeAll error",
+                [
+                    "error suite",
+                    [
+                        "should not call action if beforeAll fails",
+                        {
+                            "status": "passed"
+                        }
+                    ],
+                    [
+                        "nested error suite",
+                        [
+                            "should not call action if beforeAll fails in parent",
+                            {
+                                "status": "passed"
+                            }
+                        ]
+                    ]
+                ],
+                [
+                    "should use the error message from beforeAll for tests if it fails",
+                    {
+                        "status": "passed"
+                    }
+                ],
+                [
+                    "should use the error message from beforeAll in parent for tests if it fails",
+                    {
+                        "status": "passed"
+                    }
+                ]
+            ],
+            [
                 "#beforeEach",
                 [
                     "should call beforeEach",
@@ -647,7 +724,7 @@ it.describe("it bdd",function (it) {
                 [
                     "should skip this test",
                     {
-                        "status": "pending"
+                        "status": "skipped"
                     }
                 ]
             ],
@@ -716,10 +793,8 @@ it.describe("it bdd",function (it) {
                 }
             }
         }(str, summary));
-        assert.deepEqual(str, expected);
+        testUtil.jsonDeepEqual(str, expected);
         assert.isNumber(summary.duration);
-
-
     });
 
 
