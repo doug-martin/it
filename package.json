@@ -1,7 +1,7 @@
 {
     "name": "it",
     "description": "A testing framework for node",
-    "version": "0.2.7",
+    "version": "1.0.0",
     "keywords": [
         "testing",
         "test",
@@ -47,7 +47,9 @@
     "devDependencies": {
         "grunt-browserify": "~0.2.0",
         "grunt-contrib-uglify": "~0.2.0",
-        "grunt-contrib-jshint": "~0.3.0"
+        "grunt-contrib-jshint": "~0.3.0",
+        "colors": "1.1.2",
+        "diff": "2.2.1"
     },
     "homepage": "http://doug-martin.github.com/it",
     "author": {
@@ -62,6 +64,6 @@
         "lib": "lib"
     },
     "engines": {
-        "node": ">= 0.6.1"
+        "node": ">= 0.10.1"
     }
 }
