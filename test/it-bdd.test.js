@@ -3,50 +3,6 @@ var it = require("../index"),
     assert = require("assert"),
     testUtil = require("./test-util");
 
-try{
-    it.describe("it bdd3",function (it) {
-
-        it.should("not be null", function () {
-            assert.isNotNull(it);
-        });
-        it.describe("add a level", function(){
-            it.should("not be null", function () {
-                assert.isNotNull(it);
-            });
-
-            it.should("not be null", function () {
-                assert.isNotNull(it);
-            });
-        })
-
-    })
-}catch(err){
-    console.log("hih?", err)
-}
-
-it.describe("it bdd",function (it) {
-
-    it.should("not be null", function () {
-        assert.isNotNull(it);
-    });
-
-    it.should("not be null", function () {
-        assert.isNotNull(it);
-    });
-
-    it.describe("add a level", function(){
-        it.should("not be null", function () {
-            assert.isNotNull(it);
-        });
-
-        it.should("not be null", function () {
-            assert.isNotNull(it);
-        });
-    })
-
-})
-
-
 it.describe("it bdd",function (it) {
 
     it.should("not be null", function () {
@@ -54,10 +10,6 @@ it.describe("it bdd",function (it) {
     });
 
     it.should("describe", function () {
-        assert.equal(it.description, "it bdd");
-    });
-
-    it.should("describe2", function () {
         assert.equal(it.description, "it bdd");
     });
 
@@ -561,12 +513,6 @@ it.describe("it bdd",function (it) {
             ],
             [
                 "should describe",
-                {
-                    "status": "passed"
-                }
-            ],
-            [
-                "should describe2",
                 {
                     "status": "passed"
                 }
