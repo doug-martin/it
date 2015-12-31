@@ -3,7 +3,6 @@ var it = require("../index"),
     assert = require("assert"),
     testUtil = require("./test-util");
 
-
 it.describe("it bdd",function (it) {
 
     it.should("not be null", function () {

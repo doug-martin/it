@@ -923,240 +923,7 @@ _.declare({
     }
 
 }).as(module);
-},{"../extended":2}],5:[function(require,module,exports){
-"use strict";
-var _ = require("../extended"),
-    format = _.format,
-    Reporter = require("./reporter");
-
-
-function getActionName(action) {
-    return action.get("fullName").replace(/#/g, '');
-}
-
-Reporter.extend({
-    instance: {
-        ran: 0,
-
-        startTests: function (tests) {
-            console.log(format('%d..%d', 1, (tests.numActions)));
-        },
-
-        actionSuccess: function printSuccess(action) {
-            console.log(format('ok %d %s', ++this.ran, getActionName(action)));
-        },
-
-        actionSkipped: function printSkipped(action) {
-            console.log(format('ok %d %s # SKIP -', ++this.ran, getActionName(action)));
-        },
-
-        actionError: function printError(action) {
-            var summary = action.get("summary"), err = summary.error;
-            console.log(format('not ok %d %s', ++this.ran, getActionName(action)));
-            _((_.isArray(err) ? err : [err])).forEach(function (err) {
-                if (err) {
-                    if (err.stack) {
-                        console.log(err.stack.replace(/^/gm, '  '));
-                    } else if (err.message) {
-                        console.log(err.message);
-                    } else {
-                        console.log(err);
-                    }
-                }
-            });
-        },
-
-        printFinalSummary: function (test) {
-            var summary = this.processSummary(test.summary);
-            console.log('# total ' + this.numActions);
-            console.log('# passed ' + summary.successCount);
-            console.log('# failed ' + summary.errCount);
-            console.log('# skipped ' + summary.skippedCount);
-            console.log('# pending ' + summary.pendingCount);
-            this._static.list(this.errors);
-            this._static.listPending(summary.pendingActions);
-            return this.returnCode(summary);
-        }
-    }
-}).as(module).registerType("tap");
-
-
-
-
-
-
-
-
-
-},{"../extended":2,"./reporter":3}],4:[function(require,module,exports){
-"use strict";
-var _ = require("../../extended"),
-    AssertionError = require("assert").AssertionError,
-    Reporter = require("../../formatters/reporter"),
-    format = _.format,
-    arraySlice = Array.prototype.slice;
-
-
-var pluralize = function (count, str) {
-    return count !== 1 ? str + "s" : str;
-};
-
-function getSpacing(action) {
-    return action.level * 2.5 + "em";
-}
-
-function createDom(type, attrs) {
-    var el = document.createElement(type);
-    _(arraySlice.call(arguments, 2)).forEach(function (child) {
-        if (_.isString(child)) {
-            el.appendChild(document.createTextNode(child));
-        } else if (child) {
-            el.appendChild(child);
-        }
-    });
-    _(attrs || {}).forEach(function (attrs, attr) {
-        if (attr === "className") {
-            el[attr] = attrs;
-        } else {
-            el.setAttribute(attr, attrs);
-        }
-    });
-    return el;
-}
-
-function updateActionStatus(action, status) {
-    var els = document.querySelectorAll('[data-it-actionName="' + action.get("fullName") + '"]');
-    for (var i = 0, l = els.length; i < l; i++) {
-        var el = els.item(i), className = el.className;
-        el.className = className.replace(/(not-run|pending|error|passed) */ig, "") + " " + status;
-    }
-}
-
-Reporter.extend({
-    instance: {
-
-        constructor: function (el) {
-            this._super(arguments);
-            this.el = document.getElementById(el);
-            this.header = this.el.appendChild(createDom("div", {className: "header"}, createDom("h1", {}, createDom("a", {href: "?"}, "It"))));
-            this.summary = this.header.appendChild(createDom("div", {className: "summary"}));
-            this.progress = this.el.appendChild(createDom("ul", {className: "progress"}));
-            this.actions = this.el.appendChild(createDom("div", {className: "actions"}));
-            this.errors = [];
-            if (!this.el) {
-                throw new Error("Unable to find el with id #" + el);
-            }
-        },
-
-        listenAction: function (action) {
-            this._super(arguments);
-            var actionName = action.get("fullName");
-            this.progress.appendChild(createDom("li", {className: "not-run", "data-it-actionName": actionName}));
-
-        },
-
-        testRun: function printTitle(action) {
-            if (action.description) {
-                this.actions.appendChild(createDom("div",
-                    {className: "header", style: "padding-left:" + getSpacing(action), "data-it-actionName": action.get("fullName")},
-                    createDom("a", {
-                        href: "?filter=" + encodeURIComponent(action.get("fullName"))
-                    }, action.description)
-                ));
-            }
-        },
-
-        __addAction: function (action) {
-            var summary = action.get("summary");
-            this.actions.appendChild(createDom("div",
-                {className: "pending", style: "padding-left:" + getSpacing(action), "data-it-actionName": action.get("fullName")},
-                createDom("a", {
-                    href: "?filter=" + encodeURIComponent(action.get("fullName"))
-                }, format(" %s, (%dms)", action.description, summary.duration))
-            ));
-            updateActionStatus(action, summary.status);
-            return this;
-        },
-
-        __formatError: function (error) {
-            var str = error.stack || error.toString();
-
-            if (error instanceof AssertionError) {
-                str = error.toString() + "\n" + (error.stack || "").replace(/AssertionError.*\n/, "");
-            }
-
-            if (error.message) {
-                // FF / Opera do not add the message
-                if (!~str.indexOf(error.message)) {
-                    str = error.message + '\n' + str;
-                }
-
-                // <=IE7 stringifies to [Object Error]. Since it can be overloaded, we
-                // check for the result of the stringifying.
-                if ('[object Error]' === str) {
-                    str = error.message;
-                }
-            }
-
-            // Safari doesn't give you a stack. Let's at least provide a source line.
-            if (!error.stack && error.sourceURL && error.line !== undefined) {
-                str += "\n(" + error.sourceURL + ":" + error.line + ")";
-            }
-            return str;
-        },
-
-        actionSuccess: function (action) {
-            this.__addAction(action);
-        },
-
-        actionSkipped: function (action) {
-            this.__addAction(action);
-        },
-
-        actionPending: function (action) {
-            this.__addAction(action);
-        },
-
-        actionError: function printError(action) {
-            this._super(arguments);
-            this.__addAction(action);
-        },
-
-        printErrors: function () {
-            if (this.errors.length) {
-                //clear all actions
-                this.actions.innerHTML = "";
-                _(this.errors).forEach(function (test, i) {
-                    var error = test.error, action = test.test;
-                    this.actions.appendChild(createDom("pre",
-                        {className: "failed"},
-                        format('  %s) %s:', i, action.get("fullName")),
-                        createDom("br"),
-                        this.__formatError(error).replace(/^/gm, '       ')
-                    ));
-                }, this);
-            }
-        },
-
-        printFinalSummary: function (test) {
-            var summary = test.summary;
-            var stats = this.processSummary(summary);
-            var errCount = stats.errCount, successCount = stats.successCount, pendingCount = stats.pendingCount, duration = stats.duration;
-            var out = [
-                "Duration " + this.formatMs(duration),
-                successCount + pluralize(successCount, " example"),
-                errCount + pluralize(errCount, " error"),
-                pendingCount + " pending"
-            ];
-            this.summary.appendChild(createDom("div",
-                {className: pendingCount > 0 ? "pending" : errCount > 0 ? "failed" : "success"},
-                out.join(", ")));
-            this.printErrors();
-            return errCount ? 1 : 0;
-        }
-    }
-}).as(module).registerType("html");
-},{"assert":10,"../../extended":2,"../../formatters/reporter":3}],11:[function(require,module,exports){
+},{"../extended":2}],11:[function(require,module,exports){
 var events = require('events');
 
 exports.isArray = isArray;
@@ -1509,7 +1276,240 @@ exports.format = function(f) {
   return str;
 };
 
-},{"events":9}],7:[function(require,module,exports){
+},{"events":9}],5:[function(require,module,exports){
+"use strict";
+var _ = require("../extended"),
+    format = _.format,
+    Reporter = require("./reporter");
+
+
+function getActionName(action) {
+    return action.get("fullName").replace(/#/g, '');
+}
+
+Reporter.extend({
+    instance: {
+        ran: 0,
+
+        startTests: function (tests) {
+            console.log(format('%d..%d', 1, (tests.numActions)));
+        },
+
+        actionSuccess: function printSuccess(action) {
+            console.log(format('ok %d %s', ++this.ran, getActionName(action)));
+        },
+
+        actionSkipped: function printSkipped(action) {
+            console.log(format('ok %d %s # SKIP -', ++this.ran, getActionName(action)));
+        },
+
+        actionError: function printError(action) {
+            var summary = action.get("summary"), err = summary.error;
+            console.log(format('not ok %d %s', ++this.ran, getActionName(action)));
+            _((_.isArray(err) ? err : [err])).forEach(function (err) {
+                if (err) {
+                    if (err.stack) {
+                        console.log(err.stack.replace(/^/gm, '  '));
+                    } else if (err.message) {
+                        console.log(err.message);
+                    } else {
+                        console.log(err);
+                    }
+                }
+            });
+        },
+
+        printFinalSummary: function (test) {
+            var summary = this.processSummary(test.summary);
+            console.log('# total ' + this.numActions);
+            console.log('# passed ' + summary.successCount);
+            console.log('# failed ' + summary.errCount);
+            console.log('# skipped ' + summary.skippedCount);
+            console.log('# pending ' + summary.pendingCount);
+            this._static.list(this.errors);
+            this._static.listPending(summary.pendingActions);
+            return this.returnCode(summary);
+        }
+    }
+}).as(module).registerType("tap");
+
+
+
+
+
+
+
+
+
+},{"../extended":2,"./reporter":3}],4:[function(require,module,exports){
+"use strict";
+var _ = require("../../extended"),
+    AssertionError = require("assert").AssertionError,
+    Reporter = require("../../formatters/reporter"),
+    format = _.format,
+    arraySlice = Array.prototype.slice;
+
+
+var pluralize = function (count, str) {
+    return count !== 1 ? str + "s" : str;
+};
+
+function getSpacing(action) {
+    return action.level * 2.5 + "em";
+}
+
+function createDom(type, attrs) {
+    var el = document.createElement(type);
+    _(arraySlice.call(arguments, 2)).forEach(function (child) {
+        if (_.isString(child)) {
+            el.appendChild(document.createTextNode(child));
+        } else if (child) {
+            el.appendChild(child);
+        }
+    });
+    _(attrs || {}).forEach(function (attrs, attr) {
+        if (attr === "className") {
+            el[attr] = attrs;
+        } else {
+            el.setAttribute(attr, attrs);
+        }
+    });
+    return el;
+}
+
+function updateActionStatus(action, status) {
+    var els = document.querySelectorAll('[data-it-actionName="' + action.get("fullName") + '"]');
+    for (var i = 0, l = els.length; i < l; i++) {
+        var el = els.item(i), className = el.className;
+        el.className = className.replace(/(not-run|pending|error|passed) */ig, "") + " " + status;
+    }
+}
+
+Reporter.extend({
+    instance: {
+
+        constructor: function (el) {
+            this._super(arguments);
+            this.el = document.getElementById(el);
+            this.header = this.el.appendChild(createDom("div", {className: "header"}, createDom("h1", {}, createDom("a", {href: "?"}, "It"))));
+            this.summary = this.header.appendChild(createDom("div", {className: "summary"}));
+            this.progress = this.el.appendChild(createDom("ul", {className: "progress"}));
+            this.actions = this.el.appendChild(createDom("div", {className: "actions"}));
+            this.errors = [];
+            if (!this.el) {
+                throw new Error("Unable to find el with id #" + el);
+            }
+        },
+
+        listenAction: function (action) {
+            this._super(arguments);
+            var actionName = action.get("fullName");
+            this.progress.appendChild(createDom("li", {className: "not-run", "data-it-actionName": actionName}));
+
+        },
+
+        testRun: function printTitle(action) {
+            if (action.description) {
+                this.actions.appendChild(createDom("div",
+                    {className: "header", style: "padding-left:" + getSpacing(action), "data-it-actionName": action.get("fullName")},
+                    createDom("a", {
+                        href: "?filter=" + encodeURIComponent(action.get("fullName"))
+                    }, action.description)
+                ));
+            }
+        },
+
+        __addAction: function (action) {
+            var summary = action.get("summary");
+            this.actions.appendChild(createDom("div",
+                {className: "pending", style: "padding-left:" + getSpacing(action), "data-it-actionName": action.get("fullName")},
+                createDom("a", {
+                    href: "?filter=" + encodeURIComponent(action.get("fullName"))
+                }, format(" %s, (%dms)", action.description, summary.duration))
+            ));
+            updateActionStatus(action, summary.status);
+            return this;
+        },
+
+        __formatError: function (error) {
+            var str = error.stack || error.toString();
+
+            if (error instanceof AssertionError) {
+                str = error.toString() + "\n" + (error.stack || "").replace(/AssertionError.*\n/, "");
+            }
+
+            if (error.message) {
+                // FF / Opera do not add the message
+                if (!~str.indexOf(error.message)) {
+                    str = error.message + '\n' + str;
+                }
+
+                // <=IE7 stringifies to [Object Error]. Since it can be overloaded, we
+                // check for the result of the stringifying.
+                if ('[object Error]' === str) {
+                    str = error.message;
+                }
+            }
+
+            // Safari doesn't give you a stack. Let's at least provide a source line.
+            if (!error.stack && error.sourceURL && error.line !== undefined) {
+                str += "\n(" + error.sourceURL + ":" + error.line + ")";
+            }
+            return str;
+        },
+
+        actionSuccess: function (action) {
+            this.__addAction(action);
+        },
+
+        actionSkipped: function (action) {
+            this.__addAction(action);
+        },
+
+        actionPending: function (action) {
+            this.__addAction(action);
+        },
+
+        actionError: function printError(action) {
+            this._super(arguments);
+            this.__addAction(action);
+        },
+
+        printErrors: function () {
+            if (this.errors.length) {
+                //clear all actions
+                this.actions.innerHTML = "";
+                _(this.errors).forEach(function (test, i) {
+                    var error = test.error, action = test.test;
+                    this.actions.appendChild(createDom("pre",
+                        {className: "failed"},
+                        format('  %s) %s:', i, action.get("fullName")),
+                        createDom("br"),
+                        this.__formatError(error).replace(/^/gm, '       ')
+                    ));
+                }, this);
+            }
+        },
+
+        printFinalSummary: function (test) {
+            var summary = test.summary;
+            var stats = this.processSummary(summary);
+            var errCount = stats.errCount, successCount = stats.successCount, pendingCount = stats.pendingCount, duration = stats.duration;
+            var out = [
+                "Duration " + this.formatMs(duration),
+                successCount + pluralize(successCount, " example"),
+                errCount + pluralize(errCount, " error"),
+                pendingCount + " pending"
+            ];
+            this.summary.appendChild(createDom("div",
+                {className: pendingCount > 0 ? "pending" : errCount > 0 ? "failed" : "success"},
+                out.join(", ")));
+            this.printErrors();
+            return errCount ? 1 : 0;
+        }
+    }
+}).as(module).registerType("html");
+},{"assert":10,"../../extended":2,"../../formatters/reporter":3}],7:[function(require,module,exports){
 "use strict";
 
 var Test = require("./common").Test,
@@ -1547,7 +1547,7 @@ module.exports = require("extended")()
     .register(require("is-extended"))
     .register("declare", require("declare.js"))
     .register("bus", new (require("events").EventEmitter)());
-},{"events":9,"extended":16,"array-extended":17,"object-extended":18,"date-extended":19,"promise-extended":20,"is-extended":21,"declare.js":22,"function-extended":23,"string-extended":24}],25:[function(require,module,exports){
+},{"events":9,"extended":16,"array-extended":17,"date-extended":18,"object-extended":19,"string-extended":20,"promise-extended":21,"function-extended":22,"is-extended":23,"declare.js":24}],25:[function(require,module,exports){
 exports.readIEEE754 = function(buffer, offset, isBE, mLen, nBytes) {
   var e, m,
       eLen = nBytes * 8 - mLen - 1,
@@ -2991,6 +2991,7 @@ Test.extend({
         describe: function _description(description, cb) {
             var test = new this(description, {});
             var it = test._addAction;
+
             _(["description", "should", "describe", "timeout", "getAction", "beforeAll", "beforeEach",
                 "afterAll", "afterEach", "context", "get", "set", "skip", "ignoreErrors"]).forEach(function (key) {
                     it[key] = test[key];
@@ -3001,7 +3002,6 @@ Test.extend({
 
     }
 }).as(module);
-
 
 },{"../extended":2,"./common":15}],14:[function(require,module,exports){
 "use strict";
@@ -3055,12 +3055,12 @@ Test.extend({
 }).as(module);
 
 
-},{"../extended":2,"./common":15}],15:[function(require,module,exports){
+},{"../extended":2,"./common":15}],24:[function(require,module,exports){
+module.exports = require("./declare.js");
+},{"./declare.js":27}],15:[function(require,module,exports){
 exports.Action = require("./action");
 exports.Test = require("./test.js");
-},{"./test.js":27,"./action":28}],22:[function(require,module,exports){
-module.exports = require("./declare.js");
-},{"./declare.js":29}],26:[function(require,module,exports){
+},{"./test.js":28,"./action":29}],26:[function(require,module,exports){
 (function (exports) {
 	'use strict';
 
@@ -3146,7 +3146,7 @@ module.exports = require("./declare.js");
 	module.exports.fromByteArray = uint8ToBase64;
 }());
 
-},{}],29:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 (function () {
 
     /**
@@ -4173,632 +4173,666 @@ module.exports = require("./declare.js");
 
 
 })()
-},{"extender":30}],27:[function(require,module,exports){
-"use strict";
+},{"extender":30}],17:[function(require,module,exports){
+(function(){(function () {
+    "use strict";
+    /*global define*/
 
-var utils = require("../../utils"),
-    splitFilter = utils.splitFilter,
-    setUpCb = utils.setUpCb,
-    _ = require("../../extended"),
-    EventEmitter = require("./emitter"),
-    isEmpty = _.isEmpty,
-    isString = _.isString,
-    merge = _.merge,
-    Promise = _.Promise,
-    Action = require("./action"),
-    actionNames = {},
-    duplicateActionErrors = [];
+    function defineArray(extended, is, args) {
 
-_.bus.on("addAction", function (action) {
-    var fullName = action.get("fullName");
-    if (actionNames[fullName]) {
-        duplicateActionErrors.push({
-            error: new Error("Duplicate test name:" + fullName),
-            test: action
-        });
-    }
-    actionNames[fullName] = true;
-});
+        var isString = is.isString,
+            isArray = Array.isArray || is.isArray,
+            isDate = is.isDate,
+            floor = Math.floor,
+            abs = Math.abs,
+            mathMax = Math.max,
+            mathMin = Math.min,
+            arrayProto = Array.prototype,
+            arrayIndexOf = arrayProto.indexOf,
+            arrayForEach = arrayProto.forEach,
+            arrayMap = arrayProto.map,
+            arrayReduce = arrayProto.reduce,
+            arrayReduceRight = arrayProto.reduceRight,
+            arrayFilter = arrayProto.filter,
+            arrayEvery = arrayProto.every,
+            arraySome = arrayProto.some,
+            argsToArray = args.argsToArray;
 
-EventEmitter.extend({
-    instance: {
 
-        sub: false,
-
-        __timeout: null,
-
-        parent: null,
-
-        level: 0,
-
-        stopOnError: false,
-
-        __ignoreProcessError: false,
-
-        constructor: function constructor(description, options) {
-            this._super(arguments);
-            this.Action = this._static.Action;
-            this.description = description;
-            this.__shoulds = [];
-            this.__ba = [];
-            this.__be = [];
-            this.__aa = [];
-            this.__ae = [];
-            merge(this, options);
-            if (!this.sub && !this.filtered) {
-                this._static.tests[description] = this;
-            }
-            _.bindAll(this, ["_addAction", "ignoreErrors", "_failSiblings", "_addTest", "timeout", "getAction", "beforeAll", "beforeEach", "afterAll", "afterEach", "context", "get", "set", "skip"]);
-        },
-
-        ignoreErrors: function (val) {
-            if (_.isBoolean(val)) {
-                this.__ignoreProcessError = val;
-            } else {
-                return this.__ignoreProcessError;
-            }
-        },
-
-        timeout: function (num) {
-            this.__timeout = num;
-        },
-
-        getAction: function getAction(name) {
-            var matched = _.filter(this.__shoulds, function (should) {
-                if (should instanceof this.Action) {
-                    return should.description === name;
-                } else {
-                    return false;
+        function cross(num, cros) {
+            return reduceRight(cros, function (a, b) {
+                if (!isArray(b)) {
+                    b = [b];
                 }
-            }, this);
-            return matched.length !== 0 ? matched[0] : null;
-        },
+                b.unshift(num);
+                a.unshift(b);
+                return a;
+            }, []);
+        }
 
-        as: function (mod) {
-            mod.exports = this;
-            return this;
-        },
-
-        beforeAll: function (cb) {
-            this.__ba.push(_.partial(setUpCb(cb), this));
-            return this;
-        },
-
-        beforeEach: function (cb) {
-            this.__be.push(_.partial(setUpCb(cb), this));
-            return this;
-        },
-
-        afterAll: function (cb) {
-            this.__aa.push(_.partial(setUpCb(cb), this));
-            return this;
-        },
-
-        afterEach: function (cb) {
-            this.__ae.push(_.partial(setUpCb(cb), this));
-            return this;
-        },
-
-        context: function (cb) {
-            var cloned = this._static.clone(this, null, {sub: true});
-            this.emit("addTest", cloned);
-            if (cb) {
-                cb(cloned);
+        function permute(num, cross, length) {
+            var ret = [];
+            for (var i = 0; i < cross.length; i++) {
+                ret.push([num].concat(rotate(cross, i)).slice(0, length));
             }
-            this.__shoulds.push(cloned);
-            return cloned;
-        },
-
-        skip: function (description) {
-            this._addAction(description, undefined, 'skipped');
-        },
-
-        _addTest: function (description, cb) {
-            var cloned = this._static.clone(this, description, {sub: true, level: this.level + 1, parent: this}, cb);
-            var it = cloned._addAction;
-            _(["suite", "test", "should", "describe", "timeout", "ignoreErrors", "getAction", "beforeAll", "beforeEach",
-                "afterAll", "afterEach", "context", "get", "set", "skip"]).forEach(function (key) {
-                    if (_.isFunction(cloned[key])) {
-                        it[key] = cloned[key];
-                    }
-                });
-            if (cb) {
-                cb(it);
-            }
-            this.__shoulds.push(cloned);
-            return cloned;
-        },
+            return ret;
+        }
 
 
-        _addAction: function (description, cb, status) {
-            var action = new this.Action(description, this, this.level + 1, cb, status);
-            _.bus.emit("addAction", action);
-            this.__shoulds.push(action);
-            return this;
-        },
-
-
-        __runAction: function (action) {
-            var stopOnError = this.stopOnError;
-            return action.run(this.__be, this.__ae).then(
-                _.bind(this, function actionSuccess() {
-                    var ret = new Promise(),
-                        summary = action.get("summary");
-                    if (summary.status === "skipped" || summary.status === "passed") {
-                        ret.callback();
-                    } else {
-                        ret[stopOnError ? "errback" : "callback"]();
-                    }
-                    return ret;
-                }),
-                _.bind(this, function actionError(err) {
-                    this.error = err;
-                    this.emit("error", this);
-                })
-            );
-        },
-
-        _failSiblings: function (err) {
-            return _.serial(_.map(this.__shoulds, function (action) {
-                return _.bind(this, function () {
-                    var ret;
-                    if (action instanceof Action) {
-                        this.emit("action", action);
-                        var start = new Date();
-                        action.failed(start, start, err);
-                        ret = new Promise().callback();
-                    } else {
-                        this.emit("test", action);
-                        action.emit("run", action);
-                        ret = action._failSiblings(err);
-                    }
-                    return ret;
-                });
-            }, this));
-        },
-
-        run: function (filter) {
-            var ret;
-            if (filter) {
-                ret = this.filter(filter).run();
-            } else {
-                ret = this.__runPromise;
-                if (!ret) {
-                    this.emit("run", this);
-                    ret = this.__runPromise = _.serial(this.__ba).then(
-                            _.bind(this, function () {
-                                return _.serial(_.map(this.__shoulds, function (action) {
-                                    return _.bind(this, function () {
-                                        var ret;
-                                        if (action instanceof Action) {
-                                            this.emit("action", action);
-                                            ret = this.__runAction(action);
-                                        } else {
-                                            this.emit("test", action);
-                                            ret = action.run();
-                                        }
-                                        return ret;
-                                    });
-                                }, this));
-                            }),
-                            _.bind(this, function (err) {
-                                return this._failSiblings(err);
-                            })
-                        ).then(
-                            _.bind(this, function () {
-                                return _.serial(this.__aa);
-                            }),
-                            _.bind(this, function actionError(err) {
-                                this.error = err;
-                                this.emit("error", this);
-                            })
-                        ).both(_.bind(this, "emit", "done", this));
+        function intersection(a, b) {
+            var ret = [], aOne, i = -1, l;
+            l = a.length;
+            while (++i < l) {
+                aOne = a[i];
+                if (indexOf(b, aOne) !== -1) {
+                    ret.push(aOne);
                 }
             }
             return ret;
+        }
 
-        },
 
-        matches: function matches(filter) {
-            return this.description === filter;
-        },
+        var _sort = (function () {
 
-        filter: function filter(f) {
-            var ret = this, i, l;
-            if (f.length) {
-                f = isString(f) ? splitFilter(f) : [f];
-                if (f) {
-                    ret = this._static.clone(this, this.description, {
-                        sub: this.sub,
-                        "filtered": this.sub ? false : true,
-                        parent: this.parent,
-                        __ba: this.__ba.slice(0),
-                        __aa: this.__ba.slice(0),
-                        "__shoulds": _(this.__shoulds).map(function (action) {
-                            var rest, include = false, ret = null;
-                            for (i = 0, l = f.length; i < l && !include; i++) {
-                                if (action.description === f[i][0]) {
-                                    include = true;
-                                    rest = f[i].slice(1);
-                                }
-                            }
-                            if (include) {
-                                if (action instanceof this.Action) {
-                                    ret = action;
+            var isAll = function (arr, test) {
+                return every(arr, test);
+            };
+
+            var defaultCmp = function (a, b) {
+                return a - b;
+            };
+
+            var dateSort = function (a, b) {
+                return a.getTime() - b.getTime();
+            };
+
+            return function _sort(arr, property) {
+                var ret = [];
+                if (isArray(arr)) {
+                    ret = arr.slice();
+                    if (property) {
+                        if (typeof property === "function") {
+                            ret.sort(property);
+                        } else {
+                            ret.sort(function (a, b) {
+                                var aProp = a[property], bProp = b[property];
+                                if (isString(aProp) && isString(bProp)) {
+                                    return aProp > bProp ? 1 : aProp < bProp ? -1 : 0;
+                                } else if (isDate(aProp) && isDate(bProp)) {
+                                    return aProp.getTime() - bProp.getTime();
                                 } else {
-                                    ret = action.filter(rest);
+                                    return aProp - bProp;
                                 }
+                            });
+                        }
+                    } else {
+                        if (isAll(ret, isString)) {
+                            ret.sort();
+                        } else if (isAll(ret, isDate)) {
+                            ret.sort(dateSort);
+                        } else {
+                            ret.sort(defaultCmp);
+                        }
+                    }
+                }
+                return ret;
+            };
+
+        })();
+
+        function indexOf(arr, searchElement, from) {
+            var index = (from || 0) - 1,
+                length = arr.length;
+            while (++index < length) {
+                if (arr[index] === searchElement) {
+                    return index;
+                }
+            }
+            return -1;
+        }
+
+        function lastIndexOf(arr, searchElement, from) {
+            if (!isArray(arr)) {
+                throw new TypeError();
+            }
+
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            if (len === 0) {
+                return -1;
+            }
+
+            var n = len;
+            if (arguments.length > 2) {
+                n = Number(arguments[2]);
+                if (n !== n) {
+                    n = 0;
+                } else if (n !== 0 && n !== (1 / 0) && n !== -(1 / 0)) {
+                    n = (n > 0 || -1) * floor(abs(n));
+                }
+            }
+
+            var k = n >= 0 ? mathMin(n, len - 1) : len - abs(n);
+
+            for (; k >= 0; k--) {
+                if (k in t && t[k] === searchElement) {
+                    return k;
+                }
+            }
+            return -1;
+        }
+
+        function filter(arr, iterator, scope) {
+            if (arr && arrayFilter && arrayFilter === arr.filter) {
+                return arr.filter(iterator, scope);
+            }
+            if (!isArray(arr) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            var res = [];
+            for (var i = 0; i < len; i++) {
+                if (i in t) {
+                    var val = t[i]; // in case fun mutates this
+                    if (iterator.call(scope, val, i, t)) {
+                        res.push(val);
+                    }
+                }
+            }
+            return res;
+        }
+
+        function forEach(arr, iterator, scope) {
+            if (!isArray(arr) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+            if (arr && arrayForEach && arrayForEach === arr.forEach) {
+                arr.forEach(iterator, scope);
+                return arr;
+            }
+            for (var i = 0, len = arr.length; i < len; ++i) {
+                iterator.call(scope || arr, arr[i], i, arr);
+            }
+
+            return arr;
+        }
+
+        function every(arr, iterator, scope) {
+            if (arr && arrayEvery && arrayEvery === arr.every) {
+                return arr.every(iterator, scope);
+            }
+            if (!isArray(arr) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            for (var i = 0; i < len; i++) {
+                if (i in t && !iterator.call(scope, t[i], i, t)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function some(arr, iterator, scope) {
+            if (arr && arraySome && arraySome === arr.some) {
+                return arr.some(iterator, scope);
+            }
+            if (!isArray(arr) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            for (var i = 0; i < len; i++) {
+                if (i in t && iterator.call(scope, t[i], i, t)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function map(arr, iterator, scope) {
+            if (arr && arrayMap && arrayMap === arr.map) {
+                return arr.map(iterator, scope);
+            }
+            if (!isArray(arr) || typeof iterator !== "function") {
+                throw new TypeError();
+            }
+
+            var t = Object(arr);
+            var len = t.length >>> 0;
+            var res = [];
+            for (var i = 0; i < len; i++) {
+                if (i in t) {
+                    res.push(iterator.call(scope, t[i], i, t));
+                }
+            }
+            return res;
+        }
+
+        function reduce(arr, accumulator, curr) {
+            var initial = arguments.length > 2;
+            if (arr && arrayReduce && arrayReduce === arr.reduce) {
+                return initial ? arr.reduce(accumulator, curr) : arr.reduce(accumulator);
+            }
+            if (!isArray(arr) || typeof accumulator !== "function") {
+                throw new TypeError();
+            }
+            var i = 0, l = arr.length >> 0;
+            if (arguments.length < 3) {
+                if (l === 0) {
+                    throw new TypeError("Array length is 0 and no second argument");
+                }
+                curr = arr[0];
+                i = 1; // start accumulating at the second element
+            } else {
+                curr = arguments[2];
+            }
+            while (i < l) {
+                if (i in arr) {
+                    curr = accumulator.call(undefined, curr, arr[i], i, arr);
+                }
+                ++i;
+            }
+            return curr;
+        }
+
+        function reduceRight(arr, accumulator, curr) {
+            var initial = arguments.length > 2;
+            if (arr && arrayReduceRight && arrayReduceRight === arr.reduceRight) {
+                return initial ? arr.reduceRight(accumulator, curr) : arr.reduceRight(accumulator);
+            }
+            if (!isArray(arr) || typeof accumulator !== "function") {
+                throw new TypeError();
+            }
+
+            var t = Object(arr);
+            var len = t.length >>> 0;
+
+            // no value to return if no initial value, empty array
+            if (len === 0 && arguments.length === 2) {
+                throw new TypeError();
+            }
+
+            var k = len - 1;
+            if (arguments.length >= 3) {
+                curr = arguments[2];
+            } else {
+                do {
+                    if (k in arr) {
+                        curr = arr[k--];
+                        break;
+                    }
+                }
+                while (true);
+            }
+            while (k >= 0) {
+                if (k in t) {
+                    curr = accumulator.call(undefined, curr, t[k], k, t);
+                }
+                k--;
+            }
+            return curr;
+        }
+
+
+        function toArray(o) {
+            var ret = [];
+            if (o !== null) {
+                var args = argsToArray(arguments);
+                if (args.length === 1) {
+                    if (isArray(o)) {
+                        ret = o;
+                    } else if (is.isHash(o)) {
+                        for (var i in o) {
+                            if (o.hasOwnProperty(i)) {
+                                ret.push([i, o[i]]);
                             }
-                            return ret;
-                        }, this).compact().value()
+                        }
+                    } else {
+                        ret.push(o);
+                    }
+                } else {
+                    forEach(args, function (a) {
+                        ret = ret.concat(toArray(a));
                     });
                 }
             }
             return ret;
-        },
+        }
 
-        getters: {
-            summary: function () {
-                var duration = 0, ret = {description: this.description, summaries: {}}, summaries = ret.summaries;
-                _.map(this.__shoulds, function (action) {
-                    var actionSum = action.get("summary");
-                    if (action instanceof Action || action.description) {
-                        summaries[action.description] = actionSum;
-                        duration += actionSum.duration;
-                    } else {
-                        merge(summaries, actionSum.summaries);
-                        duration += actionSum.duration;
-                    }
+        function sum(array) {
+            array = array || [];
+            if (array.length) {
+                return reduce(array, function (a, b) {
+                    return a + b;
                 });
-                ret.duration = duration;
+            } else {
+                return 0;
+            }
+        }
+
+        function avg(arr) {
+            arr = arr || [];
+            if (arr.length) {
+                var total = sum(arr);
+                if (is.isNumber(total)) {
+                    return  total / arr.length;
+                } else {
+                    throw new Error("Cannot average an array of non numbers.");
+                }
+            } else {
+                return 0;
+            }
+        }
+
+        function sort(arr, cmp) {
+            return _sort(arr, cmp);
+        }
+
+        function min(arr, cmp) {
+            return _sort(arr, cmp)[0];
+        }
+
+        function max(arr, cmp) {
+            return _sort(arr, cmp)[arr.length - 1];
+        }
+
+        function difference(arr1) {
+            var ret = arr1, args = flatten(argsToArray(arguments, 1));
+            if (isArray(arr1)) {
+                ret = filter(arr1, function (a) {
+                    return indexOf(args, a) === -1;
+                });
+            }
+            return ret;
+        }
+
+        function removeDuplicates(arr) {
+            var ret = [], i = -1, l, retLength = 0;
+            if (arr) {
+                l = arr.length;
+                while (++i < l) {
+                    var item = arr[i];
+                    if (indexOf(ret, item) === -1) {
+                        ret[retLength++] = item;
+                    }
+                }
+            }
+            return ret;
+        }
+
+
+        function unique(arr) {
+            return removeDuplicates(arr);
+        }
+
+
+        function rotate(arr, numberOfTimes) {
+            var ret = arr.slice();
+            if (typeof numberOfTimes !== "number") {
+                numberOfTimes = 1;
+            }
+            if (numberOfTimes && isArray(arr)) {
+                if (numberOfTimes > 0) {
+                    ret.push(ret.shift());
+                    numberOfTimes--;
+                } else {
+                    ret.unshift(ret.pop());
+                    numberOfTimes++;
+                }
+                return rotate(ret, numberOfTimes);
+            } else {
                 return ret;
-            },
-
-            fullName: function () {
-                var decription = "";
-                if (this.parent) {
-                    decription += this.parent.get("fullName") + ":";
-                }
-                decription += " " + this.description;
-                return decription;
-            },
-
-            length: function () {
-                return _(this.__shoulds).map(function (instance) {
-                    return instance instanceof Action ? 1 : instance.get("length");
-                }).sum().value();
-            },
-
-            errorCount: function () {
-                return _(this.__shoulds).map(function (instance) {
-                    return (instance instanceof Action) ? (instance.get("status") === "failed" ? 1 : 0) : instance.get("errorCount");
-                }).sum().value();
-            },
-
-            successCount: function () {
-                return _(this.__shoulds).map(function (instance) {
-                    return (instance instanceof Action) ? (instance.get("status") === "passed" ? 1 : 0) : instance.get("successCount");
-                }).sum().value();
-            },
-
-            pendingActions: function () {
-                return _(this.__shoulds).filter(function (instance) {
-                    return (instance instanceof Action) && (instance.get("status") === "pending");
-                }).map(function (action) {
-                    return action.get("fullName");
-                }).value();
-            },
-
-            skippedCount: function () {
-                return _(this.__shoulds).map(function (instance) {
-                    return (instance instanceof Action) ? (instance.get("status") === "skipped" ? 1 : 0) : instance.get("skippedCount");
-                }).sum().value();
             }
-
         }
-    },
 
-    "static": {
-
-        tests: {},
-
-        init: function init() {
-            this.Action = Action;
-        },
-
-        clone: function (behavior, description, options, cb) {
-            return new this(description, merge({
-                __timeout: behavior.__timeout,
-                level: behavior.level,
-                __be: behavior.__be.slice(),
-                __ae: behavior.__ae.slice(),
-                parent: behavior,
-                stopOnError: behavior.stopOnError,
-                __ignoreProcessError: behavior.ignoreErrors()
-            }, options), cb);
-        },
-
-
-        __filter: function (filter) {
-            var ret = {}, tests = this.tests, names = _.pluck(filter, "0");
-            _.forEach(names, function (t, index) {
-                var test = tests[t];
-                if (test) {
-                    var filtered = tests[t].filter(filter[index].slice(1));
-                    if (ret[t]) {
-                        ret[t].__shoulds = ret[t].__shoulds.concat(filtered.__shoulds);
-                    } else {
-                        ret[t] = filtered;
-                    }
-
+        function permutations(arr, length) {
+            var ret = [];
+            if (isArray(arr)) {
+                var copy = arr.slice(0);
+                if (typeof length !== "number") {
+                    length = arr.length;
                 }
-            });
+                if (!length) {
+                    ret = [
+                        []
+                    ];
+                } else if (length <= arr.length) {
+                    ret = reduce(arr, function (a, b, i) {
+                        var ret;
+                        if (length > 1) {
+                            ret = permute(b, rotate(copy, i).slice(1), length);
+                        } else {
+                            ret = [
+                                [b]
+                            ];
+                        }
+                        return a.concat(ret);
+                    }, []);
+                }
+            }
             return ret;
-        },
+        }
 
-        run: function run(filter) {
-            var summaries = {}, tests = this.tests;
-            filter = splitFilter(filter);
-            if (filter.length) {
-                tests = this.__filter(filter);
-            }
-            if (!isEmpty(tests)) {
-                if (duplicateActionErrors.length > 0) {
-                    _.bus.emit("printDuplicateActions", duplicateActionErrors);
-                    throw new Error("" + duplicateActionErrors.length + " duplicate test name(s)");
+        function zip() {
+            var ret = [];
+            var arrs = argsToArray(arguments);
+            if (arrs.length > 1) {
+                var arr1 = arrs.shift();
+                if (isArray(arr1)) {
+                    ret = reduce(arr1, function (a, b, i) {
+                        var curr = [b];
+                        for (var j = 0; j < arrs.length; j++) {
+                            var currArr = arrs[j];
+                            if (isArray(currArr) && !is.isUndefined(currArr[i])) {
+                                curr.push(currArr[i]);
+                            } else {
+                                curr.push(null);
+                            }
+                        }
+                        a.push(curr);
+                        return a;
+                    }, []);
                 }
-                _.bus.emit("start", {tests: tests, numActions: _(tests).values().invoke("get", "length").sum().value()});
-                return _.serial(_(tests).keys().map(function (k) {
-                    return function () {
-                        _.bus.emit("test", tests[k]);
-                        return tests[k].run().both(function (summary) {
-                            summaries[k] = summary;
-                        });
-                    };
-                }).value()).then(_.bindIgnore(this, "printSummary"));
-            } else {
-                console.warn("No Tests found");
-                return _.resolve();
             }
-        },
+            return ret;
+        }
 
-        printSummary: function printSummary() {
-            var tests = this.tests;
-            var summary = {summary: {}, totalCount: 0, errorCount: 0, successCount: 0, pendingCount: 0, pendingActions: [], skippedCount: 0};
-            if (!isEmpty(tests)) {
-                var keys = _.hash.keys(tests), length = 0;
-                _(tests).forEach(function (test, k) {
-                    var testSummary = test.get("summary"),
-                        pendingActions =  test.get("pendingActions");
-                    summary.totalCount += test.get("length");
-                    summary.errorCount += test.get("errorCount");
-                    summary.successCount += test.get("successCount");
-                    summary.skippedCount += test.get("skippedCount");
-                    summary.pendingCount += pendingActions.length,
-                    summary.pendingActions = summary.pendingActions.concat(pendingActions);
-
-                    if (testSummary) {
-                        summary.summary[k] = testSummary;
-                        length += 1;
+        function transpose(arr) {
+            var ret = [];
+            if (isArray(arr) && arr.length) {
+                var last;
+                forEach(arr, function (a) {
+                    if (isArray(a) && (!last || a.length === last.length)) {
+                        forEach(a, function (b, i) {
+                            if (!ret[i]) {
+                                ret[i] = [];
+                            }
+                            ret[i].push(b);
+                        });
+                        last = a;
                     }
                 });
-                if (length < keys.length) {
-                    _.bus.emit("error", new Error("Async Error"));
-                }
-                _.bus.emit("done", summary);
-            }
-            return summary;
-        }
-    }
-}).as(module);
-},{"../../utils":31,"../../extended":2,"./emitter":32,"./action":28}],18:[function(require,module,exports){
-(function(){(function () {
-    "use strict";
-    /*global extended isExtended*/
-
-    function defineObject(extended, is, arr) {
-
-        var deepEqual = is.deepEqual,
-            isString = is.isString,
-            isHash = is.isHash,
-            difference = arr.difference,
-            hasOwn = Object.prototype.hasOwnProperty,
-            isFunction = is.isFunction;
-
-        function _merge(target, source) {
-            var name, s;
-            for (name in source) {
-                if (hasOwn.call(source, name)) {
-                    s = source[name];
-                    if (!(name in target) || (target[name] !== s)) {
-                        target[name] = s;
-                    }
-                }
-            }
-            return target;
-        }
-
-        function _deepMerge(target, source) {
-            var name, s, t;
-            for (name in source) {
-                if (hasOwn.call(source, name)) {
-                    s = source[name];
-                    t = target[name];
-                    if (!deepEqual(t, s)) {
-                        if (isHash(t) && isHash(s)) {
-                            target[name] = _deepMerge(t, s);
-                        } else if (isHash(s)) {
-                            target[name] = _deepMerge({}, s);
-                        } else {
-                            target[name] = s;
-                        }
-                    }
-                }
-            }
-            return target;
-        }
-
-
-        function merge(obj) {
-            if (!obj) {
-                obj = {};
-            }
-            for (var i = 1, l = arguments.length; i < l; i++) {
-                _merge(obj, arguments[i]);
-            }
-            return obj; // Object
-        }
-
-        function deepMerge(obj) {
-            if (!obj) {
-                obj = {};
-            }
-            for (var i = 1, l = arguments.length; i < l; i++) {
-                _deepMerge(obj, arguments[i]);
-            }
-            return obj; // Object
-        }
-
-
-        function extend(parent, child) {
-            var proto = parent.prototype || parent;
-            merge(proto, child);
-            return parent;
-        }
-
-        function forEach(hash, iterator, scope) {
-            if (!isHash(hash) || !isFunction(iterator)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key;
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                iterator.call(scope || hash, hash[key], key, hash);
-            }
-            return hash;
-        }
-
-        function filter(hash, iterator, scope) {
-            if (!isHash(hash) || !isFunction(iterator)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, value, ret = {};
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                value = hash[key];
-                if (iterator.call(scope || hash, value, key, hash)) {
-                    ret[key] = value;
-                }
             }
             return ret;
         }
 
-        function values(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), ret = [];
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                ret.push(hash[objKeys[i]]);
-            }
-            return ret;
-        }
-
-
-        function keys(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
+        function valuesAt(arr, indexes) {
             var ret = [];
-            for (var i in hash) {
-                if (hasOwn.call(hash, i)) {
-                    ret.push(i);
+            indexes = argsToArray(arguments);
+            arr = indexes.shift();
+            if (isArray(arr) && indexes.length) {
+                for (var i = 0, l = indexes.length; i < l; i++) {
+                    ret.push(arr[indexes[i]] || null);
                 }
             }
             return ret;
         }
 
-        function invert(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, ret = {};
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                ret[hash[key]] = key;
-            }
-            return ret;
-        }
-
-        function toArray(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, ret = [];
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                ret.push([key, hash[key]]);
+        function union() {
+            var ret = [];
+            var arrs = argsToArray(arguments);
+            if (arrs.length > 1) {
+                for (var i = 0, l = arrs.length; i < l; i++) {
+                    ret = ret.concat(arrs[i]);
+                }
+                ret = removeDuplicates(ret);
             }
             return ret;
         }
 
-        function omit(hash, omitted) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            if (isString(omitted)) {
-                omitted = [omitted];
-            }
-            var objKeys = difference(keys(hash), omitted), key, ret = {};
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                ret[key] = hash[key];
-            }
-            return ret;
-        }
-
-        var hash = {
-            forEach: forEach,
-            filter: filter,
-            invert: invert,
-            values: values,
-            toArray: toArray,
-            keys: keys,
-            omit: omit
-        };
-
-
-        var obj = {
-            extend: extend,
-            merge: merge,
-            deepMerge: deepMerge,
-            omit: omit
-        };
-
-        var ret = extended.define(is.isObject, obj).define(isHash, hash).define(is.isFunction, {extend: extend}).expose({hash: hash}).expose(obj);
-        var orig = ret.extend;
-        ret.extend = function __extend() {
-            if (arguments.length === 1) {
-                return orig.extend.apply(ret, arguments);
+        function intersect() {
+            var collect = [], sets, i = -1 , l;
+            if (arguments.length > 1) {
+                //assume we are intersections all the lists in the array
+                sets = argsToArray(arguments);
             } else {
-                extend.apply(null, arguments);
+                sets = arguments[0];
             }
-        };
-        return ret;
+            if (isArray(sets)) {
+                collect = sets[0];
+                i = 0;
+                l = sets.length;
+                while (++i < l) {
+                    collect = intersection(collect, sets[i]);
+                }
+            }
+            return removeDuplicates(collect);
+        }
 
+        function powerSet(arr) {
+            var ret = [];
+            if (isArray(arr) && arr.length) {
+                ret = reduce(arr, function (a, b) {
+                    var ret = map(a, function (c) {
+                        return c.concat(b);
+                    });
+                    return a.concat(ret);
+                }, [
+                    []
+                ]);
+            }
+            return ret;
+        }
+
+        function cartesian(a, b) {
+            var ret = [];
+            if (isArray(a) && isArray(b) && a.length && b.length) {
+                ret = cross(a[0], b).concat(cartesian(a.slice(1), b));
+            }
+            return ret;
+        }
+
+        function compact(arr) {
+            var ret = [];
+            if (isArray(arr) && arr.length) {
+                ret = filter(arr, function (item) {
+                    return !is.isUndefinedOrNull(item);
+                });
+            }
+            return ret;
+        }
+
+        function multiply(arr, times) {
+            times = is.isNumber(times) ? times : 1;
+            if (!times) {
+                //make sure times is greater than zero if it is zero then dont multiply it
+                times = 1;
+            }
+            arr = toArray(arr || []);
+            var ret = [], i = 0;
+            while (++i <= times) {
+                ret = ret.concat(arr);
+            }
+            return ret;
+        }
+
+        function flatten(arr) {
+            var set;
+            var args = argsToArray(arguments);
+            if (args.length > 1) {
+                //assume we are intersections all the lists in the array
+                set = args;
+            } else {
+                set = toArray(arr);
+            }
+            return reduce(set, function (a, b) {
+                return a.concat(b);
+            }, []);
+        }
+
+        function pluck(arr, prop) {
+            prop = prop.split(".");
+            var result = arr.slice(0);
+            forEach(prop, function (prop) {
+                var exec = prop.match(/(\w+)\(\)$/);
+                result = map(result, function (item) {
+                    return exec ? item[exec[1]]() : item[prop];
+                });
+            });
+            return result;
+        }
+
+        function invoke(arr, func, args) {
+            args = argsToArray(arguments, 2);
+            return map(arr, function (item) {
+                var exec = isString(func) ? item[func] : func;
+                return exec.apply(item, args);
+            });
+        }
+
+
+        var array = {
+            toArray: toArray,
+            sum: sum,
+            avg: avg,
+            sort: sort,
+            min: min,
+            max: max,
+            difference: difference,
+            removeDuplicates: removeDuplicates,
+            unique: unique,
+            rotate: rotate,
+            permutations: permutations,
+            zip: zip,
+            transpose: transpose,
+            valuesAt: valuesAt,
+            union: union,
+            intersect: intersect,
+            powerSet: powerSet,
+            cartesian: cartesian,
+            compact: compact,
+            multiply: multiply,
+            flatten: flatten,
+            pluck: pluck,
+            invoke: invoke,
+            forEach: forEach,
+            map: map,
+            filter: filter,
+            reduce: reduce,
+            reduceRight: reduceRight,
+            some: some,
+            every: every,
+            indexOf: indexOf,
+            lastIndexOf: lastIndexOf
+        };
+
+        return extended.define(isArray, array).expose(array);
     }
 
     if ("undefined" !== typeof exports) {
         if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineObject(require("extended"), require("is-extended"), require("array-extended"));
-
+            module.exports = defineArray(require("extended"), require("is-extended"), require("arguments-extended"));
         }
     } else if ("function" === typeof define && define.amd) {
-        define(["extended", "is-extended", "array-extended"], function (extended, is, array) {
-            return defineObject(extended, is, array);
+        define(["extended", "is-extended", "arguments-extended"], function (extended, is, args) {
+            return defineArray(extended, is, args);
         });
     } else {
-        this.objectExtended = defineObject(this.extended, this.isExtended, this.arrayExtended);
+        this.arrayExtended = defineArray(this.extended, this.isExtended, this.argumentsExtended);
     }
 
 }).call(this);
@@ -4810,7 +4844,7 @@ EventEmitter.extend({
 
 
 })()
-},{"extended":16,"is-extended":21,"array-extended":17}],19:[function(require,module,exports){
+},{"extended":16,"is-extended":23,"arguments-extended":31}],18:[function(require,module,exports){
 (function () {
     "use strict";
 
@@ -5758,125 +5792,226 @@ EventEmitter.extend({
 
 
 
-},{"extended":16,"is-extended":21,"array-extended":17}],28:[function(require,module,exports){
-"use strict";
-var _ = require("../../extended"),
-    isFunction = _.isFunction,
-    EventEmitter = require("./emitter"),
-    merge = _.merge,
-    Promise = _.Promise,
-    utils = require("../../utils"),
-    setUpCb = utils.setUpCb;
+},{"extended":16,"is-extended":23,"array-extended":17}],19:[function(require,module,exports){
+(function(){(function () {
+    "use strict";
+    /*global extended isExtended*/
 
-EventEmitter.extend({
+    function defineObject(extended, is, arr) {
 
-    instance: {
+        var deepEqual = is.deepEqual,
+            isString = is.isString,
+            isHash = is.isHash,
+            difference = arr.difference,
+            hasOwn = Object.prototype.hasOwnProperty,
+            isFunction = is.isFunction;
 
-        level: 0,
-
-        constructor: function (description, parent, level, action, status) {
-            this._super(arguments);
-            this.level = level;
-            this.description = description;
-            this.parent = parent;
-            this.timeout = parent.__timeout;
-            this.fn = action;
-            this.__summary = {
-                parentFullName: parent.get("fullName"),
-                description: description,
-                start: null,
-                end: null,
-                duration: 0, // test is pending
-                status: status || 'pending',
-                error: false
-            };
-            var stub = this.stub = !isFunction(action);
-            this.action = !stub ? setUpCb(action, this.timeout) : _.resolve(this.__summary);
-        },
-
-        success: function (start, end) {
-            merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "passed"});
-            this.emit("success", this);
-            return this.get("summary");
-        },
-
-        failed: function (start, end, err) {
-            merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "failed", error: err || new Error()});
-            this.error = err;
-            this.emit("error", this);
-            return this.get("summary");
-        },
-
-        skipped: function (start) {
-            merge(this.get("summary"), { start: start, end: start, duration: 0, status: "skipped"});
-            this.emit("skipped", this);
-            return this.get("summary");
-        },
-
-        run: function (be, ae) {
-            if (this.__summary.status === "skipped") {
-                this.emit("skipped", this);
-                return new Promise().callback();
-            }
-            var start = new Date(),
-                failure;
-            return _.serial(be)
-                .then(_.bind(this, function () {
-                    start = new Date();
-                    var ret;
-                    if (this.stub) {
-                        // this test is pending (read: not defined yet)
-                        ret = this.action;
-                        this.emit(this.__summary.status, this);
-                    } else {
-                        ret = this.action(this.parent);
+        function _merge(target, source) {
+            var name, s;
+            for (name in source) {
+                if (hasOwn.call(source, name)) {
+                    s = source[name];
+                    if (!(name in target) || (target[name] !== s)) {
+                        target[name] = s;
                     }
-                    return ret;
-                })).then(
-                    _.bind(this, function () {
-                        return _.serial(ae);
-                    }),
-                    _.bind(this, function (err) {
-                        failure = failure || err;
-                        return _.serial(ae);
-                    })
-                ).then(
-                    _.bind(this, function () {
-                        if (failure) {
-                            return this.failed(start, new Date(), failure);
-                        }
-                        return this.success(start, new Date());
-                    }),
-                    _.bind(this, function (err) {
-                        return this.failed(start, new Date(), failure || err);
-                    })
-                );
-        },
-
-        getters: {
-
-            status: function () {
-                return this.__summary.status;
-            },
-
-            summary: function () {
-                return this.__summary;
-            },
-
-            fullName: function () {
-                var decription = "";
-                if (this.parent) {
-                    decription += this.parent.get("fullName") + ":";
                 }
-                decription += " " + this.description;
-                return decription;
             }
-
+            return target;
         }
+
+        function _deepMerge(target, source) {
+            var name, s, t;
+            for (name in source) {
+                if (hasOwn.call(source, name)) {
+                    s = source[name];
+                    t = target[name];
+                    if (!deepEqual(t, s)) {
+                        if (isHash(t) && isHash(s)) {
+                            target[name] = _deepMerge(t, s);
+                        } else if (isHash(s)) {
+                            target[name] = _deepMerge({}, s);
+                        } else {
+                            target[name] = s;
+                        }
+                    }
+                }
+            }
+            return target;
+        }
+
+
+        function merge(obj) {
+            if (!obj) {
+                obj = {};
+            }
+            for (var i = 1, l = arguments.length; i < l; i++) {
+                _merge(obj, arguments[i]);
+            }
+            return obj; // Object
+        }
+
+        function deepMerge(obj) {
+            if (!obj) {
+                obj = {};
+            }
+            for (var i = 1, l = arguments.length; i < l; i++) {
+                _deepMerge(obj, arguments[i]);
+            }
+            return obj; // Object
+        }
+
+
+        function extend(parent, child) {
+            var proto = parent.prototype || parent;
+            merge(proto, child);
+            return parent;
+        }
+
+        function forEach(hash, iterator, scope) {
+            if (!isHash(hash) || !isFunction(iterator)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key;
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                iterator.call(scope || hash, hash[key], key, hash);
+            }
+            return hash;
+        }
+
+        function filter(hash, iterator, scope) {
+            if (!isHash(hash) || !isFunction(iterator)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, value, ret = {};
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                value = hash[key];
+                if (iterator.call(scope || hash, value, key, hash)) {
+                    ret[key] = value;
+                }
+            }
+            return ret;
+        }
+
+        function values(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), ret = [];
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                ret.push(hash[objKeys[i]]);
+            }
+            return ret;
+        }
+
+
+        function keys(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var ret = [];
+            for (var i in hash) {
+                if (hasOwn.call(hash, i)) {
+                    ret.push(i);
+                }
+            }
+            return ret;
+        }
+
+        function invert(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, ret = {};
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                ret[hash[key]] = key;
+            }
+            return ret;
+        }
+
+        function toArray(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, ret = [];
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                ret.push([key, hash[key]]);
+            }
+            return ret;
+        }
+
+        function omit(hash, omitted) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            if (isString(omitted)) {
+                omitted = [omitted];
+            }
+            var objKeys = difference(keys(hash), omitted), key, ret = {};
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                ret[key] = hash[key];
+            }
+            return ret;
+        }
+
+        var hash = {
+            forEach: forEach,
+            filter: filter,
+            invert: invert,
+            values: values,
+            toArray: toArray,
+            keys: keys,
+            omit: omit
+        };
+
+
+        var obj = {
+            extend: extend,
+            merge: merge,
+            deepMerge: deepMerge,
+            omit: omit
+        };
+
+        var ret = extended.define(is.isObject, obj).define(isHash, hash).define(is.isFunction, {extend: extend}).expose({hash: hash}).expose(obj);
+        var orig = ret.extend;
+        ret.extend = function __extend() {
+            if (arguments.length === 1) {
+                return orig.extend.apply(ret, arguments);
+            } else {
+                extend.apply(null, arguments);
+            }
+        };
+        return ret;
+
     }
 
-}).as(module);
-},{"../../extended":2,"./emitter":32,"../../utils":31}],20:[function(require,module,exports){
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineObject(require("extended"), require("is-extended"), require("array-extended"));
+
+        }
+    } else if ("function" === typeof define && define.amd) {
+        define(["extended", "is-extended", "array-extended"], function (extended, is, array) {
+            return defineObject(extended, is, array);
+        });
+    } else {
+        this.objectExtended = defineObject(this.extended, this.isExtended, this.arrayExtended);
+    }
+
+}).call(this);
+
+
+
+
+
+
+
+})()
+},{"extended":16,"array-extended":17,"is-extended":23}],21:[function(require,module,exports){
 (function(process){(function () {
     "use strict";
     /*global setImmediate, MessageChannel*/
@@ -6382,666 +6517,643 @@ EventEmitter.extend({
 
 
 })(require("__browserify_process"))
-},{"arguments-extended":33,"declare.js":22,"extended":16,"array-extended":17,"function-extended":23,"is-extended":21,"__browserify_process":8}],17:[function(require,module,exports){
-(function(){(function () {
+},{"declare.js":24,"array-extended":17,"extended":16,"is-extended":23,"arguments-extended":31,"function-extended":22,"__browserify_process":8}],20:[function(require,module,exports){
+(function () {
     "use strict";
-    /*global define*/
 
-    function defineArray(extended, is, args) {
+    function defineString(extended, is, date, arr) {
 
-        var isString = is.isString,
-            isArray = Array.isArray || is.isArray,
-            isDate = is.isDate,
-            floor = Math.floor,
-            abs = Math.abs,
-            mathMax = Math.max,
-            mathMin = Math.min,
-            arrayProto = Array.prototype,
-            arrayIndexOf = arrayProto.indexOf,
-            arrayForEach = arrayProto.forEach,
-            arrayMap = arrayProto.map,
-            arrayReduce = arrayProto.reduce,
-            arrayReduceRight = arrayProto.reduceRight,
-            arrayFilter = arrayProto.filter,
-            arrayEvery = arrayProto.every,
-            arraySome = arrayProto.some,
-            argsToArray = args.argsToArray;
+        var stringify;
+        if (typeof JSON === "undefined") {
+            /*
+             json2.js
+             2012-10-08
 
+             Public Domain.
 
-        function cross(num, cros) {
-            return reduceRight(cros, function (a, b) {
-                if (!isArray(b)) {
-                    b = [b];
+             NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
+             */
+
+            (function () {
+                function f(n) {
+                    // Format integers to have at least two digits.
+                    return n < 10 ? '0' + n : n;
                 }
-                b.unshift(num);
-                a.unshift(b);
-                return a;
-            }, []);
-        }
 
-        function permute(num, cross, length) {
-            var ret = [];
-            for (var i = 0; i < cross.length; i++) {
-                ret.push([num].concat(rotate(cross, i)).slice(0, length));
-            }
-            return ret;
-        }
+                var isPrimitive = is.tester().isString().isNumber().isBoolean().tester();
 
-
-        function intersection(a, b) {
-            var ret = [], aOne, i = -1, l;
-            l = a.length;
-            while (++i < l) {
-                aOne = a[i];
-                if (indexOf(b, aOne) !== -1) {
-                    ret.push(aOne);
+                function toJSON(obj) {
+                    if (is.isDate(obj)) {
+                        return isFinite(obj.valueOf()) ? obj.getUTCFullYear() + '-' +
+                            f(obj.getUTCMonth() + 1) + '-' +
+                            f(obj.getUTCDate()) + 'T' +
+                            f(obj.getUTCHours()) + ':' +
+                            f(obj.getUTCMinutes()) + ':' +
+                            f(obj.getUTCSeconds()) + 'Z'
+                            : null;
+                    } else if (isPrimitive(obj)) {
+                        return obj.valueOf();
+                    }
+                    return obj;
                 }
-            }
-            return ret;
-        }
+
+                var cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+                    escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
+                    gap,
+                    indent,
+                    meta = {    // table of character substitutions
+                        '\b': '\\b',
+                        '\t': '\\t',
+                        '\n': '\\n',
+                        '\f': '\\f',
+                        '\r': '\\r',
+                        '"': '\\"',
+                        '\\': '\\\\'
+                    },
+                    rep;
 
 
-        var _sort = (function () {
+                function quote(string) {
+                    escapable.lastIndex = 0;
+                    return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
+                        var c = meta[a];
+                        return typeof c === 'string' ? c : '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
+                    }) + '"' : '"' + string + '"';
+                }
 
-            var isAll = function (arr, test) {
-                return every(arr, test);
-            };
 
-            var defaultCmp = function (a, b) {
-                return a - b;
-            };
+                function str(key, holder) {
 
-            var dateSort = function (a, b) {
-                return a.getTime() - b.getTime();
-            };
-
-            return function _sort(arr, property) {
-                var ret = [];
-                if (isArray(arr)) {
-                    ret = arr.slice();
-                    if (property) {
-                        if (typeof property === "function") {
-                            ret.sort(property);
-                        } else {
-                            ret.sort(function (a, b) {
-                                var aProp = a[property], bProp = b[property];
-                                if (isString(aProp) && isString(bProp)) {
-                                    return aProp > bProp ? 1 : aProp < bProp ? -1 : 0;
-                                } else if (isDate(aProp) && isDate(bProp)) {
-                                    return aProp.getTime() - bProp.getTime();
-                                } else {
-                                    return aProp - bProp;
+                    var i, k, v, length, mind = gap, partial, value = holder[key];
+                    if (value) {
+                        value = toJSON(value);
+                    }
+                    if (typeof rep === 'function') {
+                        value = rep.call(holder, key, value);
+                    }
+                    switch (typeof value) {
+                    case 'string':
+                        return quote(value);
+                    case 'number':
+                        return isFinite(value) ? String(value) : 'null';
+                    case 'boolean':
+                    case 'null':
+                        return String(value);
+                    case 'object':
+                        if (!value) {
+                            return 'null';
+                        }
+                        gap += indent;
+                        partial = [];
+                        if (Object.prototype.toString.apply(value) === '[object Array]') {
+                            length = value.length;
+                            for (i = 0; i < length; i += 1) {
+                                partial[i] = str(i, value) || 'null';
+                            }
+                            v = partial.length === 0 ? '[]' : gap ? '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']' : '[' + partial.join(',') + ']';
+                            gap = mind;
+                            return v;
+                        }
+                        if (rep && typeof rep === 'object') {
+                            length = rep.length;
+                            for (i = 0; i < length; i += 1) {
+                                if (typeof rep[i] === 'string') {
+                                    k = rep[i];
+                                    v = str(k, value);
+                                    if (v) {
+                                        partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                                    }
                                 }
-                            });
-                        }
-                    } else {
-                        if (isAll(ret, isString)) {
-                            ret.sort();
-                        } else if (isAll(ret, isDate)) {
-                            ret.sort(dateSort);
+                            }
                         } else {
-                            ret.sort(defaultCmp);
-                        }
-                    }
-                }
-                return ret;
-            };
-
-        })();
-
-        function indexOf(arr, searchElement, from) {
-            var index = (from || 0) - 1,
-                length = arr.length;
-            while (++index < length) {
-                if (arr[index] === searchElement) {
-                    return index;
-                }
-            }
-            return -1;
-        }
-
-        function lastIndexOf(arr, searchElement, from) {
-            if (!isArray(arr)) {
-                throw new TypeError();
-            }
-
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            if (len === 0) {
-                return -1;
-            }
-
-            var n = len;
-            if (arguments.length > 2) {
-                n = Number(arguments[2]);
-                if (n !== n) {
-                    n = 0;
-                } else if (n !== 0 && n !== (1 / 0) && n !== -(1 / 0)) {
-                    n = (n > 0 || -1) * floor(abs(n));
-                }
-            }
-
-            var k = n >= 0 ? mathMin(n, len - 1) : len - abs(n);
-
-            for (; k >= 0; k--) {
-                if (k in t && t[k] === searchElement) {
-                    return k;
-                }
-            }
-            return -1;
-        }
-
-        function filter(arr, iterator, scope) {
-            if (arr && arrayFilter && arrayFilter === arr.filter) {
-                return arr.filter(iterator, scope);
-            }
-            if (!isArray(arr) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            var res = [];
-            for (var i = 0; i < len; i++) {
-                if (i in t) {
-                    var val = t[i]; // in case fun mutates this
-                    if (iterator.call(scope, val, i, t)) {
-                        res.push(val);
-                    }
-                }
-            }
-            return res;
-        }
-
-        function forEach(arr, iterator, scope) {
-            if (!isArray(arr) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-            if (arr && arrayForEach && arrayForEach === arr.forEach) {
-                arr.forEach(iterator, scope);
-                return arr;
-            }
-            for (var i = 0, len = arr.length; i < len; ++i) {
-                iterator.call(scope || arr, arr[i], i, arr);
-            }
-
-            return arr;
-        }
-
-        function every(arr, iterator, scope) {
-            if (arr && arrayEvery && arrayEvery === arr.every) {
-                return arr.every(iterator, scope);
-            }
-            if (!isArray(arr) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            for (var i = 0; i < len; i++) {
-                if (i in t && !iterator.call(scope, t[i], i, t)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        function some(arr, iterator, scope) {
-            if (arr && arraySome && arraySome === arr.some) {
-                return arr.some(iterator, scope);
-            }
-            if (!isArray(arr) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            for (var i = 0; i < len; i++) {
-                if (i in t && iterator.call(scope, t[i], i, t)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        function map(arr, iterator, scope) {
-            if (arr && arrayMap && arrayMap === arr.map) {
-                return arr.map(iterator, scope);
-            }
-            if (!isArray(arr) || typeof iterator !== "function") {
-                throw new TypeError();
-            }
-
-            var t = Object(arr);
-            var len = t.length >>> 0;
-            var res = [];
-            for (var i = 0; i < len; i++) {
-                if (i in t) {
-                    res.push(iterator.call(scope, t[i], i, t));
-                }
-            }
-            return res;
-        }
-
-        function reduce(arr, accumulator, curr) {
-            var initial = arguments.length > 2;
-            if (arr && arrayReduce && arrayReduce === arr.reduce) {
-                return initial ? arr.reduce(accumulator, curr) : arr.reduce(accumulator);
-            }
-            if (!isArray(arr) || typeof accumulator !== "function") {
-                throw new TypeError();
-            }
-            var i = 0, l = arr.length >> 0;
-            if (arguments.length < 3) {
-                if (l === 0) {
-                    throw new TypeError("Array length is 0 and no second argument");
-                }
-                curr = arr[0];
-                i = 1; // start accumulating at the second element
-            } else {
-                curr = arguments[2];
-            }
-            while (i < l) {
-                if (i in arr) {
-                    curr = accumulator.call(undefined, curr, arr[i], i, arr);
-                }
-                ++i;
-            }
-            return curr;
-        }
-
-        function reduceRight(arr, accumulator, curr) {
-            var initial = arguments.length > 2;
-            if (arr && arrayReduceRight && arrayReduceRight === arr.reduceRight) {
-                return initial ? arr.reduceRight(accumulator, curr) : arr.reduceRight(accumulator);
-            }
-            if (!isArray(arr) || typeof accumulator !== "function") {
-                throw new TypeError();
-            }
-
-            var t = Object(arr);
-            var len = t.length >>> 0;
-
-            // no value to return if no initial value, empty array
-            if (len === 0 && arguments.length === 2) {
-                throw new TypeError();
-            }
-
-            var k = len - 1;
-            if (arguments.length >= 3) {
-                curr = arguments[2];
-            } else {
-                do {
-                    if (k in arr) {
-                        curr = arr[k--];
-                        break;
-                    }
-                }
-                while (true);
-            }
-            while (k >= 0) {
-                if (k in t) {
-                    curr = accumulator.call(undefined, curr, t[k], k, t);
-                }
-                k--;
-            }
-            return curr;
-        }
-
-
-        function toArray(o) {
-            var ret = [];
-            if (o !== null) {
-                var args = argsToArray(arguments);
-                if (args.length === 1) {
-                    if (isArray(o)) {
-                        ret = o;
-                    } else if (is.isHash(o)) {
-                        for (var i in o) {
-                            if (o.hasOwnProperty(i)) {
-                                ret.push([i, o[i]]);
+                            for (k in value) {
+                                if (Object.prototype.hasOwnProperty.call(value, k)) {
+                                    v = str(k, value);
+                                    if (v) {
+                                        partial.push(quote(k) + (gap ? ': ' : ':') + v);
+                                    }
+                                }
                             }
                         }
+                        v = partial.length === 0 ? '{}' : gap ? '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}' : '{' + partial.join(',') + '}';
+                        gap = mind;
+                        return v;
+                    }
+                }
+
+                stringify = function (value, replacer, space) {
+                    var i;
+                    gap = '';
+                    indent = '';
+                    if (typeof space === 'number') {
+                        for (i = 0; i < space; i += 1) {
+                            indent += ' ';
+                        }
+                    } else if (typeof space === 'string') {
+                        indent = space;
+                    }
+                    rep = replacer;
+                    if (replacer && typeof replacer !== 'function' &&
+                        (typeof replacer !== 'object' ||
+                            typeof replacer.length !== 'number')) {
+                        throw new Error('JSON.stringify');
+                    }
+                    return str('', {'': value});
+                };
+            }());
+        } else {
+            stringify = JSON.stringify;
+        }
+
+
+        var isHash = is.isHash, aSlice = Array.prototype.slice;
+
+        var FORMAT_REGEX = /%((?:-?\+?.?\d*)?|(?:\[[^\[|\]]*\]))?([sjdDZ])/g;
+        var INTERP_REGEX = /\{(?:\[([^\[|\]]*)\])?(\w+)\}/g;
+        var STR_FORMAT = /(-?)(\+?)([A-Z|a-z|\W]?)([1-9][0-9]*)?$/;
+        var OBJECT_FORMAT = /([1-9][0-9]*)$/g;
+
+        function formatString(string, format) {
+            var ret = string;
+            if (STR_FORMAT.test(format)) {
+                var match = format.match(STR_FORMAT);
+                var isLeftJustified = match[1], padChar = match[3], width = match[4];
+                if (width) {
+                    width = parseInt(width, 10);
+                    if (ret.length < width) {
+                        ret = pad(ret, width, padChar, isLeftJustified);
                     } else {
-                        ret.push(o);
-                    }
-                } else {
-                    forEach(args, function (a) {
-                        ret = ret.concat(toArray(a));
-                    });
-                }
-            }
-            return ret;
-        }
-
-        function sum(array) {
-            array = array || [];
-            if (array.length) {
-                return reduce(array, function (a, b) {
-                    return a + b;
-                });
-            } else {
-                return 0;
-            }
-        }
-
-        function avg(arr) {
-            arr = arr || [];
-            if (arr.length) {
-                var total = sum(arr);
-                if (is.isNumber(total)) {
-                    return  total / arr.length;
-                } else {
-                    throw new Error("Cannot average an array of non numbers.");
-                }
-            } else {
-                return 0;
-            }
-        }
-
-        function sort(arr, cmp) {
-            return _sort(arr, cmp);
-        }
-
-        function min(arr, cmp) {
-            return _sort(arr, cmp)[0];
-        }
-
-        function max(arr, cmp) {
-            return _sort(arr, cmp)[arr.length - 1];
-        }
-
-        function difference(arr1) {
-            var ret = arr1, args = flatten(argsToArray(arguments, 1));
-            if (isArray(arr1)) {
-                ret = filter(arr1, function (a) {
-                    return indexOf(args, a) === -1;
-                });
-            }
-            return ret;
-        }
-
-        function removeDuplicates(arr) {
-            var ret = [], i = -1, l, retLength = 0;
-            if (arr) {
-                l = arr.length;
-                while (++i < l) {
-                    var item = arr[i];
-                    if (indexOf(ret, item) === -1) {
-                        ret[retLength++] = item;
+                        ret = truncate(ret, width);
                     }
                 }
             }
             return ret;
         }
 
-
-        function unique(arr) {
-            return removeDuplicates(arr);
-        }
-
-
-        function rotate(arr, numberOfTimes) {
-            var ret = arr.slice();
-            if (typeof numberOfTimes !== "number") {
-                numberOfTimes = 1;
-            }
-            if (numberOfTimes && isArray(arr)) {
-                if (numberOfTimes > 0) {
-                    ret.push(ret.shift());
-                    numberOfTimes--;
-                } else {
-                    ret.unshift(ret.pop());
-                    numberOfTimes++;
-                }
-                return rotate(ret, numberOfTimes);
-            } else {
-                return ret;
-            }
-        }
-
-        function permutations(arr, length) {
-            var ret = [];
-            if (isArray(arr)) {
-                var copy = arr.slice(0);
-                if (typeof length !== "number") {
-                    length = arr.length;
-                }
-                if (!length) {
-                    ret = [
-                        []
-                    ];
-                } else if (length <= arr.length) {
-                    ret = reduce(arr, function (a, b, i) {
-                        var ret;
-                        if (length > 1) {
-                            ret = permute(b, rotate(copy, i).slice(1), length);
+        function formatNumber(number, format) {
+            var ret;
+            if (is.isNumber(number)) {
+                ret = "" + number;
+                if (STR_FORMAT.test(format)) {
+                    var match = format.match(STR_FORMAT);
+                    var isLeftJustified = match[1], signed = match[2], padChar = match[3], width = match[4];
+                    if (signed) {
+                        ret = (number > 0 ? "+" : "") + ret;
+                    }
+                    if (width) {
+                        width = parseInt(width, 10);
+                        if (ret.length < width) {
+                            ret = pad(ret, width, padChar || "0", isLeftJustified);
                         } else {
-                            ret = [
-                                [b]
-                            ];
+                            ret = truncate(ret, width);
                         }
-                        return a.concat(ret);
-                    }, []);
-                }
-            }
-            return ret;
-        }
-
-        function zip() {
-            var ret = [];
-            var arrs = argsToArray(arguments);
-            if (arrs.length > 1) {
-                var arr1 = arrs.shift();
-                if (isArray(arr1)) {
-                    ret = reduce(arr1, function (a, b, i) {
-                        var curr = [b];
-                        for (var j = 0; j < arrs.length; j++) {
-                            var currArr = arrs[j];
-                            if (isArray(currArr) && !is.isUndefined(currArr[i])) {
-                                curr.push(currArr[i]);
-                            } else {
-                                curr.push(null);
-                            }
-                        }
-                        a.push(curr);
-                        return a;
-                    }, []);
-                }
-            }
-            return ret;
-        }
-
-        function transpose(arr) {
-            var ret = [];
-            if (isArray(arr) && arr.length) {
-                var last;
-                forEach(arr, function (a) {
-                    if (isArray(a) && (!last || a.length === last.length)) {
-                        forEach(a, function (b, i) {
-                            if (!ret[i]) {
-                                ret[i] = [];
-                            }
-                            ret[i].push(b);
-                        });
-                        last = a;
                     }
-                });
-            }
-            return ret;
-        }
 
-        function valuesAt(arr, indexes) {
-            var ret = [];
-            indexes = argsToArray(arguments);
-            arr = indexes.shift();
-            if (isArray(arr) && indexes.length) {
-                for (var i = 0, l = indexes.length; i < l; i++) {
-                    ret.push(arr[indexes[i]] || null);
                 }
-            }
-            return ret;
-        }
-
-        function union() {
-            var ret = [];
-            var arrs = argsToArray(arguments);
-            if (arrs.length > 1) {
-                for (var i = 0, l = arrs.length; i < l; i++) {
-                    ret = ret.concat(arrs[i]);
-                }
-                ret = removeDuplicates(ret);
-            }
-            return ret;
-        }
-
-        function intersect() {
-            var collect = [], sets, i = -1 , l;
-            if (arguments.length > 1) {
-                //assume we are intersections all the lists in the array
-                sets = argsToArray(arguments);
             } else {
-                sets = arguments[0];
+                throw new Error("stringExtended.format : when using %d the parameter must be a number!");
             }
-            if (isArray(sets)) {
-                collect = sets[0];
-                i = 0;
-                l = sets.length;
-                while (++i < l) {
-                    collect = intersection(collect, sets[i]);
+            return ret;
+        }
+
+        function formatObject(object, format) {
+            var ret, match = format.match(OBJECT_FORMAT), spacing = 0;
+            if (match) {
+                spacing = parseInt(match[0], 10);
+                if (isNaN(spacing)) {
+                    spacing = 0;
                 }
             }
-            return removeDuplicates(collect);
-        }
-
-        function powerSet(arr) {
-            var ret = [];
-            if (isArray(arr) && arr.length) {
-                ret = reduce(arr, function (a, b) {
-                    var ret = map(a, function (c) {
-                        return c.concat(b);
-                    });
-                    return a.concat(ret);
-                }, [
-                    []
-                ]);
+            try {
+                ret = stringify(object, null, spacing);
+            } catch (e) {
+                throw new Error("stringExtended.format : Unable to parse json from ", object);
             }
             return ret;
         }
 
-        function cartesian(a, b) {
-            var ret = [];
-            if (isArray(a) && isArray(b) && a.length && b.length) {
-                ret = cross(a[0], b).concat(cartesian(a.slice(1), b));
-            }
-            return ret;
-        }
 
-        function compact(arr) {
-            var ret = [];
-            if (isArray(arr) && arr.length) {
-                ret = filter(arr, function (item) {
-                    return !is.isUndefinedOrNull(item);
-                });
-            }
-            return ret;
-        }
+        var styles = {
+            //styles
+            bold: 1,
+            bright: 1,
+            italic: 3,
+            underline: 4,
+            blink: 5,
+            inverse: 7,
+            crossedOut: 9,
 
-        function multiply(arr, times) {
-            times = is.isNumber(times) ? times : 1;
-            if (!times) {
-                //make sure times is greater than zero if it is zero then dont multiply it
-                times = 1;
-            }
-            arr = toArray(arr || []);
-            var ret = [], i = 0;
-            while (++i <= times) {
-                ret = ret.concat(arr);
-            }
-            return ret;
-        }
+            red: 31,
+            green: 32,
+            yellow: 33,
+            blue: 34,
+            magenta: 35,
+            cyan: 36,
+            white: 37,
 
-        function flatten(arr) {
-            var set;
-            var args = argsToArray(arguments);
-            if (args.length > 1) {
-                //assume we are intersections all the lists in the array
-                set = args;
-            } else {
-                set = toArray(arr);
-            }
-            return reduce(set, function (a, b) {
-                return a.concat(b);
-            }, []);
-        }
+            redBackground: 41,
+            greenBackground: 42,
+            yellowBackground: 43,
+            blueBackground: 44,
+            magentaBackground: 45,
+            cyanBackground: 46,
+            whiteBackground: 47,
 
-        function pluck(arr, prop) {
-            prop = prop.split(".");
-            var result = arr.slice(0);
-            forEach(prop, function (prop) {
-                var exec = prop.match(/(\w+)\(\)$/);
-                result = map(result, function (item) {
-                    return exec ? item[exec[1]]() : item[prop];
-                });
-            });
-            return result;
-        }
-
-        function invoke(arr, func, args) {
-            args = argsToArray(arguments, 2);
-            return map(arr, function (item) {
-                var exec = isString(func) ? item[func] : func;
-                return exec.apply(item, args);
-            });
-        }
-
-
-        var array = {
-            toArray: toArray,
-            sum: sum,
-            avg: avg,
-            sort: sort,
-            min: min,
-            max: max,
-            difference: difference,
-            removeDuplicates: removeDuplicates,
-            unique: unique,
-            rotate: rotate,
-            permutations: permutations,
-            zip: zip,
-            transpose: transpose,
-            valuesAt: valuesAt,
-            union: union,
-            intersect: intersect,
-            powerSet: powerSet,
-            cartesian: cartesian,
-            compact: compact,
-            multiply: multiply,
-            flatten: flatten,
-            pluck: pluck,
-            invoke: invoke,
-            forEach: forEach,
-            map: map,
-            filter: filter,
-            reduce: reduce,
-            reduceRight: reduceRight,
-            some: some,
-            every: every,
-            indexOf: indexOf,
-            lastIndexOf: lastIndexOf
+            encircled: 52,
+            overlined: 53,
+            grey: 90,
+            black: 90
         };
 
-        return extended.define(isArray, array).expose(array);
+        var characters = {
+            SMILEY: "☺",
+            SOLID_SMILEY: "☻",
+            HEART: "♥",
+            DIAMOND: "♦",
+            CLOVE: "♣",
+            SPADE: "♠",
+            DOT: "•",
+            SQUARE_CIRCLE: "◘",
+            CIRCLE: "○",
+            FILLED_SQUARE_CIRCLE: "◙",
+            MALE: "♂",
+            FEMALE: "♀",
+            EIGHT_NOTE: "♪",
+            DOUBLE_EIGHTH_NOTE: "♫",
+            SUN: "☼",
+            PLAY: "►",
+            REWIND: "◄",
+            UP_DOWN: "↕",
+            PILCROW: "¶",
+            SECTION: "§",
+            THICK_MINUS: "▬",
+            SMALL_UP_DOWN: "↨",
+            UP_ARROW: "↑",
+            DOWN_ARROW: "↓",
+            RIGHT_ARROW: "→",
+            LEFT_ARROW: "←",
+            RIGHT_ANGLE: "∟",
+            LEFT_RIGHT_ARROW: "↔",
+            TRIANGLE: "▲",
+            DOWN_TRIANGLE: "▼",
+            HOUSE: "⌂",
+            C_CEDILLA: "Ç",
+            U_UMLAUT: "ü",
+            E_ACCENT: "é",
+            A_LOWER_CIRCUMFLEX: "â",
+            A_LOWER_UMLAUT: "ä",
+            A_LOWER_GRAVE_ACCENT: "à",
+            A_LOWER_CIRCLE_OVER: "å",
+            C_LOWER_CIRCUMFLEX: "ç",
+            E_LOWER_CIRCUMFLEX: "ê",
+            E_LOWER_UMLAUT: "ë",
+            E_LOWER_GRAVE_ACCENT: "è",
+            I_LOWER_UMLAUT: "ï",
+            I_LOWER_CIRCUMFLEX: "î",
+            I_LOWER_GRAVE_ACCENT: "ì",
+            A_UPPER_UMLAUT: "Ä",
+            A_UPPER_CIRCLE: "Å",
+            E_UPPER_ACCENT: "É",
+            A_E_LOWER: "æ",
+            A_E_UPPER: "Æ",
+            O_LOWER_CIRCUMFLEX: "ô",
+            O_LOWER_UMLAUT: "ö",
+            O_LOWER_GRAVE_ACCENT: "ò",
+            U_LOWER_CIRCUMFLEX: "û",
+            U_LOWER_GRAVE_ACCENT: "ù",
+            Y_LOWER_UMLAUT: "ÿ",
+            O_UPPER_UMLAUT: "Ö",
+            U_UPPER_UMLAUT: "Ü",
+            CENTS: "¢",
+            POUND: "£",
+            YEN: "¥",
+            CURRENCY: "¤",
+            PTS: "₧",
+            FUNCTION: "ƒ",
+            A_LOWER_ACCENT: "á",
+            I_LOWER_ACCENT: "í",
+            O_LOWER_ACCENT: "ó",
+            U_LOWER_ACCENT: "ú",
+            N_LOWER_TILDE: "ñ",
+            N_UPPER_TILDE: "Ñ",
+            A_SUPER: "ª",
+            O_SUPER: "º",
+            UPSIDEDOWN_QUESTION: "¿",
+            SIDEWAYS_L: "⌐",
+            NEGATION: "¬",
+            ONE_HALF: "½",
+            ONE_FOURTH: "¼",
+            UPSIDEDOWN_EXCLAMATION: "¡",
+            DOUBLE_LEFT: "«",
+            DOUBLE_RIGHT: "»",
+            LIGHT_SHADED_BOX: "░",
+            MEDIUM_SHADED_BOX: "▒",
+            DARK_SHADED_BOX: "▓",
+            VERTICAL_LINE: "│",
+            MAZE__SINGLE_RIGHT_T: "┤",
+            MAZE_SINGLE_RIGHT_TOP: "┐",
+            MAZE_SINGLE_RIGHT_BOTTOM_SMALL: "┘",
+            MAZE_SINGLE_LEFT_TOP_SMALL: "┌",
+            MAZE_SINGLE_LEFT_BOTTOM_SMALL: "└",
+            MAZE_SINGLE_LEFT_T: "├",
+            MAZE_SINGLE_BOTTOM_T: "┴",
+            MAZE_SINGLE_TOP_T: "┬",
+            MAZE_SINGLE_CENTER: "┼",
+            MAZE_SINGLE_HORIZONTAL_LINE: "─",
+            MAZE_SINGLE_RIGHT_DOUBLECENTER_T: "╡",
+            MAZE_SINGLE_RIGHT_DOUBLE_BL: "╛",
+            MAZE_SINGLE_RIGHT_DOUBLE_T: "╢",
+            MAZE_SINGLE_RIGHT_DOUBLEBOTTOM_TOP: "╖",
+            MAZE_SINGLE_RIGHT_DOUBLELEFT_TOP: "╕",
+            MAZE_SINGLE_LEFT_DOUBLE_T: "╞",
+            MAZE_SINGLE_BOTTOM_DOUBLE_T: "╧",
+            MAZE_SINGLE_TOP_DOUBLE_T: "╤",
+            MAZE_SINGLE_TOP_DOUBLECENTER_T: "╥",
+            MAZE_SINGLE_BOTTOM_DOUBLECENTER_T: "╨",
+            MAZE_SINGLE_LEFT_DOUBLERIGHT_BOTTOM: "╘",
+            MAZE_SINGLE_LEFT_DOUBLERIGHT_TOP: "╒",
+            MAZE_SINGLE_LEFT_DOUBLEBOTTOM_TOP: "╓",
+            MAZE_SINGLE_LEFT_DOUBLETOP_BOTTOM: "╙",
+            MAZE_SINGLE_LEFT_TOP: "Γ",
+            MAZE_SINGLE_RIGHT_BOTTOM: "╜",
+            MAZE_SINGLE_LEFT_CENTER: "╟",
+            MAZE_SINGLE_DOUBLECENTER_CENTER: "╫",
+            MAZE_SINGLE_DOUBLECROSS_CENTER: "╪",
+            MAZE_DOUBLE_LEFT_CENTER: "╣",
+            MAZE_DOUBLE_VERTICAL: "║",
+            MAZE_DOUBLE_RIGHT_TOP: "╗",
+            MAZE_DOUBLE_RIGHT_BOTTOM: "╝",
+            MAZE_DOUBLE_LEFT_BOTTOM: "╚",
+            MAZE_DOUBLE_LEFT_TOP: "╔",
+            MAZE_DOUBLE_BOTTOM_T: "╩",
+            MAZE_DOUBLE_TOP_T: "╦",
+            MAZE_DOUBLE_LEFT_T: "╠",
+            MAZE_DOUBLE_HORIZONTAL: "═",
+            MAZE_DOUBLE_CROSS: "╬",
+            SOLID_RECTANGLE: "█",
+            THICK_LEFT_VERTICAL: "▌",
+            THICK_RIGHT_VERTICAL: "▐",
+            SOLID_SMALL_RECTANGLE_BOTTOM: "▄",
+            SOLID_SMALL_RECTANGLE_TOP: "▀",
+            PHI_UPPER: "Φ",
+            INFINITY: "∞",
+            INTERSECTION: "∩",
+            DEFINITION: "≡",
+            PLUS_MINUS: "±",
+            GT_EQ: "≥",
+            LT_EQ: "≤",
+            THEREFORE: "⌠",
+            SINCE: "∵",
+            DOESNOT_EXIST: "∄",
+            EXISTS: "∃",
+            FOR_ALL: "∀",
+            EXCLUSIVE_OR: "⊕",
+            BECAUSE: "⌡",
+            DIVIDE: "÷",
+            APPROX: "≈",
+            DEGREE: "°",
+            BOLD_DOT: "∙",
+            DOT_SMALL: "·",
+            CHECK: "√",
+            ITALIC_X: "✗",
+            SUPER_N: "ⁿ",
+            SQUARED: "²",
+            CUBED: "³",
+            SOLID_BOX: "■",
+            PERMILE: "‰",
+            REGISTERED_TM: "®",
+            COPYRIGHT: "©",
+            TRADEMARK: "™",
+            BETA: "β",
+            GAMMA: "γ",
+            ZETA: "ζ",
+            ETA: "η",
+            IOTA: "ι",
+            KAPPA: "κ",
+            LAMBDA: "λ",
+            NU: "ν",
+            XI: "ξ",
+            OMICRON: "ο",
+            RHO: "ρ",
+            UPSILON: "υ",
+            CHI_LOWER: "φ",
+            CHI_UPPER: "χ",
+            PSI: "ψ",
+            ALPHA: "α",
+            ESZETT: "ß",
+            PI: "π",
+            SIGMA_UPPER: "Σ",
+            SIGMA_LOWER: "σ",
+            MU: "µ",
+            TAU: "τ",
+            THETA: "Θ",
+            OMEGA: "Ω",
+            DELTA: "δ",
+            PHI_LOWER: "φ",
+            EPSILON: "ε"
+        };
+
+        function pad(string, length, ch, end) {
+            string = "" + string; //check for numbers
+            ch = ch || " ";
+            var strLen = string.length;
+            while (strLen < length) {
+                if (end) {
+                    string += ch;
+                } else {
+                    string = ch + string;
+                }
+                strLen++;
+            }
+            return string;
+        }
+
+        function truncate(string, length, end) {
+            var ret = string;
+            if (is.isString(ret)) {
+                if (string.length > length) {
+                    if (end) {
+                        var l = string.length;
+                        ret = string.substring(l - length, l);
+                    } else {
+                        ret = string.substring(0, length);
+                    }
+                }
+            } else {
+                ret = truncate("" + ret, length);
+            }
+            return ret;
+        }
+
+        function format(str, obj) {
+            if (obj instanceof Array) {
+                var i = 0, len = obj.length;
+                //find the matches
+                return str.replace(FORMAT_REGEX, function (m, format, type) {
+                    var replacer, ret;
+                    if (i < len) {
+                        replacer = obj[i++];
+                    } else {
+                        //we are out of things to replace with so
+                        //just return the match?
+                        return m;
+                    }
+                    if (m === "%s" || m === "%d" || m === "%D") {
+                        //fast path!
+                        ret = replacer + "";
+                    } else if (m === "%Z") {
+                        ret = replacer.toUTCString();
+                    } else if (m === "%j") {
+                        try {
+                            ret = stringify(replacer);
+                        } catch (e) {
+                            throw new Error("stringExtended.format : Unable to parse json from ", replacer);
+                        }
+                    } else {
+                        format = format.replace(/^\[|\]$/g, "");
+                        switch (type) {
+                        case "s":
+                            ret = formatString(replacer, format);
+                            break;
+                        case "d":
+                            ret = formatNumber(replacer, format);
+                            break;
+                        case "j":
+                            ret = formatObject(replacer, format);
+                            break;
+                        case "D":
+                            ret = date.format(replacer, format);
+                            break;
+                        case "Z":
+                            ret = date.format(replacer, format, true);
+                            break;
+                        }
+                    }
+                    return ret;
+                });
+            } else if (isHash(obj)) {
+                return str.replace(INTERP_REGEX, function (m, format, value) {
+                    value = obj[value];
+                    if (!is.isUndefined(value)) {
+                        if (format) {
+                            if (is.isString(value)) {
+                                return formatString(value, format);
+                            } else if (is.isNumber(value)) {
+                                return formatNumber(value, format);
+                            } else if (is.isDate(value)) {
+                                return date.format(value, format);
+                            } else if (is.isObject(value)) {
+                                return formatObject(value, format);
+                            }
+                        } else {
+                            return "" + value;
+                        }
+                    }
+                    return m;
+                });
+            } else {
+                var args = aSlice.call(arguments).slice(1);
+                return format(str, args);
+            }
+        }
+
+        function toArray(testStr, delim) {
+            var ret = [];
+            if (testStr) {
+                if (testStr.indexOf(delim) > 0) {
+                    ret = testStr.replace(/\s+/g, "").split(delim);
+                }
+                else {
+                    ret.push(testStr);
+                }
+            }
+            return ret;
+        }
+
+        function multiply(str, times) {
+            var ret = [];
+            if (times) {
+                for (var i = 0; i < times; i++) {
+                    ret.push(str);
+                }
+            }
+            return ret.join("");
+        }
+
+
+        function style(str, options) {
+            var ret, i, l;
+            if (options) {
+                if (is.isArray(str)) {
+                    ret = [];
+                    for (i = 0, l = str.length; i < l; i++) {
+                        ret.push(style(str[i], options));
+                    }
+                } else if (options instanceof Array) {
+                    ret = str;
+                    for (i = 0, l = options.length; i < l; i++) {
+                        ret = style(ret, options[i]);
+                    }
+                } else if (options in styles) {
+                    ret = '\x1B[' + styles[options] + 'm' + str + '\x1B[0m';
+                }
+            }
+            return ret;
+        }
+
+        function escape(str, except) {
+            return str.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, function (ch) {
+                if (except && arr.indexOf(except, ch) !== -1) {
+                    return ch;
+                }
+                return "\\" + ch;
+            });
+        }
+
+        function trim(str) {
+            return str.replace(/^\s*|\s*$/g, "");
+        }
+
+        function trimLeft(str) {
+            return str.replace(/^\s*/, "");
+        }
+
+        function trimRight(str) {
+            return str.replace(/\s*$/, "");
+        }
+
+        function isEmpty(str) {
+            return str.length === 0;
+        }
+
+
+        var string = {
+            toArray: toArray,
+            pad: pad,
+            truncate: truncate,
+            multiply: multiply,
+            format: format,
+            style: style,
+            escape: escape,
+            trim: trim,
+            trimLeft: trimLeft,
+            trimRight: trimRight,
+            isEmpty: isEmpty
+        };
+        return extended.define(is.isString, string).define(is.isArray, {style: style}).expose(string).expose({characters: characters});
     }
 
     if ("undefined" !== typeof exports) {
         if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineArray(require("extended"), require("is-extended"), require("arguments-extended"));
+            module.exports = defineString(require("extended"), require("is-extended"), require("date-extended"), require("array-extended"));
+
         }
     } else if ("function" === typeof define && define.amd) {
-        define(["extended", "is-extended", "arguments-extended"], function (extended, is, args) {
-            return defineArray(extended, is, args);
+        define(["extended", "is-extended", "date-extended", "array-extended"], function (extended, is, date, arr) {
+            return defineString(extended, is, date, arr);
         });
     } else {
-        this.arrayExtended = defineArray(this.extended, this.isExtended, this.argumentsExtended);
+        this.stringExtended = defineString(this.extended, this.isExtended, this.dateExtended, this.arrayExtended);
     }
 
 }).call(this);
@@ -7052,8 +7164,7 @@ EventEmitter.extend({
 
 
 
-})()
-},{"arguments-extended":34,"extended":16,"is-extended":21}],35:[function(require,module,exports){
+},{"is-extended":23,"extended":16,"date-extended":18,"array-extended":17}],32:[function(require,module,exports){
 require=(function(e,t,n,r){function i(r){if(!n[r]){if(!t[r]){if(e)return e(r);throw new Error("Cannot find module '"+r+"'")}var s=n[r]={exports:{}};t[r][0](function(e){var n=t[r][1][e];return i(n?n:e)},s,s.exports)}return n[r].exports}for(var s=0;s<r.length;s++)i(r[s]);return i})(typeof require!=="undefined"&&require,{1:[function(require,module,exports){
 exports.readIEEE754 = function(buffer, offset, isBE, mLen, nBytes) {
   var e, m,
@@ -10918,7 +11029,7 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 },{}]},{},[])
 ;;module.exports=require("buffer-browserify")
 
-},{}],21:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 (function(Buffer){(function () {
     "use strict";
 
@@ -11421,7 +11532,7 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
 
 })(require("__browserify_buffer").Buffer)
-},{"extended":16,"__browserify_buffer":35}],23:[function(require,module,exports){
+},{"extended":16,"__browserify_buffer":32}],22:[function(require,module,exports){
 (function () {
     "use strict";
 
@@ -11679,656 +11790,565 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
 
 
-},{"arguments-extended":36,"is-extended":21,"extended":16}],24:[function(require,module,exports){
-(function () {
-    "use strict";
+},{"is-extended":23,"extended":16,"arguments-extended":31}],28:[function(require,module,exports){
+"use strict";
 
-    function defineString(extended, is, date, arr) {
+var utils = require("../../utils"),
+    splitFilter = utils.splitFilter,
+    setUpCb = utils.setUpCb,
+    _ = require("../../extended"),
+    EventEmitter = require("./emitter"),
+    isEmpty = _.isEmpty,
+    isString = _.isString,
+    merge = _.merge,
+    Promise = _.Promise,
+    Action = require("./action");
 
-        var stringify;
-        if (typeof JSON === "undefined") {
-            /*
-             json2.js
-             2012-10-08
+EventEmitter.extend({
+    instance: {
 
-             Public Domain.
+        sub: false,
 
-             NO WARRANTY EXPRESSED OR IMPLIED. USE AT YOUR OWN RISK.
-             */
+        __timeout: null,
 
-            (function () {
-                function f(n) {
-                    // Format integers to have at least two digits.
-                    return n < 10 ? '0' + n : n;
-                }
+        parent: null,
 
-                var isPrimitive = is.tester().isString().isNumber().isBoolean().tester();
+        level: 0,
 
-                function toJSON(obj) {
-                    if (is.isDate(obj)) {
-                        return isFinite(obj.valueOf()) ? obj.getUTCFullYear() + '-' +
-                            f(obj.getUTCMonth() + 1) + '-' +
-                            f(obj.getUTCDate()) + 'T' +
-                            f(obj.getUTCHours()) + ':' +
-                            f(obj.getUTCMinutes()) + ':' +
-                            f(obj.getUTCSeconds()) + 'Z'
-                            : null;
-                    } else if (isPrimitive(obj)) {
-                        return obj.valueOf();
-                    }
-                    return obj;
-                }
+        stopOnError: false,
 
-                var cx = /[\u0000\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
-                    escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g,
-                    gap,
-                    indent,
-                    meta = {    // table of character substitutions
-                        '\b': '\\b',
-                        '\t': '\\t',
-                        '\n': '\\n',
-                        '\f': '\\f',
-                        '\r': '\\r',
-                        '"': '\\"',
-                        '\\': '\\\\'
-                    },
-                    rep;
+        __ignoreProcessError: false,
 
+        constructor: function constructor(description, options) {
+            this._super(arguments);
+            this.Action = this._static.Action;
+            this.description = description;
+            this.__shoulds = [];
+            this.__ba = [];
+            this.__be = [];
+            this.__aa = [];
+            this.__ae = [];
+            merge(this, options);
 
-                function quote(string) {
-                    escapable.lastIndex = 0;
-                    return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
-                        var c = meta[a];
-                        return typeof c === 'string' ? c : '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice(-4);
-                    }) + '"' : '"' + string + '"';
-                }
-
-
-                function str(key, holder) {
-
-                    var i, k, v, length, mind = gap, partial, value = holder[key];
-                    if (value) {
-                        value = toJSON(value);
-                    }
-                    if (typeof rep === 'function') {
-                        value = rep.call(holder, key, value);
-                    }
-                    switch (typeof value) {
-                    case 'string':
-                        return quote(value);
-                    case 'number':
-                        return isFinite(value) ? String(value) : 'null';
-                    case 'boolean':
-                    case 'null':
-                        return String(value);
-                    case 'object':
-                        if (!value) {
-                            return 'null';
-                        }
-                        gap += indent;
-                        partial = [];
-                        if (Object.prototype.toString.apply(value) === '[object Array]') {
-                            length = value.length;
-                            for (i = 0; i < length; i += 1) {
-                                partial[i] = str(i, value) || 'null';
-                            }
-                            v = partial.length === 0 ? '[]' : gap ? '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']' : '[' + partial.join(',') + ']';
-                            gap = mind;
-                            return v;
-                        }
-                        if (rep && typeof rep === 'object') {
-                            length = rep.length;
-                            for (i = 0; i < length; i += 1) {
-                                if (typeof rep[i] === 'string') {
-                                    k = rep[i];
-                                    v = str(k, value);
-                                    if (v) {
-                                        partial.push(quote(k) + (gap ? ': ' : ':') + v);
-                                    }
-                                }
-                            }
-                        } else {
-                            for (k in value) {
-                                if (Object.prototype.hasOwnProperty.call(value, k)) {
-                                    v = str(k, value);
-                                    if (v) {
-                                        partial.push(quote(k) + (gap ? ': ' : ':') + v);
-                                    }
-                                }
-                            }
-                        }
-                        v = partial.length === 0 ? '{}' : gap ? '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}' : '{' + partial.join(',') + '}';
-                        gap = mind;
-                        return v;
-                    }
-                }
-
-                stringify = function (value, replacer, space) {
-                    var i;
-                    gap = '';
-                    indent = '';
-                    if (typeof space === 'number') {
-                        for (i = 0; i < space; i += 1) {
-                            indent += ' ';
-                        }
-                    } else if (typeof space === 'string') {
-                        indent = space;
-                    }
-                    rep = replacer;
-                    if (replacer && typeof replacer !== 'function' &&
-                        (typeof replacer !== 'object' ||
-                            typeof replacer.length !== 'number')) {
-                        throw new Error('JSON.stringify');
-                    }
-                    return str('', {'': value});
-                };
-            }());
-        } else {
-            stringify = JSON.stringify;
-        }
-
-
-        var isHash = is.isHash, aSlice = Array.prototype.slice;
-
-        var FORMAT_REGEX = /%((?:-?\+?.?\d*)?|(?:\[[^\[|\]]*\]))?([sjdDZ])/g;
-        var INTERP_REGEX = /\{(?:\[([^\[|\]]*)\])?(\w+)\}/g;
-        var STR_FORMAT = /(-?)(\+?)([A-Z|a-z|\W]?)([1-9][0-9]*)?$/;
-        var OBJECT_FORMAT = /([1-9][0-9]*)$/g;
-
-        function formatString(string, format) {
-            var ret = string;
-            if (STR_FORMAT.test(format)) {
-                var match = format.match(STR_FORMAT);
-                var isLeftJustified = match[1], padChar = match[3], width = match[4];
-                if (width) {
-                    width = parseInt(width, 10);
-                    if (ret.length < width) {
-                        ret = pad(ret, width, padChar, isLeftJustified);
-                    } else {
-                        ret = truncate(ret, width);
-                    }
-                }
+            if (!this.sub && !this.filtered) {
+                this._static.tests[description] = this;
+                this._static.trackName(this);
             }
-            return ret;
-        }
 
-        function formatNumber(number, format) {
-            var ret;
-            if (is.isNumber(number)) {
-                ret = "" + number;
-                if (STR_FORMAT.test(format)) {
-                    var match = format.match(STR_FORMAT);
-                    var isLeftJustified = match[1], signed = match[2], padChar = match[3], width = match[4];
-                    if (signed) {
-                        ret = (number > 0 ? "+" : "") + ret;
-                    }
-                    if (width) {
-                        width = parseInt(width, 10);
-                        if (ret.length < width) {
-                            ret = pad(ret, width, padChar || "0", isLeftJustified);
-                        } else {
-                            ret = truncate(ret, width);
-                        }
-                    }
+            _.bindAll(this, ["_addAction", "ignoreErrors", "_failSiblings", "_addTest", "timeout", "getAction", "beforeAll", "beforeEach", "afterAll", "afterEach", "context", "get", "set", "skip"]);
+        },
 
-                }
+        ignoreErrors: function (val) {
+            if (_.isBoolean(val)) {
+                this.__ignoreProcessError = val;
             } else {
-                throw new Error("stringExtended.format : when using %d the parameter must be a number!");
+                return this.__ignoreProcessError;
             }
-            return ret;
-        }
+        },
 
-        function formatObject(object, format) {
-            var ret, match = format.match(OBJECT_FORMAT), spacing = 0;
-            if (match) {
-                spacing = parseInt(match[0], 10);
-                if (isNaN(spacing)) {
-                    spacing = 0;
-                }
-            }
-            try {
-                ret = stringify(object, null, spacing);
-            } catch (e) {
-                throw new Error("stringExtended.format : Unable to parse json from ", object);
-            }
-            return ret;
-        }
+        timeout: function (num) {
+            this.__timeout = num;
+        },
 
-
-        var styles = {
-            //styles
-            bold: 1,
-            bright: 1,
-            italic: 3,
-            underline: 4,
-            blink: 5,
-            inverse: 7,
-            crossedOut: 9,
-
-            red: 31,
-            green: 32,
-            yellow: 33,
-            blue: 34,
-            magenta: 35,
-            cyan: 36,
-            white: 37,
-
-            redBackground: 41,
-            greenBackground: 42,
-            yellowBackground: 43,
-            blueBackground: 44,
-            magentaBackground: 45,
-            cyanBackground: 46,
-            whiteBackground: 47,
-
-            encircled: 52,
-            overlined: 53,
-            grey: 90,
-            black: 90
-        };
-
-        var characters = {
-            SMILEY: "☺",
-            SOLID_SMILEY: "☻",
-            HEART: "♥",
-            DIAMOND: "♦",
-            CLOVE: "♣",
-            SPADE: "♠",
-            DOT: "•",
-            SQUARE_CIRCLE: "◘",
-            CIRCLE: "○",
-            FILLED_SQUARE_CIRCLE: "◙",
-            MALE: "♂",
-            FEMALE: "♀",
-            EIGHT_NOTE: "♪",
-            DOUBLE_EIGHTH_NOTE: "♫",
-            SUN: "☼",
-            PLAY: "►",
-            REWIND: "◄",
-            UP_DOWN: "↕",
-            PILCROW: "¶",
-            SECTION: "§",
-            THICK_MINUS: "▬",
-            SMALL_UP_DOWN: "↨",
-            UP_ARROW: "↑",
-            DOWN_ARROW: "↓",
-            RIGHT_ARROW: "→",
-            LEFT_ARROW: "←",
-            RIGHT_ANGLE: "∟",
-            LEFT_RIGHT_ARROW: "↔",
-            TRIANGLE: "▲",
-            DOWN_TRIANGLE: "▼",
-            HOUSE: "⌂",
-            C_CEDILLA: "Ç",
-            U_UMLAUT: "ü",
-            E_ACCENT: "é",
-            A_LOWER_CIRCUMFLEX: "â",
-            A_LOWER_UMLAUT: "ä",
-            A_LOWER_GRAVE_ACCENT: "à",
-            A_LOWER_CIRCLE_OVER: "å",
-            C_LOWER_CIRCUMFLEX: "ç",
-            E_LOWER_CIRCUMFLEX: "ê",
-            E_LOWER_UMLAUT: "ë",
-            E_LOWER_GRAVE_ACCENT: "è",
-            I_LOWER_UMLAUT: "ï",
-            I_LOWER_CIRCUMFLEX: "î",
-            I_LOWER_GRAVE_ACCENT: "ì",
-            A_UPPER_UMLAUT: "Ä",
-            A_UPPER_CIRCLE: "Å",
-            E_UPPER_ACCENT: "É",
-            A_E_LOWER: "æ",
-            A_E_UPPER: "Æ",
-            O_LOWER_CIRCUMFLEX: "ô",
-            O_LOWER_UMLAUT: "ö",
-            O_LOWER_GRAVE_ACCENT: "ò",
-            U_LOWER_CIRCUMFLEX: "û",
-            U_LOWER_GRAVE_ACCENT: "ù",
-            Y_LOWER_UMLAUT: "ÿ",
-            O_UPPER_UMLAUT: "Ö",
-            U_UPPER_UMLAUT: "Ü",
-            CENTS: "¢",
-            POUND: "£",
-            YEN: "¥",
-            CURRENCY: "¤",
-            PTS: "₧",
-            FUNCTION: "ƒ",
-            A_LOWER_ACCENT: "á",
-            I_LOWER_ACCENT: "í",
-            O_LOWER_ACCENT: "ó",
-            U_LOWER_ACCENT: "ú",
-            N_LOWER_TILDE: "ñ",
-            N_UPPER_TILDE: "Ñ",
-            A_SUPER: "ª",
-            O_SUPER: "º",
-            UPSIDEDOWN_QUESTION: "¿",
-            SIDEWAYS_L: "⌐",
-            NEGATION: "¬",
-            ONE_HALF: "½",
-            ONE_FOURTH: "¼",
-            UPSIDEDOWN_EXCLAMATION: "¡",
-            DOUBLE_LEFT: "«",
-            DOUBLE_RIGHT: "»",
-            LIGHT_SHADED_BOX: "░",
-            MEDIUM_SHADED_BOX: "▒",
-            DARK_SHADED_BOX: "▓",
-            VERTICAL_LINE: "│",
-            MAZE__SINGLE_RIGHT_T: "┤",
-            MAZE_SINGLE_RIGHT_TOP: "┐",
-            MAZE_SINGLE_RIGHT_BOTTOM_SMALL: "┘",
-            MAZE_SINGLE_LEFT_TOP_SMALL: "┌",
-            MAZE_SINGLE_LEFT_BOTTOM_SMALL: "└",
-            MAZE_SINGLE_LEFT_T: "├",
-            MAZE_SINGLE_BOTTOM_T: "┴",
-            MAZE_SINGLE_TOP_T: "┬",
-            MAZE_SINGLE_CENTER: "┼",
-            MAZE_SINGLE_HORIZONTAL_LINE: "─",
-            MAZE_SINGLE_RIGHT_DOUBLECENTER_T: "╡",
-            MAZE_SINGLE_RIGHT_DOUBLE_BL: "╛",
-            MAZE_SINGLE_RIGHT_DOUBLE_T: "╢",
-            MAZE_SINGLE_RIGHT_DOUBLEBOTTOM_TOP: "╖",
-            MAZE_SINGLE_RIGHT_DOUBLELEFT_TOP: "╕",
-            MAZE_SINGLE_LEFT_DOUBLE_T: "╞",
-            MAZE_SINGLE_BOTTOM_DOUBLE_T: "╧",
-            MAZE_SINGLE_TOP_DOUBLE_T: "╤",
-            MAZE_SINGLE_TOP_DOUBLECENTER_T: "╥",
-            MAZE_SINGLE_BOTTOM_DOUBLECENTER_T: "╨",
-            MAZE_SINGLE_LEFT_DOUBLERIGHT_BOTTOM: "╘",
-            MAZE_SINGLE_LEFT_DOUBLERIGHT_TOP: "╒",
-            MAZE_SINGLE_LEFT_DOUBLEBOTTOM_TOP: "╓",
-            MAZE_SINGLE_LEFT_DOUBLETOP_BOTTOM: "╙",
-            MAZE_SINGLE_LEFT_TOP: "Γ",
-            MAZE_SINGLE_RIGHT_BOTTOM: "╜",
-            MAZE_SINGLE_LEFT_CENTER: "╟",
-            MAZE_SINGLE_DOUBLECENTER_CENTER: "╫",
-            MAZE_SINGLE_DOUBLECROSS_CENTER: "╪",
-            MAZE_DOUBLE_LEFT_CENTER: "╣",
-            MAZE_DOUBLE_VERTICAL: "║",
-            MAZE_DOUBLE_RIGHT_TOP: "╗",
-            MAZE_DOUBLE_RIGHT_BOTTOM: "╝",
-            MAZE_DOUBLE_LEFT_BOTTOM: "╚",
-            MAZE_DOUBLE_LEFT_TOP: "╔",
-            MAZE_DOUBLE_BOTTOM_T: "╩",
-            MAZE_DOUBLE_TOP_T: "╦",
-            MAZE_DOUBLE_LEFT_T: "╠",
-            MAZE_DOUBLE_HORIZONTAL: "═",
-            MAZE_DOUBLE_CROSS: "╬",
-            SOLID_RECTANGLE: "█",
-            THICK_LEFT_VERTICAL: "▌",
-            THICK_RIGHT_VERTICAL: "▐",
-            SOLID_SMALL_RECTANGLE_BOTTOM: "▄",
-            SOLID_SMALL_RECTANGLE_TOP: "▀",
-            PHI_UPPER: "Φ",
-            INFINITY: "∞",
-            INTERSECTION: "∩",
-            DEFINITION: "≡",
-            PLUS_MINUS: "±",
-            GT_EQ: "≥",
-            LT_EQ: "≤",
-            THEREFORE: "⌠",
-            SINCE: "∵",
-            DOESNOT_EXIST: "∄",
-            EXISTS: "∃",
-            FOR_ALL: "∀",
-            EXCLUSIVE_OR: "⊕",
-            BECAUSE: "⌡",
-            DIVIDE: "÷",
-            APPROX: "≈",
-            DEGREE: "°",
-            BOLD_DOT: "∙",
-            DOT_SMALL: "·",
-            CHECK: "√",
-            ITALIC_X: "✗",
-            SUPER_N: "ⁿ",
-            SQUARED: "²",
-            CUBED: "³",
-            SOLID_BOX: "■",
-            PERMILE: "‰",
-            REGISTERED_TM: "®",
-            COPYRIGHT: "©",
-            TRADEMARK: "™",
-            BETA: "β",
-            GAMMA: "γ",
-            ZETA: "ζ",
-            ETA: "η",
-            IOTA: "ι",
-            KAPPA: "κ",
-            LAMBDA: "λ",
-            NU: "ν",
-            XI: "ξ",
-            OMICRON: "ο",
-            RHO: "ρ",
-            UPSILON: "υ",
-            CHI_LOWER: "φ",
-            CHI_UPPER: "χ",
-            PSI: "ψ",
-            ALPHA: "α",
-            ESZETT: "ß",
-            PI: "π",
-            SIGMA_UPPER: "Σ",
-            SIGMA_LOWER: "σ",
-            MU: "µ",
-            TAU: "τ",
-            THETA: "Θ",
-            OMEGA: "Ω",
-            DELTA: "δ",
-            PHI_LOWER: "φ",
-            EPSILON: "ε"
-        };
-
-        function pad(string, length, ch, end) {
-            string = "" + string; //check for numbers
-            ch = ch || " ";
-            var strLen = string.length;
-            while (strLen < length) {
-                if (end) {
-                    string += ch;
+        getAction: function getAction(name) {
+            var matched = _.filter(this.__shoulds, function (should) {
+                if (should instanceof this.Action) {
+                    return should.description === name;
                 } else {
-                    string = ch + string;
+                    return false;
                 }
-                strLen++;
-            }
-            return string;
-        }
+            }, this);
+            return matched.length !== 0 ? matched[0] : null;
+        },
 
-        function truncate(string, length, end) {
-            var ret = string;
-            if (is.isString(ret)) {
-                if (string.length > length) {
-                    if (end) {
-                        var l = string.length;
-                        ret = string.substring(l - length, l);
-                    } else {
-                        ret = string.substring(0, length);
-                    }
-                }
-            } else {
-                ret = truncate("" + ret, length);
-            }
-            return ret;
-        }
+        as: function (mod) {
+            mod.exports = this;
+            return this;
+        },
 
-        function format(str, obj) {
-            if (obj instanceof Array) {
-                var i = 0, len = obj.length;
-                //find the matches
-                return str.replace(FORMAT_REGEX, function (m, format, type) {
-                    var replacer, ret;
-                    if (i < len) {
-                        replacer = obj[i++];
-                    } else {
-                        //we are out of things to replace with so
-                        //just return the match?
-                        return m;
+        beforeAll: function (cb) {
+            this.__ba.push(_.partial(setUpCb(cb), this));
+            return this;
+        },
+
+        beforeEach: function (cb) {
+            this.__be.push(_.partial(setUpCb(cb), this));
+            return this;
+        },
+
+        afterAll: function (cb) {
+            this.__aa.push(_.partial(setUpCb(cb), this));
+            return this;
+        },
+
+        afterEach: function (cb) {
+            this.__ae.push(_.partial(setUpCb(cb), this));
+            return this;
+        },
+
+        context: function (cb) {
+            var cloned = this._static.clone(this, null, {sub: true});
+            this.emit("addTest", cloned);
+            if (cb) {
+                cb(cloned);
+            }
+            this.__shoulds.push(cloned);
+            return cloned;
+        },
+
+        skip: function (description) {
+            this._addAction(description, undefined, 'skipped');
+        },
+
+        _addTest: function (description, cb) {
+            var cloned = this._static.clone(this, description, {sub: true, level: this.level + 1, parent: this}, cb),
+                it = cloned._addAction;
+
+            _(["suite", "test", "should", "describe", "timeout", "ignoreErrors", "getAction", "beforeAll", "beforeEach",
+                "afterAll", "afterEach", "context", "get", "set", "skip"]).forEach(function (key) {
+                    if (_.isFunction(cloned[key])) {
+                        it[key] = cloned[key];
                     }
-                    if (m === "%s" || m === "%d" || m === "%D") {
-                        //fast path!
-                        ret = replacer + "";
-                    } else if (m === "%Z") {
-                        ret = replacer.toUTCString();
-                    } else if (m === "%j") {
-                        try {
-                            ret = stringify(replacer);
-                        } catch (e) {
-                            throw new Error("stringExtended.format : Unable to parse json from ", replacer);
-                        }
+                });
+            if (cb) {
+                cb(it);
+            }
+            this.__shoulds.push(cloned);
+            return cloned;
+        },
+
+
+        _addAction: function (description, cb, status) {
+            var action = new this.Action(description, this, this.level + 1, cb, status);
+
+            this._static.trackName(action);
+            this.__shoulds.push(action);
+
+            return this;
+        },
+
+        __runAction: function (action) {
+            var stopOnError = this.stopOnError;
+            return action.run(this.__be, this.__ae).then(
+                _.bind(this, function actionSuccess() {
+                    var ret = new Promise(),
+                        summary = action.get("summary");
+                    if (summary.status === "skipped" || summary.status === "passed") {
+                        ret.callback();
                     } else {
-                        format = format.replace(/^\[|\]$/g, "");
-                        switch (type) {
-                        case "s":
-                            ret = formatString(replacer, format);
-                            break;
-                        case "d":
-                            ret = formatNumber(replacer, format);
-                            break;
-                        case "j":
-                            ret = formatObject(replacer, format);
-                            break;
-                        case "D":
-                            ret = date.format(replacer, format);
-                            break;
-                        case "Z":
-                            ret = date.format(replacer, format, true);
-                            break;
-                        }
+                        ret[stopOnError ? "errback" : "callback"]();
+                    }
+                    return ret;
+                }),
+                _.bind(this, function actionError(err) {
+                    this.error = err;
+                    this.emit("error", this);
+                })
+            );
+        },
+
+        _failSiblings: function (err) {
+            return _.serial(_.map(this.__shoulds, function (action) {
+                return _.bind(this, function () {
+                    var ret;
+                    if (action instanceof Action) {
+                        this.emit("action", action);
+                        var start = new Date();
+                        action.failed(start, start, err);
+                        ret = new Promise().callback();
+                    } else {
+                        this.emit("test", action);
+                        action.emit("run", action);
+                        ret = action._failSiblings(err);
                     }
                     return ret;
                 });
-            } else if (isHash(obj)) {
-                return str.replace(INTERP_REGEX, function (m, format, value) {
-                    value = obj[value];
-                    if (!is.isUndefined(value)) {
-                        if (format) {
-                            if (is.isString(value)) {
-                                return formatString(value, format);
-                            } else if (is.isNumber(value)) {
-                                return formatNumber(value, format);
-                            } else if (is.isDate(value)) {
-                                return date.format(value, format);
-                            } else if (is.isObject(value)) {
-                                return formatObject(value, format);
-                            }
-                        } else {
-                            return "" + value;
-                        }
-                    }
-                    return m;
-                });
+            }, this));
+        },
+
+        run: function (filter) {
+            var ret;
+            if (filter) {
+                ret = this.filter(filter).run();
             } else {
-                var args = aSlice.call(arguments).slice(1);
-                return format(str, args);
-            }
-        }
-
-        function toArray(testStr, delim) {
-            var ret = [];
-            if (testStr) {
-                if (testStr.indexOf(delim) > 0) {
-                    ret = testStr.replace(/\s+/g, "").split(delim);
-                }
-                else {
-                    ret.push(testStr);
-                }
-            }
-            return ret;
-        }
-
-        function multiply(str, times) {
-            var ret = [];
-            if (times) {
-                for (var i = 0; i < times; i++) {
-                    ret.push(str);
-                }
-            }
-            return ret.join("");
-        }
-
-
-        function style(str, options) {
-            var ret, i, l;
-            if (options) {
-                if (is.isArray(str)) {
-                    ret = [];
-                    for (i = 0, l = str.length; i < l; i++) {
-                        ret.push(style(str[i], options));
-                    }
-                } else if (options instanceof Array) {
-                    ret = str;
-                    for (i = 0, l = options.length; i < l; i++) {
-                        ret = style(ret, options[i]);
-                    }
-                } else if (options in styles) {
-                    ret = '\x1B[' + styles[options] + 'm' + str + '\x1B[0m';
+                ret = this.__runPromise;
+                if (!ret) {
+                    this.emit("run", this);
+                    ret = this.__runPromise = _.serial(this.__ba).then(
+                            _.bind(this, function () {
+                                return _.serial(_.map(this.__shoulds, function (action) {
+                                    return _.bind(this, function () {
+                                        var ret;
+                                        if (action instanceof Action) {
+                                            this.emit("action", action);
+                                            ret = this.__runAction(action);
+                                        } else {
+                                            this.emit("test", action);
+                                            ret = action.run();
+                                        }
+                                        return ret;
+                                    });
+                                }, this));
+                            }),
+                            _.bind(this, function (err) {
+                                return this._failSiblings(err);
+                            })
+                        ).then(
+                            _.bind(this, function () {
+                                return _.serial(this.__aa);
+                            }),
+                            _.bind(this, function actionError(err) {
+                                this.error = err;
+                                this.emit("error", this);
+                            })
+                        ).both(_.bind(this, "emit", "done", this));
                 }
             }
             return ret;
-        }
 
-        function escape(str, except) {
-            return str.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, function (ch) {
-                if (except && arr.indexOf(except, ch) !== -1) {
-                    return ch;
+        },
+
+        matches: function matches(filter) {
+            return this.description === filter;
+        },
+
+        filter: function filter(f) {
+            var ret = this, i, l;
+            if (f.length) {
+                f = isString(f) ? splitFilter(f) : [f];
+                if (f) {
+                    ret = this._static.clone(this, this.description, {
+                        sub: this.sub,
+                        "filtered": this.sub ? false : true,
+                        parent: this.parent,
+                        __ba: this.__ba.slice(0),
+                        __aa: this.__ba.slice(0),
+                        "__shoulds": _(this.__shoulds).map(function (action) {
+                            var rest, include = false, ret = null;
+                            for (i = 0, l = f.length; i < l && !include; i++) {
+                                if (action.description === f[i][0]) {
+                                    include = true;
+                                    rest = f[i].slice(1);
+                                }
+                            }
+                            if (include) {
+                                if (action instanceof this.Action) {
+                                    ret = action;
+                                } else {
+                                    ret = action.filter(rest);
+                                }
+                            }
+                            return ret;
+                        }, this).compact().value()
+                    });
                 }
-                return "\\" + ch;
+            }
+            return ret;
+        },
+
+        getters: {
+            summary: function () {
+                var duration = 0, ret = {description: this.description, summaries: {}}, summaries = ret.summaries;
+                _.map(this.__shoulds, function (action) {
+                    var actionSum = action.get("summary");
+                    if (action instanceof Action || action.description) {
+                        summaries[action.description] = actionSum;
+                        duration += actionSum.duration;
+                    } else {
+                        merge(summaries, actionSum.summaries);
+                        duration += actionSum.duration;
+                    }
+                });
+                ret.duration = duration;
+                return ret;
+            },
+
+            fullName: function () {
+                var decription = "";
+                if (this.parent) {
+                    decription += this.parent.get("fullName") + ":";
+                }
+                decription += " " + this.description;
+                return decription;
+            },
+
+            length: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return instance instanceof Action ? 1 : instance.get("length");
+                }).sum().value();
+            },
+
+            errorCount: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return (instance instanceof Action) ? (instance.get("status") === "failed" ? 1 : 0) : instance.get("errorCount");
+                }).sum().value();
+            },
+
+            successCount: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return (instance instanceof Action) ? (instance.get("status") === "passed" ? 1 : 0) : instance.get("successCount");
+                }).sum().value();
+            },
+
+            pendingActions: function () {
+                return _(this.__shoulds).filter(function (instance) {
+                    return (instance instanceof Action) && (instance.get("status") === "pending");
+                }).map(function (action) {
+                    return action.get("fullName");
+                }).value();
+            },
+
+            skippedCount: function () {
+                return _(this.__shoulds).map(function (instance) {
+                    return (instance instanceof Action) ? (instance.get("status") === "skipped" ? 1 : 0) : instance.get("skippedCount");
+                }).sum().value();
+            }
+
+        }
+    },
+
+    "static": {
+
+        tests: {},
+
+        init: function init() {
+            this.Action = Action;
+        },
+
+        testNames: {},
+        duplicateTestErrors: [],
+
+        trackName: function(action){
+            var fullName = action.get("fullName");
+
+            if (this.testNames[fullName]) {
+                this.duplicateTestErrors.push({
+                    error: new Error("Duplicate describe block or test name:" + fullName),
+                    test: action
+                });
+            }
+
+            this.testNames[fullName] = true;
+        },
+
+        checkDuplicateNames: function(){
+            if (this.duplicateTestErrors.length > 0) {
+                _.bus.emit("printDuplicateActions", this.duplicateTestErrors);
+                return true;
+            }
+        },
+
+        clone: function (behavior, description, options, cb) {
+            return new this(description, merge({
+                __timeout: behavior.__timeout,
+                level: behavior.level,
+                __be: behavior.__be.slice(),
+                __ae: behavior.__ae.slice(),
+                parent: behavior,
+                stopOnError: behavior.stopOnError,
+                __ignoreProcessError: behavior.ignoreErrors()
+            }, options), cb);
+        },
+
+
+        __filter: function (filter) {
+            var ret = {}, tests = this.tests, names = _.pluck(filter, "0");
+            _.forEach(names, function (t, index) {
+                var test = tests[t];
+                if (test) {
+                    var filtered = tests[t].filter(filter[index].slice(1));
+                    if (ret[t]) {
+                        ret[t].__shoulds = ret[t].__shoulds.concat(filtered.__shoulds);
+                    } else {
+                        ret[t] = filtered;
+                    }
+
+                }
             });
+            return ret;
+        },
+
+        run: function run(filter) {
+            var summaries = {},
+                tests = this.tests;
+
+            filter = splitFilter(filter);
+            if (filter.length) {
+                tests = this.__filter(filter);
+            }
+
+            if (!isEmpty(tests)) {
+                if(this.checkDuplicateNames()){
+                    throw new Error("Found " + this.duplicateTestErrors.length + " duplicate describe block and/or test name. Please use unique descriptions.");
+                }
+
+                _.bus.emit("start", {tests: tests, numActions: _(tests).values().invoke("get", "length").sum().value()});
+
+                return _.serial(_(tests).keys().map(function (k) {
+                    return function () {
+                        _.bus.emit("test", tests[k]);
+                        return tests[k].run().both(function (summary) {
+                            summaries[k] = summary;
+                        });
+                    };
+                }).value()).then(_.bindIgnore(this, "printSummary"));
+            } else {
+                console.warn("No Tests found");
+                return _.resolve();
+            }
+        },
+
+        printSummary: function printSummary() {
+            var tests = this.tests;
+            var summary = {summary: {}, totalCount: 0, errorCount: 0, successCount: 0, pendingCount: 0, pendingActions: [], skippedCount: 0};
+            if (!isEmpty(tests)) {
+                var keys = _.hash.keys(tests), length = 0;
+                _(tests).forEach(function (test, k) {
+                    var testSummary = test.get("summary"),
+                        pendingActions =  test.get("pendingActions");
+                    summary.totalCount += test.get("length");
+                    summary.errorCount += test.get("errorCount");
+                    summary.successCount += test.get("successCount");
+                    summary.skippedCount += test.get("skippedCount");
+                    summary.pendingCount += pendingActions.length,
+                    summary.pendingActions = summary.pendingActions.concat(pendingActions);
+
+                    if (testSummary) {
+                        summary.summary[k] = testSummary;
+                        length += 1;
+                    }
+                });
+                if (length < keys.length) {
+                    _.bus.emit("error", new Error("Async Error"));
+                }
+                _.bus.emit("done", summary);
+            }
+            return summary;
         }
+    }
+}).as(module);
 
-        function trim(str) {
-            return str.replace(/^\s*|\s*$/g, "");
+},{"../../utils":33,"../../extended":2,"./emitter":34,"./action":29}],29:[function(require,module,exports){
+"use strict";
+var _ = require("../../extended"),
+    isFunction = _.isFunction,
+    EventEmitter = require("./emitter"),
+    merge = _.merge,
+    Promise = _.Promise,
+    utils = require("../../utils"),
+    setUpCb = utils.setUpCb;
+
+EventEmitter.extend({
+
+    instance: {
+
+        level: 0,
+
+        constructor: function (description, parent, level, action, status) {
+            this._super(arguments);
+            this.level = level;
+            this.description = description;
+            this.parent = parent;
+            this.timeout = parent.__timeout;
+            this.fn = action;
+            this.__summary = {
+                parentFullName: parent.get("fullName"),
+                description: description,
+                start: null,
+                end: null,
+                duration: 0, // test is pending
+                status: status || 'pending',
+                error: false
+            };
+            var stub = this.stub = !isFunction(action);
+            this.action = !stub ? setUpCb(action, this.timeout) : _.resolve(this.__summary);
+        },
+
+        success: function (start, end) {
+            merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "passed"});
+            this.emit("success", this);
+            return this.get("summary");
+        },
+
+        failed: function (start, end, err) {
+            merge(this.get("summary"), { start: start, end: end, duration: end - start, status: "failed", error: err || new Error()});
+            this.error = err;
+            this.emit("error", this);
+            return this.get("summary");
+        },
+
+        skipped: function (start) {
+            merge(this.get("summary"), { start: start, end: start, duration: 0, status: "skipped"});
+            this.emit("skipped", this);
+            return this.get("summary");
+        },
+
+        run: function (be, ae) {
+            if (this.__summary.status === "skipped") {
+                this.emit("skipped", this);
+                return new Promise().callback();
+            }
+            var start = new Date(),
+                failure;
+            return _.serial(be)
+                .then(_.bind(this, function () {
+                    start = new Date();
+                    var ret;
+                    if (this.stub) {
+                        // this test is pending (read: not defined yet)
+                        ret = this.action;
+                        this.emit(this.__summary.status, this);
+                    } else {
+                        ret = this.action(this.parent);
+                    }
+                    return ret;
+                })).then(
+                    _.bind(this, function () {
+                        return _.serial(ae);
+                    }),
+                    _.bind(this, function (err) {
+                        failure = failure || err;
+                        return _.serial(ae);
+                    })
+                ).then(
+                    _.bind(this, function () {
+                        if (failure) {
+                            return this.failed(start, new Date(), failure);
+                        }
+                        return this.success(start, new Date());
+                    }),
+                    _.bind(this, function (err) {
+                        return this.failed(start, new Date(), failure || err);
+                    })
+                );
+        },
+
+        getters: {
+
+            status: function () {
+                return this.__summary.status;
+            },
+
+            summary: function () {
+                return this.__summary;
+            },
+
+            fullName: function () {
+                var decription = "";
+                if (this.parent) {
+                    decription += this.parent.get("fullName") + ":";
+                }
+                decription += " " + this.description;
+                return decription;
+            }
+
         }
-
-        function trimLeft(str) {
-            return str.replace(/^\s*/, "");
-        }
-
-        function trimRight(str) {
-            return str.replace(/\s*$/, "");
-        }
-
-        function isEmpty(str) {
-            return str.length === 0;
-        }
-
-
-        var string = {
-            toArray: toArray,
-            pad: pad,
-            truncate: truncate,
-            multiply: multiply,
-            format: format,
-            style: style,
-            escape: escape,
-            trim: trim,
-            trimLeft: trimLeft,
-            trimRight: trimRight,
-            isEmpty: isEmpty
-        };
-        return extended.define(is.isString, string).define(is.isArray, {style: style}).expose(string).expose({characters: characters});
     }
 
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineString(require("extended"), require("is-extended"), require("date-extended"), require("array-extended"));
-
-        }
-    } else if ("function" === typeof define && define.amd) {
-        define(["extended", "is-extended", "date-extended", "array-extended"], function (extended, is, date, arr) {
-            return defineString(extended, is, date, arr);
-        });
-    } else {
-        this.stringExtended = defineString(this.extended, this.isExtended, this.dateExtended, this.arrayExtended);
-    }
-
-}).call(this);
-
-
-
-
-
-
-
-},{"extended":16,"is-extended":21,"date-extended":19,"array-extended":17}],30:[function(require,module,exports){
+}).as(module);
+},{"../../extended":2,"./emitter":34,"../../utils":33}],30:[function(require,module,exports){
 module.exports = require("./extender.js");
-},{"./extender.js":37}],31:[function(require,module,exports){
+},{"./extender.js":35}],33:[function(require,module,exports){
 (function(process){"use strict";
 var _ = require("./extended"),
     isPromiseLike = _.isPromiseLike,
@@ -12453,7 +12473,7 @@ function setUpCb(cb, timeout) {
 
 exports.setUpCb = setUpCb;
 })(require("__browserify_process"))
-},{"./extended":2,"__browserify_process":8}],32:[function(require,module,exports){
+},{"./extended":2,"__browserify_process":8}],34:[function(require,module,exports){
 "use strict";
 var _ = require("../../extended"),
     EventEmitter = require("events").EventEmitter;
@@ -12468,7 +12488,7 @@ var instance = _.merge({}, EventEmitter.prototype, {
 _.declare({
     instance: instance
 }).as(module);
-},{"events":9,"../../extended":2}],34:[function(require,module,exports){
+},{"events":9,"../../extended":2}],31:[function(require,module,exports){
 (function () {
     "use strict";
 
@@ -12513,97 +12533,7 @@ _.declare({
 }).call(this);
 
 
-},{"extended":16,"is-extended":21}],33:[function(require,module,exports){
-(function () {
-    "use strict";
-
-    function defineArgumentsExtended(extended, is) {
-
-        var pSlice = Array.prototype.slice,
-            isArguments = is.isArguments;
-
-        function argsToArray(args, slice) {
-            var i = -1, j = 0, l = args.length, ret = [];
-            slice = slice || 0;
-            i += slice;
-            while (++i < l) {
-                ret[j++] = args[i];
-            }
-            return ret;
-        }
-
-
-        return extended
-            .define(isArguments, {
-                toArray: argsToArray
-            })
-            .expose({
-                argsToArray: argsToArray
-            });
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineArgumentsExtended(require("extended"), require("is-extended"));
-
-        }
-    } else if ("function" === typeof define && define.amd) {
-        define(["extended", "is-extended"], function (extended, is) {
-            return defineArgumentsExtended(extended, is);
-        });
-    } else {
-        this.argumentsExtended = defineArgumentsExtended(this.extended, this.isExtended);
-    }
-
-}).call(this);
-
-
-},{"is-extended":21,"extended":16}],36:[function(require,module,exports){
-(function () {
-    "use strict";
-
-    function defineArgumentsExtended(extended, is) {
-
-        var pSlice = Array.prototype.slice,
-            isArguments = is.isArguments;
-
-        function argsToArray(args, slice) {
-            var i = -1, j = 0, l = args.length, ret = [];
-            slice = slice || 0;
-            i += slice;
-            while (++i < l) {
-                ret[j++] = args[i];
-            }
-            return ret;
-        }
-
-
-        return extended
-            .define(isArguments, {
-                toArray: argsToArray
-            })
-            .expose({
-                argsToArray: argsToArray
-            });
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineArgumentsExtended(require("extended"), require("is-extended"));
-
-        }
-    } else if ("function" === typeof define && define.amd) {
-        define(["extended", "is-extended"], function (extended, is) {
-            return defineArgumentsExtended(extended, is);
-        });
-    } else {
-        this.argumentsExtended = defineArgumentsExtended(this.extended, this.isExtended);
-    }
-
-}).call(this);
-
-
-},{"extended":16,"is-extended":21}],37:[function(require,module,exports){
+},{"extended":16,"is-extended":23}],35:[function(require,module,exports){
 (function () {
     /*jshint strict:false*/
 
@@ -13144,5 +13074,5 @@ _.declare({
     }
 
 }).call(this);
-},{"declare.js":22}]},{},[1])
+},{"declare.js":24}]},{},[1])
 ;
