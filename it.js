@@ -638,69 +638,7 @@ assert.doesNotThrow = function(block, /*optional*/error, /*optional*/message) {
 assert.ifError = function(err) { if (err) {throw err;}};
 
 })()
-},{"util":11,"buffer":12}],6:[function(require,module,exports){
-var assert = require("assert"),
-    _ = require("./extended"),
-    format = _.format;
-
-assert.lengthOf = function (arr, length, message) {
-    if (arr.length !== length) {
-        assert.fail(arr.length, length, message || format("expected %s, to have %d elements", [arr, length]), assert.lengthOf);
-    }
-};
-
-assert.truthy = function (val, message) {
-    if (!val) {
-        assert.fail(val, true, message || format("expected %s to be truthy", val), assert.truthy);
-    }
-};
-
-assert.falsy = function (val, message) {
-    if (val) {
-        assert.fail(val, false, message || format("expected %s to be falsy", val), assert.truthy);
-    }
-};
-
-assert.isRegExp = function (val, message) {
-    if (!_.isRegExp(val)) {
-        assert.fail(val, 0, message || format("expected %s, to be a regex", val), assert.isRexExp);
-    }
-};
-
-_.forEach([
-    ["isTrue", "true"],
-    ["isFalse", "false"],
-    ["isArray", "an array"],
-    ["isNull", "null"],
-    ["isNotNull", "not null"],
-    ["isNumber", "a number"],
-    ["isHash", "a hash"],
-    ["isObject", "an object"],
-    ["isDate", "a date"],
-    ["isBoolean", "a boolean"],
-    ["isString", "a string"],
-    ["isUndefined", "undefined"],
-    ["isUndefinedOrNull", "undefined or null"],
-    ["isPromiseLike", "a promise"],
-    ["isFunction", "a function"],
-    ["isEmpty", "empty"]
-], function (i) {
-    var k = i[0], extra = i[1];
-    assert[k] = function (val, message) {
-        if (!_[k](val)) {
-            assert.fail(val, 0, message || format("expected %s, to be " + extra, val), assert[k]);
-        }
-    };
-});
-
-assert.instanceOf = function (val, cls, message) {
-    if (!_.instanceOf(val, cls)) {
-        assert.fail(val, cls, message || format("expected %j to be instanceof %s", [val, cls]), "===", assert.isNotNull);
-    }
-};
-
-module.exports = assert;
-},{"assert":10,"./extended":2}],3:[function(require,module,exports){
+},{"util":11,"buffer":12}],3:[function(require,module,exports){
 "use strict";
 var _ = require("../extended"),
     style = _.style,
@@ -923,7 +861,69 @@ _.declare({
     }
 
 }).as(module);
-},{"../extended":2}],11:[function(require,module,exports){
+},{"../extended":2}],6:[function(require,module,exports){
+var assert = require("assert"),
+    _ = require("./extended"),
+    format = _.format;
+
+assert.lengthOf = function (arr, length, message) {
+    if (arr.length !== length) {
+        assert.fail(arr.length, length, message || format("expected %s, to have %d elements", [arr, length]), assert.lengthOf);
+    }
+};
+
+assert.truthy = function (val, message) {
+    if (!val) {
+        assert.fail(val, true, message || format("expected %s to be truthy", val), assert.truthy);
+    }
+};
+
+assert.falsy = function (val, message) {
+    if (val) {
+        assert.fail(val, false, message || format("expected %s to be falsy", val), assert.truthy);
+    }
+};
+
+assert.isRegExp = function (val, message) {
+    if (!_.isRegExp(val)) {
+        assert.fail(val, 0, message || format("expected %s, to be a regex", val), assert.isRexExp);
+    }
+};
+
+_.forEach([
+    ["isTrue", "true"],
+    ["isFalse", "false"],
+    ["isArray", "an array"],
+    ["isNull", "null"],
+    ["isNotNull", "not null"],
+    ["isNumber", "a number"],
+    ["isHash", "a hash"],
+    ["isObject", "an object"],
+    ["isDate", "a date"],
+    ["isBoolean", "a boolean"],
+    ["isString", "a string"],
+    ["isUndefined", "undefined"],
+    ["isUndefinedOrNull", "undefined or null"],
+    ["isPromiseLike", "a promise"],
+    ["isFunction", "a function"],
+    ["isEmpty", "empty"]
+], function (i) {
+    var k = i[0], extra = i[1];
+    assert[k] = function (val, message) {
+        if (!_[k](val)) {
+            assert.fail(val, 0, message || format("expected %s, to be " + extra, val), assert[k]);
+        }
+    };
+});
+
+assert.instanceOf = function (val, cls, message) {
+    if (!_.instanceOf(val, cls)) {
+        assert.fail(val, cls, message || format("expected %j to be instanceof %s", [val, cls]), "===", assert.isNotNull);
+    }
+};
+
+module.exports = assert;
+},{"assert":10,"./extended":2}],11:[function(require,module,exports){
 var events = require('events');
 
 exports.isArray = isArray;
@@ -1547,7 +1547,7 @@ module.exports = require("extended")()
     .register(require("is-extended"))
     .register("declare", require("declare.js"))
     .register("bus", new (require("events").EventEmitter)());
-},{"events":9,"extended":16,"array-extended":17,"date-extended":18,"object-extended":19,"string-extended":20,"promise-extended":21,"function-extended":22,"is-extended":23,"declare.js":24}],25:[function(require,module,exports){
+},{"events":9,"extended":16,"array-extended":17,"date-extended":18,"object-extended":19,"string-extended":20,"promise-extended":21,"function-extended":22,"declare.js":23,"is-extended":24}],25:[function(require,module,exports){
 exports.readIEEE754 = function(buffer, offset, isBE, mLen, nBytes) {
   var e, m,
       eLen = nBytes * 8 - mLen - 1,
@@ -2953,7 +2953,93 @@ SlowBuffer.prototype.writeDoubleLE = Buffer.prototype.writeDoubleLE;
 SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
 })()
-},{"assert":10,"./buffer_ieee754":25,"base64-js":26}],13:[function(require,module,exports){
+},{"assert":10,"./buffer_ieee754":25,"base64-js":26}],26:[function(require,module,exports){
+(function (exports) {
+	'use strict';
+
+	var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+	function b64ToByteArray(b64) {
+		var i, j, l, tmp, placeHolders, arr;
+	
+		if (b64.length % 4 > 0) {
+			throw 'Invalid string. Length must be a multiple of 4';
+		}
+
+		// the number of equal signs (place holders)
+		// if there are two placeholders, than the two characters before it
+		// represent one byte
+		// if there is only one, then the three characters before it represent 2 bytes
+		// this is just a cheap hack to not do indexOf twice
+		placeHolders = b64.indexOf('=');
+		placeHolders = placeHolders > 0 ? b64.length - placeHolders : 0;
+
+		// base64 is 4/3 + up to two characters of the original data
+		arr = [];//new Uint8Array(b64.length * 3 / 4 - placeHolders);
+
+		// if there are placeholders, only get up to the last complete 4 chars
+		l = placeHolders > 0 ? b64.length - 4 : b64.length;
+
+		for (i = 0, j = 0; i < l; i += 4, j += 3) {
+			tmp = (lookup.indexOf(b64[i]) << 18) | (lookup.indexOf(b64[i + 1]) << 12) | (lookup.indexOf(b64[i + 2]) << 6) | lookup.indexOf(b64[i + 3]);
+			arr.push((tmp & 0xFF0000) >> 16);
+			arr.push((tmp & 0xFF00) >> 8);
+			arr.push(tmp & 0xFF);
+		}
+
+		if (placeHolders === 2) {
+			tmp = (lookup.indexOf(b64[i]) << 2) | (lookup.indexOf(b64[i + 1]) >> 4);
+			arr.push(tmp & 0xFF);
+		} else if (placeHolders === 1) {
+			tmp = (lookup.indexOf(b64[i]) << 10) | (lookup.indexOf(b64[i + 1]) << 4) | (lookup.indexOf(b64[i + 2]) >> 2);
+			arr.push((tmp >> 8) & 0xFF);
+			arr.push(tmp & 0xFF);
+		}
+
+		return arr;
+	}
+
+	function uint8ToBase64(uint8) {
+		var i,
+			extraBytes = uint8.length % 3, // if we have 1 byte left, pad 2 bytes
+			output = "",
+			temp, length;
+
+		function tripletToBase64 (num) {
+			return lookup[num >> 18 & 0x3F] + lookup[num >> 12 & 0x3F] + lookup[num >> 6 & 0x3F] + lookup[num & 0x3F];
+		};
+
+		// go through the array every three bytes, we'll deal with trailing stuff later
+		for (i = 0, length = uint8.length - extraBytes; i < length; i += 3) {
+			temp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2]);
+			output += tripletToBase64(temp);
+		}
+
+		// pad the end with zeros, but make sure to not forget the extra bytes
+		switch (extraBytes) {
+			case 1:
+				temp = uint8[uint8.length - 1];
+				output += lookup[temp >> 2];
+				output += lookup[(temp << 4) & 0x3F];
+				output += '==';
+				break;
+			case 2:
+				temp = (uint8[uint8.length - 2] << 8) + (uint8[uint8.length - 1]);
+				output += lookup[temp >> 10];
+				output += lookup[(temp >> 4) & 0x3F];
+				output += lookup[(temp << 2) & 0x3F];
+				output += '=';
+				break;
+		}
+
+		return output;
+	}
+
+	module.exports.toByteArray = b64ToByteArray;
+	module.exports.fromByteArray = uint8ToBase64;
+}());
+
+},{}],13:[function(require,module,exports){
 "use strict";
 
 var Test = require("./common").Test,
@@ -3055,98 +3141,12 @@ Test.extend({
 }).as(module);
 
 
-},{"../extended":2,"./common":15}],24:[function(require,module,exports){
+},{"../extended":2,"./common":15}],23:[function(require,module,exports){
 module.exports = require("./declare.js");
 },{"./declare.js":27}],15:[function(require,module,exports){
 exports.Action = require("./action");
 exports.Test = require("./test.js");
-},{"./test.js":28,"./action":29}],26:[function(require,module,exports){
-(function (exports) {
-	'use strict';
-
-	var lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-
-	function b64ToByteArray(b64) {
-		var i, j, l, tmp, placeHolders, arr;
-	
-		if (b64.length % 4 > 0) {
-			throw 'Invalid string. Length must be a multiple of 4';
-		}
-
-		// the number of equal signs (place holders)
-		// if there are two placeholders, than the two characters before it
-		// represent one byte
-		// if there is only one, then the three characters before it represent 2 bytes
-		// this is just a cheap hack to not do indexOf twice
-		placeHolders = b64.indexOf('=');
-		placeHolders = placeHolders > 0 ? b64.length - placeHolders : 0;
-
-		// base64 is 4/3 + up to two characters of the original data
-		arr = [];//new Uint8Array(b64.length * 3 / 4 - placeHolders);
-
-		// if there are placeholders, only get up to the last complete 4 chars
-		l = placeHolders > 0 ? b64.length - 4 : b64.length;
-
-		for (i = 0, j = 0; i < l; i += 4, j += 3) {
-			tmp = (lookup.indexOf(b64[i]) << 18) | (lookup.indexOf(b64[i + 1]) << 12) | (lookup.indexOf(b64[i + 2]) << 6) | lookup.indexOf(b64[i + 3]);
-			arr.push((tmp & 0xFF0000) >> 16);
-			arr.push((tmp & 0xFF00) >> 8);
-			arr.push(tmp & 0xFF);
-		}
-
-		if (placeHolders === 2) {
-			tmp = (lookup.indexOf(b64[i]) << 2) | (lookup.indexOf(b64[i + 1]) >> 4);
-			arr.push(tmp & 0xFF);
-		} else if (placeHolders === 1) {
-			tmp = (lookup.indexOf(b64[i]) << 10) | (lookup.indexOf(b64[i + 1]) << 4) | (lookup.indexOf(b64[i + 2]) >> 2);
-			arr.push((tmp >> 8) & 0xFF);
-			arr.push(tmp & 0xFF);
-		}
-
-		return arr;
-	}
-
-	function uint8ToBase64(uint8) {
-		var i,
-			extraBytes = uint8.length % 3, // if we have 1 byte left, pad 2 bytes
-			output = "",
-			temp, length;
-
-		function tripletToBase64 (num) {
-			return lookup[num >> 18 & 0x3F] + lookup[num >> 12 & 0x3F] + lookup[num >> 6 & 0x3F] + lookup[num & 0x3F];
-		};
-
-		// go through the array every three bytes, we'll deal with trailing stuff later
-		for (i = 0, length = uint8.length - extraBytes; i < length; i += 3) {
-			temp = (uint8[i] << 16) + (uint8[i + 1] << 8) + (uint8[i + 2]);
-			output += tripletToBase64(temp);
-		}
-
-		// pad the end with zeros, but make sure to not forget the extra bytes
-		switch (extraBytes) {
-			case 1:
-				temp = uint8[uint8.length - 1];
-				output += lookup[temp >> 2];
-				output += lookup[(temp << 4) & 0x3F];
-				output += '==';
-				break;
-			case 2:
-				temp = (uint8[uint8.length - 2] << 8) + (uint8[uint8.length - 1]);
-				output += lookup[temp >> 10];
-				output += lookup[(temp >> 4) & 0x3F];
-				output += lookup[(temp << 2) & 0x3F];
-				output += '=';
-				break;
-		}
-
-		return output;
-	}
-
-	module.exports.toByteArray = b64ToByteArray;
-	module.exports.fromByteArray = uint8ToBase64;
-}());
-
-},{}],27:[function(require,module,exports){
+},{"./test.js":28,"./action":29}],27:[function(require,module,exports){
 (function () {
 
     /**
@@ -4844,7 +4844,226 @@ exports.Test = require("./test.js");
 
 
 })()
-},{"extended":16,"is-extended":23,"arguments-extended":31}],18:[function(require,module,exports){
+},{"extended":16,"is-extended":24,"arguments-extended":31}],19:[function(require,module,exports){
+(function(){(function () {
+    "use strict";
+    /*global extended isExtended*/
+
+    function defineObject(extended, is, arr) {
+
+        var deepEqual = is.deepEqual,
+            isString = is.isString,
+            isHash = is.isHash,
+            difference = arr.difference,
+            hasOwn = Object.prototype.hasOwnProperty,
+            isFunction = is.isFunction;
+
+        function _merge(target, source) {
+            var name, s;
+            for (name in source) {
+                if (hasOwn.call(source, name)) {
+                    s = source[name];
+                    if (!(name in target) || (target[name] !== s)) {
+                        target[name] = s;
+                    }
+                }
+            }
+            return target;
+        }
+
+        function _deepMerge(target, source) {
+            var name, s, t;
+            for (name in source) {
+                if (hasOwn.call(source, name)) {
+                    s = source[name];
+                    t = target[name];
+                    if (!deepEqual(t, s)) {
+                        if (isHash(t) && isHash(s)) {
+                            target[name] = _deepMerge(t, s);
+                        } else if (isHash(s)) {
+                            target[name] = _deepMerge({}, s);
+                        } else {
+                            target[name] = s;
+                        }
+                    }
+                }
+            }
+            return target;
+        }
+
+
+        function merge(obj) {
+            if (!obj) {
+                obj = {};
+            }
+            for (var i = 1, l = arguments.length; i < l; i++) {
+                _merge(obj, arguments[i]);
+            }
+            return obj; // Object
+        }
+
+        function deepMerge(obj) {
+            if (!obj) {
+                obj = {};
+            }
+            for (var i = 1, l = arguments.length; i < l; i++) {
+                _deepMerge(obj, arguments[i]);
+            }
+            return obj; // Object
+        }
+
+
+        function extend(parent, child) {
+            var proto = parent.prototype || parent;
+            merge(proto, child);
+            return parent;
+        }
+
+        function forEach(hash, iterator, scope) {
+            if (!isHash(hash) || !isFunction(iterator)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key;
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                iterator.call(scope || hash, hash[key], key, hash);
+            }
+            return hash;
+        }
+
+        function filter(hash, iterator, scope) {
+            if (!isHash(hash) || !isFunction(iterator)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, value, ret = {};
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                value = hash[key];
+                if (iterator.call(scope || hash, value, key, hash)) {
+                    ret[key] = value;
+                }
+            }
+            return ret;
+        }
+
+        function values(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), ret = [];
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                ret.push(hash[objKeys[i]]);
+            }
+            return ret;
+        }
+
+
+        function keys(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var ret = [];
+            for (var i in hash) {
+                if (hasOwn.call(hash, i)) {
+                    ret.push(i);
+                }
+            }
+            return ret;
+        }
+
+        function invert(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, ret = {};
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                ret[hash[key]] = key;
+            }
+            return ret;
+        }
+
+        function toArray(hash) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            var objKeys = keys(hash), key, ret = [];
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                ret.push([key, hash[key]]);
+            }
+            return ret;
+        }
+
+        function omit(hash, omitted) {
+            if (!isHash(hash)) {
+                throw new TypeError();
+            }
+            if (isString(omitted)) {
+                omitted = [omitted];
+            }
+            var objKeys = difference(keys(hash), omitted), key, ret = {};
+            for (var i = 0, len = objKeys.length; i < len; ++i) {
+                key = objKeys[i];
+                ret[key] = hash[key];
+            }
+            return ret;
+        }
+
+        var hash = {
+            forEach: forEach,
+            filter: filter,
+            invert: invert,
+            values: values,
+            toArray: toArray,
+            keys: keys,
+            omit: omit
+        };
+
+
+        var obj = {
+            extend: extend,
+            merge: merge,
+            deepMerge: deepMerge,
+            omit: omit
+        };
+
+        var ret = extended.define(is.isObject, obj).define(isHash, hash).define(is.isFunction, {extend: extend}).expose({hash: hash}).expose(obj);
+        var orig = ret.extend;
+        ret.extend = function __extend() {
+            if (arguments.length === 1) {
+                return orig.extend.apply(ret, arguments);
+            } else {
+                extend.apply(null, arguments);
+            }
+        };
+        return ret;
+
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineObject(require("extended"), require("is-extended"), require("array-extended"));
+
+        }
+    } else if ("function" === typeof define && define.amd) {
+        define(["extended", "is-extended", "array-extended"], function (extended, is, array) {
+            return defineObject(extended, is, array);
+        });
+    } else {
+        this.objectExtended = defineObject(this.extended, this.isExtended, this.arrayExtended);
+    }
+
+}).call(this);
+
+
+
+
+
+
+
+})()
+},{"is-extended":24,"array-extended":17,"extended":16}],18:[function(require,module,exports){
 (function () {
     "use strict";
 
@@ -5792,226 +6011,7 @@ exports.Test = require("./test.js");
 
 
 
-},{"extended":16,"is-extended":23,"array-extended":17}],19:[function(require,module,exports){
-(function(){(function () {
-    "use strict";
-    /*global extended isExtended*/
-
-    function defineObject(extended, is, arr) {
-
-        var deepEqual = is.deepEqual,
-            isString = is.isString,
-            isHash = is.isHash,
-            difference = arr.difference,
-            hasOwn = Object.prototype.hasOwnProperty,
-            isFunction = is.isFunction;
-
-        function _merge(target, source) {
-            var name, s;
-            for (name in source) {
-                if (hasOwn.call(source, name)) {
-                    s = source[name];
-                    if (!(name in target) || (target[name] !== s)) {
-                        target[name] = s;
-                    }
-                }
-            }
-            return target;
-        }
-
-        function _deepMerge(target, source) {
-            var name, s, t;
-            for (name in source) {
-                if (hasOwn.call(source, name)) {
-                    s = source[name];
-                    t = target[name];
-                    if (!deepEqual(t, s)) {
-                        if (isHash(t) && isHash(s)) {
-                            target[name] = _deepMerge(t, s);
-                        } else if (isHash(s)) {
-                            target[name] = _deepMerge({}, s);
-                        } else {
-                            target[name] = s;
-                        }
-                    }
-                }
-            }
-            return target;
-        }
-
-
-        function merge(obj) {
-            if (!obj) {
-                obj = {};
-            }
-            for (var i = 1, l = arguments.length; i < l; i++) {
-                _merge(obj, arguments[i]);
-            }
-            return obj; // Object
-        }
-
-        function deepMerge(obj) {
-            if (!obj) {
-                obj = {};
-            }
-            for (var i = 1, l = arguments.length; i < l; i++) {
-                _deepMerge(obj, arguments[i]);
-            }
-            return obj; // Object
-        }
-
-
-        function extend(parent, child) {
-            var proto = parent.prototype || parent;
-            merge(proto, child);
-            return parent;
-        }
-
-        function forEach(hash, iterator, scope) {
-            if (!isHash(hash) || !isFunction(iterator)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key;
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                iterator.call(scope || hash, hash[key], key, hash);
-            }
-            return hash;
-        }
-
-        function filter(hash, iterator, scope) {
-            if (!isHash(hash) || !isFunction(iterator)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, value, ret = {};
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                value = hash[key];
-                if (iterator.call(scope || hash, value, key, hash)) {
-                    ret[key] = value;
-                }
-            }
-            return ret;
-        }
-
-        function values(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), ret = [];
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                ret.push(hash[objKeys[i]]);
-            }
-            return ret;
-        }
-
-
-        function keys(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var ret = [];
-            for (var i in hash) {
-                if (hasOwn.call(hash, i)) {
-                    ret.push(i);
-                }
-            }
-            return ret;
-        }
-
-        function invert(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, ret = {};
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                ret[hash[key]] = key;
-            }
-            return ret;
-        }
-
-        function toArray(hash) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            var objKeys = keys(hash), key, ret = [];
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                ret.push([key, hash[key]]);
-            }
-            return ret;
-        }
-
-        function omit(hash, omitted) {
-            if (!isHash(hash)) {
-                throw new TypeError();
-            }
-            if (isString(omitted)) {
-                omitted = [omitted];
-            }
-            var objKeys = difference(keys(hash), omitted), key, ret = {};
-            for (var i = 0, len = objKeys.length; i < len; ++i) {
-                key = objKeys[i];
-                ret[key] = hash[key];
-            }
-            return ret;
-        }
-
-        var hash = {
-            forEach: forEach,
-            filter: filter,
-            invert: invert,
-            values: values,
-            toArray: toArray,
-            keys: keys,
-            omit: omit
-        };
-
-
-        var obj = {
-            extend: extend,
-            merge: merge,
-            deepMerge: deepMerge,
-            omit: omit
-        };
-
-        var ret = extended.define(is.isObject, obj).define(isHash, hash).define(is.isFunction, {extend: extend}).expose({hash: hash}).expose(obj);
-        var orig = ret.extend;
-        ret.extend = function __extend() {
-            if (arguments.length === 1) {
-                return orig.extend.apply(ret, arguments);
-            } else {
-                extend.apply(null, arguments);
-            }
-        };
-        return ret;
-
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineObject(require("extended"), require("is-extended"), require("array-extended"));
-
-        }
-    } else if ("function" === typeof define && define.amd) {
-        define(["extended", "is-extended", "array-extended"], function (extended, is, array) {
-            return defineObject(extended, is, array);
-        });
-    } else {
-        this.objectExtended = defineObject(this.extended, this.isExtended, this.arrayExtended);
-    }
-
-}).call(this);
-
-
-
-
-
-
-
-})()
-},{"extended":16,"array-extended":17,"is-extended":23}],21:[function(require,module,exports){
+},{"is-extended":24,"extended":16,"array-extended":17}],21:[function(require,module,exports){
 (function(process){(function () {
     "use strict";
     /*global setImmediate, MessageChannel*/
@@ -6517,7 +6517,7 @@ exports.Test = require("./test.js");
 
 
 })(require("__browserify_process"))
-},{"declare.js":24,"array-extended":17,"extended":16,"is-extended":23,"arguments-extended":31,"function-extended":22,"__browserify_process":8}],20:[function(require,module,exports){
+},{"arguments-extended":32,"extended":16,"declare.js":23,"array-extended":17,"is-extended":24,"function-extended":22,"__browserify_process":8}],20:[function(require,module,exports){
 (function () {
     "use strict";
 
@@ -7164,7 +7164,265 @@ exports.Test = require("./test.js");
 
 
 
-},{"is-extended":23,"extended":16,"date-extended":18,"array-extended":17}],32:[function(require,module,exports){
+},{"is-extended":24,"extended":16,"array-extended":17,"date-extended":18}],22:[function(require,module,exports){
+(function () {
+    "use strict";
+
+    function defineFunction(extended, is, args) {
+
+        var isArray = is.isArray,
+            isObject = is.isObject,
+            isString = is.isString,
+            isFunction = is.isFunction,
+            argsToArray = args.argsToArray;
+
+        function spreadArgs(f, args, scope) {
+            var ret;
+            switch ((args || []).length) {
+            case 0:
+                ret = f.call(scope);
+                break;
+            case 1:
+                ret = f.call(scope, args[0]);
+                break;
+            case 2:
+                ret = f.call(scope, args[0], args[1]);
+                break;
+            case 3:
+                ret = f.call(scope, args[0], args[1], args[2]);
+                break;
+            default:
+                ret = f.apply(scope, args);
+            }
+            return ret;
+        }
+
+        function hitch(scope, method, args) {
+            args = argsToArray(arguments, 2);
+            if ((isString(method) && !(method in scope))) {
+                throw new Error(method + " property not defined in scope");
+            } else if (!isString(method) && !isFunction(method)) {
+                throw new Error(method + " is not a function");
+            }
+            if (isString(method)) {
+                return function () {
+                    var func = scope[method];
+                    if (isFunction(func)) {
+                        return spreadArgs(func, args.concat(argsToArray(arguments)), scope);
+                    } else {
+                        return func;
+                    }
+                };
+            } else {
+                if (args.length) {
+                    return function () {
+                        return spreadArgs(method, args.concat(argsToArray(arguments)), scope);
+                    };
+                } else {
+
+                    return function () {
+                        return spreadArgs(method, arguments, scope);
+                    };
+                }
+            }
+        }
+
+
+        function applyFirst(method, args) {
+            args = argsToArray(arguments, 1);
+            if (!isString(method) && !isFunction(method)) {
+                throw new Error(method + " must be the name of a property or function to execute");
+            }
+            if (isString(method)) {
+                return function () {
+                    var scopeArgs = argsToArray(arguments), scope = scopeArgs.shift();
+                    var func = scope[method];
+                    if (isFunction(func)) {
+                        scopeArgs = args.concat(scopeArgs);
+                        return spreadArgs(func, scopeArgs, scope);
+                    } else {
+                        return func;
+                    }
+                };
+            } else {
+                return function () {
+                    var scopeArgs = argsToArray(arguments), scope = scopeArgs.shift();
+                    scopeArgs = args.concat(scopeArgs);
+                    return spreadArgs(method, scopeArgs, scope);
+                };
+            }
+        }
+
+
+        function hitchIgnore(scope, method, args) {
+            args = argsToArray(arguments, 2);
+            if ((isString(method) && !(method in scope))) {
+                throw new Error(method + " property not defined in scope");
+            } else if (!isString(method) && !isFunction(method)) {
+                throw new Error(method + " is not a function");
+            }
+            if (isString(method)) {
+                return function () {
+                    var func = scope[method];
+                    if (isFunction(func)) {
+                        return spreadArgs(func, args, scope);
+                    } else {
+                        return func;
+                    }
+                };
+            } else {
+                return function () {
+                    return spreadArgs(method, args, scope);
+                };
+            }
+        }
+
+
+        function hitchAll(scope) {
+            var funcs = argsToArray(arguments, 1);
+            if (!isObject(scope) && !isFunction(scope)) {
+                throw new TypeError("scope must be an object");
+            }
+            if (funcs.length === 1 && isArray(funcs[0])) {
+                funcs = funcs[0];
+            }
+            if (!funcs.length) {
+                funcs = [];
+                for (var k in scope) {
+                    if (scope.hasOwnProperty(k) && isFunction(scope[k])) {
+                        funcs.push(k);
+                    }
+                }
+            }
+            for (var i = 0, l = funcs.length; i < l; i++) {
+                scope[funcs[i]] = hitch(scope, scope[funcs[i]]);
+            }
+            return scope;
+        }
+
+
+        function partial(method, args) {
+            args = argsToArray(arguments, 1);
+            if (!isString(method) && !isFunction(method)) {
+                throw new Error(method + " must be the name of a property or function to execute");
+            }
+            if (isString(method)) {
+                return function () {
+                    var func = this[method];
+                    if (isFunction(func)) {
+                        var scopeArgs = args.concat(argsToArray(arguments));
+                        return spreadArgs(func, scopeArgs, this);
+                    } else {
+                        return func;
+                    }
+                };
+            } else {
+                return function () {
+                    var scopeArgs = args.concat(argsToArray(arguments));
+                    return spreadArgs(method, scopeArgs, this);
+                };
+            }
+        }
+
+        function curryFunc(f, execute) {
+            return function () {
+                var args = argsToArray(arguments);
+                return execute ? spreadArgs(f, arguments, this) : function () {
+                    return spreadArgs(f, args.concat(argsToArray(arguments)), this);
+                };
+            };
+        }
+
+
+        function curry(depth, cb, scope) {
+            var f;
+            if (scope) {
+                f = hitch(scope, cb);
+            } else {
+                f = cb;
+            }
+            if (depth) {
+                var len = depth - 1;
+                for (var i = len; i >= 0; i--) {
+                    f = curryFunc(f, i === len);
+                }
+            }
+            return f;
+        }
+
+        return extended
+            .define(isObject, {
+                bind: hitch,
+                bindAll: hitchAll,
+                bindIgnore: hitchIgnore,
+                curry: function (scope, depth, fn) {
+                    return curry(depth, fn, scope);
+                }
+            })
+            .define(isFunction, {
+                bind: function (fn, obj) {
+                    return spreadArgs(hitch, [obj, fn].concat(argsToArray(arguments, 2)), this);
+                },
+                bindIgnore: function (fn, obj) {
+                    return spreadArgs(hitchIgnore, [obj, fn].concat(argsToArray(arguments, 2)), this);
+                },
+                partial: partial,
+                applyFirst: applyFirst,
+                curry: function (fn, num, scope) {
+                    return curry(num, fn, scope);
+                },
+                noWrap: {
+                    f: function () {
+                        return this.value();
+                    }
+                }
+            })
+            .define(isString, {
+                bind: function (str, scope) {
+                    return hitch(scope, str);
+                },
+                bindIgnore: function (str, scope) {
+                    return hitchIgnore(scope, str);
+                },
+                partial: partial,
+                applyFirst: applyFirst,
+                curry: function (fn, depth, scope) {
+                    return curry(depth, fn, scope);
+                }
+            })
+            .expose({
+                bind: hitch,
+                bindAll: hitchAll,
+                bindIgnore: hitchIgnore,
+                partial: partial,
+                applyFirst: applyFirst,
+                curry: curry
+            });
+
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineFunction(require("extended"), require("is-extended"), require("arguments-extended"));
+
+        }
+    } else if ("function" === typeof define && define.amd) {
+        define(["extended", "is-extended", "arguments-extended"], function (extended, is, args) {
+            return defineFunction(extended, is, args);
+        });
+    } else {
+        this.functionExtended = defineFunction(this.extended, this.isExtended, this.argumentsExtended);
+    }
+
+}).call(this);
+
+
+
+
+
+
+
+},{"arguments-extended":33,"extended":16,"is-extended":24}],34:[function(require,module,exports){
 require=(function(e,t,n,r){function i(r){if(!n[r]){if(!t[r]){if(e)return e(r);throw new Error("Cannot find module '"+r+"'")}var s=n[r]={exports:{}};t[r][0](function(e){var n=t[r][1][e];return i(n?n:e)},s,s.exports)}return n[r].exports}for(var s=0;s<r.length;s++)i(r[s]);return i})(typeof require!=="undefined"&&require,{1:[function(require,module,exports){
 exports.readIEEE754 = function(buffer, offset, isBE, mLen, nBytes) {
   var e, m,
@@ -11029,7 +11287,7 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 },{}]},{},[])
 ;;module.exports=require("buffer-browserify")
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 (function(Buffer){(function () {
     "use strict";
 
@@ -11532,265 +11790,7 @@ SlowBuffer.prototype.writeDoubleBE = Buffer.prototype.writeDoubleBE;
 
 
 })(require("__browserify_buffer").Buffer)
-},{"extended":16,"__browserify_buffer":32}],22:[function(require,module,exports){
-(function () {
-    "use strict";
-
-    function defineFunction(extended, is, args) {
-
-        var isArray = is.isArray,
-            isObject = is.isObject,
-            isString = is.isString,
-            isFunction = is.isFunction,
-            argsToArray = args.argsToArray;
-
-        function spreadArgs(f, args, scope) {
-            var ret;
-            switch ((args || []).length) {
-            case 0:
-                ret = f.call(scope);
-                break;
-            case 1:
-                ret = f.call(scope, args[0]);
-                break;
-            case 2:
-                ret = f.call(scope, args[0], args[1]);
-                break;
-            case 3:
-                ret = f.call(scope, args[0], args[1], args[2]);
-                break;
-            default:
-                ret = f.apply(scope, args);
-            }
-            return ret;
-        }
-
-        function hitch(scope, method, args) {
-            args = argsToArray(arguments, 2);
-            if ((isString(method) && !(method in scope))) {
-                throw new Error(method + " property not defined in scope");
-            } else if (!isString(method) && !isFunction(method)) {
-                throw new Error(method + " is not a function");
-            }
-            if (isString(method)) {
-                return function () {
-                    var func = scope[method];
-                    if (isFunction(func)) {
-                        return spreadArgs(func, args.concat(argsToArray(arguments)), scope);
-                    } else {
-                        return func;
-                    }
-                };
-            } else {
-                if (args.length) {
-                    return function () {
-                        return spreadArgs(method, args.concat(argsToArray(arguments)), scope);
-                    };
-                } else {
-
-                    return function () {
-                        return spreadArgs(method, arguments, scope);
-                    };
-                }
-            }
-        }
-
-
-        function applyFirst(method, args) {
-            args = argsToArray(arguments, 1);
-            if (!isString(method) && !isFunction(method)) {
-                throw new Error(method + " must be the name of a property or function to execute");
-            }
-            if (isString(method)) {
-                return function () {
-                    var scopeArgs = argsToArray(arguments), scope = scopeArgs.shift();
-                    var func = scope[method];
-                    if (isFunction(func)) {
-                        scopeArgs = args.concat(scopeArgs);
-                        return spreadArgs(func, scopeArgs, scope);
-                    } else {
-                        return func;
-                    }
-                };
-            } else {
-                return function () {
-                    var scopeArgs = argsToArray(arguments), scope = scopeArgs.shift();
-                    scopeArgs = args.concat(scopeArgs);
-                    return spreadArgs(method, scopeArgs, scope);
-                };
-            }
-        }
-
-
-        function hitchIgnore(scope, method, args) {
-            args = argsToArray(arguments, 2);
-            if ((isString(method) && !(method in scope))) {
-                throw new Error(method + " property not defined in scope");
-            } else if (!isString(method) && !isFunction(method)) {
-                throw new Error(method + " is not a function");
-            }
-            if (isString(method)) {
-                return function () {
-                    var func = scope[method];
-                    if (isFunction(func)) {
-                        return spreadArgs(func, args, scope);
-                    } else {
-                        return func;
-                    }
-                };
-            } else {
-                return function () {
-                    return spreadArgs(method, args, scope);
-                };
-            }
-        }
-
-
-        function hitchAll(scope) {
-            var funcs = argsToArray(arguments, 1);
-            if (!isObject(scope) && !isFunction(scope)) {
-                throw new TypeError("scope must be an object");
-            }
-            if (funcs.length === 1 && isArray(funcs[0])) {
-                funcs = funcs[0];
-            }
-            if (!funcs.length) {
-                funcs = [];
-                for (var k in scope) {
-                    if (scope.hasOwnProperty(k) && isFunction(scope[k])) {
-                        funcs.push(k);
-                    }
-                }
-            }
-            for (var i = 0, l = funcs.length; i < l; i++) {
-                scope[funcs[i]] = hitch(scope, scope[funcs[i]]);
-            }
-            return scope;
-        }
-
-
-        function partial(method, args) {
-            args = argsToArray(arguments, 1);
-            if (!isString(method) && !isFunction(method)) {
-                throw new Error(method + " must be the name of a property or function to execute");
-            }
-            if (isString(method)) {
-                return function () {
-                    var func = this[method];
-                    if (isFunction(func)) {
-                        var scopeArgs = args.concat(argsToArray(arguments));
-                        return spreadArgs(func, scopeArgs, this);
-                    } else {
-                        return func;
-                    }
-                };
-            } else {
-                return function () {
-                    var scopeArgs = args.concat(argsToArray(arguments));
-                    return spreadArgs(method, scopeArgs, this);
-                };
-            }
-        }
-
-        function curryFunc(f, execute) {
-            return function () {
-                var args = argsToArray(arguments);
-                return execute ? spreadArgs(f, arguments, this) : function () {
-                    return spreadArgs(f, args.concat(argsToArray(arguments)), this);
-                };
-            };
-        }
-
-
-        function curry(depth, cb, scope) {
-            var f;
-            if (scope) {
-                f = hitch(scope, cb);
-            } else {
-                f = cb;
-            }
-            if (depth) {
-                var len = depth - 1;
-                for (var i = len; i >= 0; i--) {
-                    f = curryFunc(f, i === len);
-                }
-            }
-            return f;
-        }
-
-        return extended
-            .define(isObject, {
-                bind: hitch,
-                bindAll: hitchAll,
-                bindIgnore: hitchIgnore,
-                curry: function (scope, depth, fn) {
-                    return curry(depth, fn, scope);
-                }
-            })
-            .define(isFunction, {
-                bind: function (fn, obj) {
-                    return spreadArgs(hitch, [obj, fn].concat(argsToArray(arguments, 2)), this);
-                },
-                bindIgnore: function (fn, obj) {
-                    return spreadArgs(hitchIgnore, [obj, fn].concat(argsToArray(arguments, 2)), this);
-                },
-                partial: partial,
-                applyFirst: applyFirst,
-                curry: function (fn, num, scope) {
-                    return curry(num, fn, scope);
-                },
-                noWrap: {
-                    f: function () {
-                        return this.value();
-                    }
-                }
-            })
-            .define(isString, {
-                bind: function (str, scope) {
-                    return hitch(scope, str);
-                },
-                bindIgnore: function (str, scope) {
-                    return hitchIgnore(scope, str);
-                },
-                partial: partial,
-                applyFirst: applyFirst,
-                curry: function (fn, depth, scope) {
-                    return curry(depth, fn, scope);
-                }
-            })
-            .expose({
-                bind: hitch,
-                bindAll: hitchAll,
-                bindIgnore: hitchIgnore,
-                partial: partial,
-                applyFirst: applyFirst,
-                curry: curry
-            });
-
-    }
-
-    if ("undefined" !== typeof exports) {
-        if ("undefined" !== typeof module && module.exports) {
-            module.exports = defineFunction(require("extended"), require("is-extended"), require("arguments-extended"));
-
-        }
-    } else if ("function" === typeof define && define.amd) {
-        define(["extended", "is-extended", "arguments-extended"], function (extended, is, args) {
-            return defineFunction(extended, is, args);
-        });
-    } else {
-        this.functionExtended = defineFunction(this.extended, this.isExtended, this.argumentsExtended);
-    }
-
-}).call(this);
-
-
-
-
-
-
-
-},{"is-extended":23,"extended":16,"arguments-extended":31}],28:[function(require,module,exports){
+},{"extended":16,"__browserify_buffer":34}],28:[function(require,module,exports){
 "use strict";
 
 var utils = require("../../utils"),
@@ -12228,7 +12228,7 @@ EventEmitter.extend({
     }
 }).as(module);
 
-},{"../../utils":33,"../../extended":2,"./emitter":34,"./action":29}],29:[function(require,module,exports){
+},{"../../utils":35,"../../extended":2,"./emitter":36,"./action":29}],29:[function(require,module,exports){
 "use strict";
 var _ = require("../../extended"),
     isFunction = _.isFunction,
@@ -12292,7 +12292,6 @@ EventEmitter.extend({
                 failure;
             return _.serial(be)
                 .then(_.bind(this, function () {
-                    start = new Date();
                     var ret;
                     if (this.stub) {
                         // this test is pending (read: not defined yet)
@@ -12346,9 +12345,9 @@ EventEmitter.extend({
     }
 
 }).as(module);
-},{"../../extended":2,"./emitter":34,"../../utils":33}],30:[function(require,module,exports){
+},{"../../extended":2,"./emitter":36,"../../utils":35}],30:[function(require,module,exports){
 module.exports = require("./extender.js");
-},{"./extender.js":35}],33:[function(require,module,exports){
+},{"./extender.js":37}],35:[function(require,module,exports){
 (function(process){"use strict";
 var _ = require("./extended"),
     isPromiseLike = _.isPromiseLike,
@@ -12473,7 +12472,7 @@ function setUpCb(cb, timeout) {
 
 exports.setUpCb = setUpCb;
 })(require("__browserify_process"))
-},{"./extended":2,"__browserify_process":8}],34:[function(require,module,exports){
+},{"./extended":2,"__browserify_process":8}],36:[function(require,module,exports){
 "use strict";
 var _ = require("../../extended"),
     EventEmitter = require("events").EventEmitter;
@@ -12533,7 +12532,97 @@ _.declare({
 }).call(this);
 
 
-},{"extended":16,"is-extended":23}],35:[function(require,module,exports){
+},{"extended":16,"is-extended":24}],32:[function(require,module,exports){
+(function () {
+    "use strict";
+
+    function defineArgumentsExtended(extended, is) {
+
+        var pSlice = Array.prototype.slice,
+            isArguments = is.isArguments;
+
+        function argsToArray(args, slice) {
+            var i = -1, j = 0, l = args.length, ret = [];
+            slice = slice || 0;
+            i += slice;
+            while (++i < l) {
+                ret[j++] = args[i];
+            }
+            return ret;
+        }
+
+
+        return extended
+            .define(isArguments, {
+                toArray: argsToArray
+            })
+            .expose({
+                argsToArray: argsToArray
+            });
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineArgumentsExtended(require("extended"), require("is-extended"));
+
+        }
+    } else if ("function" === typeof define && define.amd) {
+        define(["extended", "is-extended"], function (extended, is) {
+            return defineArgumentsExtended(extended, is);
+        });
+    } else {
+        this.argumentsExtended = defineArgumentsExtended(this.extended, this.isExtended);
+    }
+
+}).call(this);
+
+
+},{"is-extended":24,"extended":16}],33:[function(require,module,exports){
+(function () {
+    "use strict";
+
+    function defineArgumentsExtended(extended, is) {
+
+        var pSlice = Array.prototype.slice,
+            isArguments = is.isArguments;
+
+        function argsToArray(args, slice) {
+            var i = -1, j = 0, l = args.length, ret = [];
+            slice = slice || 0;
+            i += slice;
+            while (++i < l) {
+                ret[j++] = args[i];
+            }
+            return ret;
+        }
+
+
+        return extended
+            .define(isArguments, {
+                toArray: argsToArray
+            })
+            .expose({
+                argsToArray: argsToArray
+            });
+    }
+
+    if ("undefined" !== typeof exports) {
+        if ("undefined" !== typeof module && module.exports) {
+            module.exports = defineArgumentsExtended(require("extended"), require("is-extended"));
+
+        }
+    } else if ("function" === typeof define && define.amd) {
+        define(["extended", "is-extended"], function (extended, is) {
+            return defineArgumentsExtended(extended, is);
+        });
+    } else {
+        this.argumentsExtended = defineArgumentsExtended(this.extended, this.isExtended);
+    }
+
+}).call(this);
+
+
+},{"extended":16,"is-extended":24}],37:[function(require,module,exports){
 (function () {
     /*jshint strict:false*/
 
@@ -13074,5 +13163,5 @@ _.declare({
     }
 
 }).call(this);
-},{"declare.js":24}]},{},[1])
+},{"declare.js":23}]},{},[1])
 ;
