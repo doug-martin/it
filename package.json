@@ -19,18 +19,18 @@
         "test": "./bin/it -r tap"
     },
     "dependencies": {
+        "array-extended": "~0.0.3",
+        "commander": "~1.1.1",
+        "date-extended": "~0.0.3",
         "declare.js": "~0.0.3",
         "extended": "~0.0.3",
-        "is-extended": "~0.0.3",
-        "string-extended": "~0.0.3",
-        "array-extended": "~0.0.3",
-        "date-extended": "~0.0.3",
         "function-extended": "~0.0.3",
+        "glob": "^7.1.4",
+        "grunt": "^1.0.4",
+        "is-extended": "~0.0.3",
         "object-extended": "~0.0.3",
         "promise-extended": "~0.0.3",
-        "commander": "~1.1.1",
-        "glob": "~3.1.21",
-        "grunt": "~0.4.1"
+        "string-extended": "~0.0.3"
     },
     "testling": {
         "files": "test/browserling.js",
@@ -45,11 +45,11 @@
         ]
     },
     "devDependencies": {
-        "grunt-browserify": "~0.2.0",
-        "grunt-contrib-uglify": "~0.11.0",
-        "grunt-contrib-jshint": "~0.3.0",
         "colors": "1.1.2",
-        "diff": "2.2.1"
+        "diff": "2.2.1",
+        "grunt-browserify": "^5.3.0",
+        "grunt-contrib-jshint": "^2.1.0",
+        "grunt-contrib-uglify": "~0.11.0"
     },
     "homepage": "http://doug-martin.github.com/it",
     "author": {
